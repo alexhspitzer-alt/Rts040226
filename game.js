@@ -16,6 +16,15 @@ const edges = [
 ];
 
 const TUTORIAL_GOAL = 3;
+const BASIL_NAME = "BASIL";
+const DEFAULT_LORE_SUMMARY =
+  "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks inspections, Blister deals, and insurance-driven risk management.";
+
+const SHIP_CAPTAINS = {
+  "hauler-1": "Capt. Soren Nnadi",
+  "hauler-2": "Capt. Tamsin Rook",
+  "courier-1": "Capt. Laleh Mercer",
+};
 
 const state = {
   tick: 0,
@@ -38,6 +47,8 @@ const state = {
     selectedShipId: null,
     pending: null,
   },
+  loreSummary: DEFAULT_LORE_SUMMARY,
+  dialogueDb: {},
 };
 
 const ui = {
@@ -104,6 +115,44 @@ function logLine(text, type = "sys") {
   div.appendChild(body);
   ui.feed.appendChild(div);
   ui.feed.scrollTop = ui.feed.scrollHeight;
+}
+
+function pickLine(characterName, bucket) {
+  const actor = state.dialogueDb[characterName];
+  const choices = actor?.dialogue?.[bucket];
+  if (!choices?.length) return null;
+  return choices[Math.floor(Math.random() * choices.length)];
+}
+
+function basilSpeak(bucket, fallback, type = "basil") {
+  const text = pickLine(BASIL_NAME, bucket) || fallback;
+  logLine(`${BASIL_NAME}: ${text}`, type);
+}
+
+function characterSpeak(characterName, bucket, fallback, type = "comms") {
+  const text = pickLine(characterName, bucket) || fallback;
+  logLine(`${characterName}: ${text}`, type);
+}
+
+async function loadReferenceData() {
+  try {
+    const [loreResponse, dialogueResponse] = await Promise.all([
+      fetch("./bluFreight%20text%20RTS.txt"),
+      fetch("./indigo_dialogue_characters.json"),
+    ]);
+
+    if (loreResponse.ok) {
+      const loreText = await loreResponse.text();
+      const condensed = loreText.replace(/\s+/g, " ").trim();
+      if (condensed.length) state.loreSummary = condensed.slice(0, 340);
+    }
+
+    if (dialogueResponse.ok) {
+      state.dialogueDb = await dialogueResponse.json();
+    }
+  } catch (err) {
+    logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
+  }
 }
 
 function routeDistance(from, to, visited = new Set()) {
@@ -175,7 +224,8 @@ function render() {
 
 function showShipsList() {
   state.ships.forEach((s, idx) => {
-    logLine(`${idx + 1}. ${s.id} (${s.status}) @ ${s.at}`, "sys");
+    const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
+    logLine(`${idx + 1}. ${s.id} (${s.status}) @ ${s.at} | ${captain}`, "sys");
   });
   logLine("Pick ship number or: select <ship-id>", "sys");
 }
@@ -205,12 +255,25 @@ function shipReport(shipId) {
   if (!ship) return logLine("Selected ship is unavailable.", "error");
   const eta = ship.status === "enroute" ? Math.max(0, ship.busyUntil - state.tick) : 0;
   logLine(`Report ${ship.id}: status=${ship.status}, location=${ship.at}, eta=${eta}s.`, "report");
+  const captain = SHIP_CAPTAINS[ship.id];
+  if (captain) characterSpeak(captain, "neutral", "Standing by for tasking.", "comms");
 }
 
 function scheduleTransitComms(ship, destination, distance) {
   const midpoint = Math.max(1, Math.floor(distance / 2));
-  scheduleMessage(midpoint, `${ship.id} update: passing relay corridor toward ${nodes[destination].label}.`, "report");
+  const captain = SHIP_CAPTAINS[ship.id];
+  scheduleMessage(
+    midpoint,
+    `${ship.id} update: passing relay corridor toward ${nodes[destination].label}.`,
+    "report"
+  );
+  if (captain) {
+    scheduleMessage(midpoint, `${captain}: ${pickLine(captain, "neutral") || "Route remains stable."}`, "comms");
+  }
   scheduleMessage(distance, `${ship.id} final: arrived at ${nodes[destination].label}. Awaiting dispatch.`, "report");
+  if (captain) {
+    scheduleMessage(distance, `${captain}: ${pickLine(captain, "acknowledgements") || "On station."}`, "comms");
+  }
 }
 
 function sendShip(shipId, destination) {
@@ -229,9 +292,17 @@ function sendShip(shipId, destination) {
     scheduleMessage(distance, `${ship.id} detained briefly at ${nodes[destination].label}. Cargo released after inspection.`, "alert");
     state.cash -= 70;
     state.rep -= 1;
+    const arcworksInspector = "Inspector Dey Arcos";
+    scheduleMessage(
+      Math.max(1, distance - 1),
+      `${arcworksInspector}: ${pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."}`,
+      "comms"
+    );
+    basilSpeak("negative", `Order logged. ${ship.id} risk profile elevated.`, "basil");
   } else {
     scheduleTransitComms(ship, destination, distance);
     state.rep = Math.min(100, state.rep + 1);
+    basilSpeak("acknowledgements", `Order accepted for ${ship.id}.`, "basil");
   }
 
   logLine(`Order accepted: ${ship.id} -> ${destination} (${distance}s).`, "dispatch");
@@ -253,8 +324,13 @@ function assignContract(contractId, shipId) {
   contract.status = "assigned";
 
   logLine(`Assigned ${ship.id} to ${contract.id}. Pickup ${toPickup}s + delivery ${toDrop}s.`, "dispatch");
+  const captain = SHIP_CAPTAINS[ship.id];
+  if (captain) characterSpeak(captain, "acknowledgements", "Proceeding as ordered.", "comms");
   scheduleMessage(Math.max(1, Math.floor(total / 2)), `${ship.id} mid-route check-in for ${contract.id}: cargo stable.`, "report");
   scheduleMessage(total, `${ship.id} delivered ${contract.id} at ${nodes[contract.to].label}.`, "report");
+  if (captain) {
+    scheduleMessage(total, `${captain}: ${pickLine(captain, "positive") || "Delivery complete."}`, "comms");
+  }
 
   state.cash += contract.payout - (state.escort ? 60 : 0);
   state.rep = Math.min(100, state.rep + 2);
@@ -264,6 +340,7 @@ function assignContract(contractId, shipId) {
   if (!state.tutorialDone && state.completedContracts >= TUTORIAL_GOAL) {
     state.tutorialDone = true;
     logLine("Tutorial complete: 3 contracts delivered.", "sys");
+    basilSpeak("positive", "Tutorial objectives complete. Dispatch confidence adjusted upward.", "basil");
   }
 }
 
@@ -329,12 +406,37 @@ function handleShipMenuLetter(letter) {
 
 function handleLongForm(parts) {
   if (parts[0] === "help") {
-    logLine("help | status | map | ships | select <ship> | assign <contract> <ship> | send <ship> <destination> | escort on/off | pause", "sys");
+    logLine("help | status | lore | factions | comms | hail <name> | ships | select <ship> | assign <contract> <ship> | send <ship> <destination> | escort on/off | pause", "sys");
     return true;
   }
 
   if (parts[0] === "status") {
     logLine(`Cash $${state.cash} | Rep ${state.rep} | Risk ${state.risk} | Tutorial ${state.completedContracts}/${TUTORIAL_GOAL}`, "sys");
+    basilSpeak("neutral", "Status mirrors manageable instability.", "basil");
+    return true;
+  }
+
+  if (parts[0] === "lore") {
+    logLine(state.loreSummary, "sys");
+    return true;
+  }
+
+  if (parts[0] === "factions") {
+    logLine("Factions: bluFreight, UFP, Arcworks, Blister, civilian authorities.", "sys");
+    return true;
+  }
+
+  if (parts[0] === "comms") {
+    const names = Object.keys(state.dialogueDb);
+    if (!names.length) return logLine("Comms directory unavailable.", "error");
+    logLine(`Comms directory: ${names.join(" | ")}`, "sys");
+    return true;
+  }
+
+  if (parts[0] === "hail" && parts.length >= 2) {
+    const query = inputToName(parts.slice(1).join(" "));
+    if (!query) return logLine("Usage: hail <character-name>", "error");
+    characterSpeak(query, "greetings", "Channel open.", "comms");
     return true;
   }
 
@@ -429,6 +531,14 @@ function handleCommand(raw) {
   if (!handleLongForm(parts)) logLine("Unknown input. Try: ships or help", "error");
 }
 
+function inputToName(input) {
+  const candidates = Object.keys(state.dialogueDb);
+  if (!candidates.length) return null;
+  const exact = candidates.find((n) => n.toLowerCase() === input.toLowerCase());
+  if (exact) return exact;
+  return candidates.find((n) => n.toLowerCase().includes(input.toLowerCase())) || null;
+}
+
 function updateSimulation() {
   state.ships.forEach((ship) => {
     if (ship.status === "enroute" && state.tick >= ship.busyUntil) {
@@ -449,6 +559,13 @@ function updateSimulation() {
     state.risk = Math.max(8, Math.min(70, state.risk));
   }
 
+  if (state.tick % 45 === 0) {
+    const ambient = ["Cmdr. Elias Thorne", "Capt. Hadrik Venn", "Port Marshal Celia Wren"];
+    const speaker = ambient[Math.floor(Math.random() * ambient.length)];
+    const tone = state.risk >= 35 ? "negative" : "neutral";
+    scheduleMessage(1, `${speaker}: ${pickLine(speaker, tone) || "Traffic conditions noted."}`, "comms");
+  }
+
   if (state.cash <= -600 || state.rep <= 0) {
     logLine("bluFreight insolvency event. Simulation halted.", "alert");
     state.running = false;
@@ -462,16 +579,22 @@ ui.cmdForm.addEventListener("submit", (event) => {
   render();
 });
 
-generateContract();
-generateContract();
-state.selection.pending = "await_ship";
-logLine("Tutorial online. Use ships -> number.", "sys");
-showShipsList();
-render();
-
-setInterval(() => {
-  if (!state.running) return;
-  state.tick += 1;
-  updateSimulation();
+async function init() {
+  await loadReferenceData();
+  generateContract();
+  generateContract();
+  state.selection.pending = "await_ship";
+  basilSpeak("greetings", "Dispatch online.", "basil");
+  logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys");
+  showShipsList();
   render();
-}, 1000);
+
+  setInterval(() => {
+    if (!state.running) return;
+    state.tick += 1;
+    updateSimulation();
+    render();
+  }, 1000);
+}
+
+init();

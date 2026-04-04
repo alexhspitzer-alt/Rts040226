@@ -34,6 +34,10 @@ You can use either **short interactive input** (recommended) or **long-form comm
 
 - `help`
 - `status`
+- `lore` (brief setting summary sourced from `bluFreight text RTS.txt`)
+- `factions`
+- `comms` (show known NPC comms contacts from dialogue JSON)
+- `hail <name>` (open a channel with a known character)
 - `map`
 - `ships`
 - `select <ship_id>`
