@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bluFreight Indigo Ops Prototype</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="layout">
+    <header>
+      <h1>bluFreight // Indigo Dispatch Console</h1>
+      <p>You are Operations Manager. Issue short dispatch commands, manage delays, and keep contracts profitable.</p>
+    </header>
+
+    <section class="stats" aria-label="Game statistics">
+      <div><strong>Time:</strong> <span id="clock">00:00</span></div>
+      <div><strong>Cash:</strong> $<span id="cash">0</span></div>
+      <div><strong>Reputation:</strong> <span id="rep">0</span></div>
+      <div><strong>Insurance Risk:</strong> <span id="risk">0</span></div>
+      <div><strong>Escorts:</strong> <span id="escort">Off</span></div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>Contracts</h2>
+        <ul id="contracts" class="list"></ul>
+      </article>
+
+      <article class="panel">
+        <h2>Fleet</h2>
+        <ul id="fleet" class="list"></ul>
+      </article>
+
+      <article class="panel terminal">
+        <h2>Dispatch Terminal</h2>
+        <div id="feed" class="feed" aria-live="polite"></div>
+        <form id="cmd-form" class="cmd-form">
+          <label for="cmd" class="sr-only">Command</label>
+          <input id="cmd" autocomplete="off" placeholder="Type: help" />
+          <button type="submit">Send</button>
+        </form>
+        <p class="hint">Try: <code>help</code>, <code>map</code>, <code>contracts</code>, <code>send hauler-1 cinder_hub</code>, <code>escort on</code></p>
+      </article>
+
+      <article class="panel">
+        <h2>Gameplay Focus</h2>
+        <ol>
+          <li>Routes are node-to-node with real delay from distance ticks.</li>
+          <li>Orders can be stale when intel arrives late.</li>
+          <li>Ships act semi-autonomously once dispatched.</li>
+          <li>Insurance and escort posture affect risk and payout.</li>
+          <li>Survive 8 minutes of contracts without financial collapse.</li>
+        </ol>
+      </article>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
