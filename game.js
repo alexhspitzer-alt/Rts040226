@@ -73,10 +73,35 @@ function fmtTime(total) {
   return `${m}:${s}`;
 }
 
+function escapeHtml(str) {
+  return str
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function stylizeConsoleText(text) {
+  const escaped = escapeHtml(text);
+  return escaped
+    .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
+    .replace(/(^|\s)([ASRB]\.)/g, '$1<span class="choice">$2</span>')
+    .replace(/(^|\s)(A|S|R|B)(?=\s|$)/g, '$1<span class="choice">$2</span>');
+}
+
 function logLine(text, type = "sys") {
   const div = document.createElement("div");
   div.className = "line";
-  div.textContent = `[${fmtTime(state.tick)}][${type.toUpperCase()}] ${text}`;
+
+  const stamp = document.createElement("span");
+  stamp.className = "stamp";
+  stamp.textContent = `[${fmtTime(state.tick)}][${type.toUpperCase()}]`;
+
+  const body = document.createElement("span");
+  body.className = "body";
+  body.innerHTML = ` ${stylizeConsoleText(text)}`;
+
+  div.appendChild(stamp);
+  div.appendChild(body);
   ui.feed.appendChild(div);
   ui.feed.scrollTop = ui.feed.scrollHeight;
 }
@@ -152,7 +177,7 @@ function showShipsList() {
   state.ships.forEach((s, idx) => {
     logLine(`${idx + 1}. ${s.id} (${s.status}) @ ${s.at}`, "sys");
   });
-  logLine("Choose ship by number, or type: select <ship-id>", "sys");
+  logLine("Pick ship number or: select <ship-id>", "sys");
 }
 
 function showShipMenu(shipId) {
@@ -164,7 +189,7 @@ function showContractsForSelectedShip() {
   if (!contracts.length) return logLine("No open contracts to assign.", "sys");
   logLine(`Assign ${state.selection.selectedShipId} to what contract?`, "sys");
   contracts.forEach((c, idx) => logLine(`${idx + 1}. ${c.id} ${c.from} -> ${c.to} (+$${c.payout})`, "sys"));
-  logLine("Pick a number or type contract ID.", "sys");
+  logLine("Pick number or contract ID.", "sys");
 }
 
 function showDestinationsForSelectedShip() {
@@ -172,7 +197,7 @@ function showDestinationsForSelectedShip() {
   Object.keys(nodes).forEach((nodeId, idx) => {
     logLine(`${idx + 1}. ${nodeId} (${nodes[nodeId].label})`, "sys");
   });
-  logLine("Pick a number or type destination ID.", "sys");
+  logLine("Pick number or destination ID.", "sys");
 }
 
 function shipReport(shipId) {
@@ -304,7 +329,7 @@ function handleShipMenuLetter(letter) {
 
 function handleLongForm(parts) {
   if (parts[0] === "help") {
-    logLine("Commands: help, status, map, ships, select <ship>, assign <contract> <ship>, send <ship> <destination>, escort on/off, pause", "sys");
+    logLine("help | status | map | ships | select <ship> | assign <contract> <ship> | send <ship> <destination> | escort on/off | pause", "sys");
     return true;
   }
 
@@ -401,7 +426,7 @@ function handleCommand(raw) {
     }
   }
 
-  if (!handleLongForm(parts)) logLine("Command not recognized. Try: help or ships", "error");
+  if (!handleLongForm(parts)) logLine("Unknown input. Try: ships or help", "error");
 }
 
 function updateSimulation() {
@@ -440,7 +465,7 @@ ui.cmdForm.addEventListener("submit", (event) => {
 generateContract();
 generateContract();
 state.selection.pending = "await_ship";
-logLine("Tutorial mode online. Type ships, then choose by number.", "sys");
+logLine("Tutorial online. Use ships -> number.", "sys");
 showShipsList();
 render();
 

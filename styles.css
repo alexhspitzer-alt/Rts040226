@@ -63,19 +63,29 @@ h1 {
 }
 
 .feed {
-  height: 440px;
+  height: 620px;
   overflow: auto;
   background: #0a111a;
   border: 1px solid #3a5578;
   border-radius: 6px;
   padding: 0.5rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 1.03rem;
+  font-size: 0.82rem;
   white-space: pre-wrap;
 }
 
 .line {
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+
+.stamp {
+  color: #63a7ff;
+}
+
+.choice {
+  color: #f8cf68;
+  font-weight: 700;
 }
 
 .cmd-form {
@@ -122,6 +132,6 @@ button:hover {
   }
 
   .feed {
-    height: 210px;
+    height: 340px;
   }
 }
