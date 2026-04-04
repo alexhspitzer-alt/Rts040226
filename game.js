@@ -25,6 +25,14 @@ const SHIP_CAPTAINS = {
   "hauler-2": "Capt. Tamsin Rook",
   "courier-1": "Capt. Laleh Mercer",
 };
+const DEFAULT_SPEAKER_STATUS = "on-station";
+const SPEAKER_PROFILES = {
+  BASIL: { location: "Dispatch Core", status: "active" },
+  "Cmdr. Elias Thorne": { location: "UFP Patrol Group", status: DEFAULT_SPEAKER_STATUS },
+  "Capt. Hadrik Venn": { location: "Blister Trade Lane", status: DEFAULT_SPEAKER_STATUS },
+  "Port Marshal Celia Wren": { location: "Anchor Station Docks", status: DEFAULT_SPEAKER_STATUS },
+  "Inspector Dey Arcos": { location: "Arcworks Transit Authority", status: DEFAULT_SPEAKER_STATUS },
+};
 
 const state = {
   tick: 0,
@@ -124,14 +132,47 @@ function pickLine(characterName, bucket) {
   return choices[Math.floor(Math.random() * choices.length)];
 }
 
-function basilSpeak(bucket, fallback, type = "basil") {
-  const text = pickLine(BASIL_NAME, bucket) || fallback;
-  logLine(`${BASIL_NAME}: ${text}`, type);
+function formatShipId(shipId) {
+  return shipId
+    .split("-")
+    .map((chunk) => (Number.isNaN(Number(chunk)) ? `${chunk.charAt(0).toUpperCase()}${chunk.slice(1)}` : chunk))
+    .join("-");
 }
 
-function characterSpeak(characterName, bucket, fallback, type = "comms") {
+function speakerContext(name, statusOverride) {
+  const shipId = Object.keys(SHIP_CAPTAINS).find((id) => SHIP_CAPTAINS[id] === name);
+  if (shipId) {
+    const ship = state.ships.find((s) => s.id === shipId);
+    if (!ship) return "";
+    const status = statusOverride || (ship.status === "enroute" ? "in transit" : DEFAULT_SPEAKER_STATUS);
+    const location = ship.status === "enroute" && ship.destination ? nodes[ship.destination].label : nodes[ship.at].label;
+    if (status === DEFAULT_SPEAKER_STATUS) return `[${formatShipId(shipId)}, ${location}]`;
+    return `[${formatShipId(shipId)}, ${location} (${status})]`;
+  }
+
+  const profile = SPEAKER_PROFILES[name];
+  if (!profile) return "";
+  const status = statusOverride || profile.status || DEFAULT_SPEAKER_STATUS;
+  if (status === DEFAULT_SPEAKER_STATUS) return `[${profile.location}]`;
+  return `[${profile.location} (${status})]`;
+}
+
+function basilSpeak(bucket, fallback, type = "basil") {
+  const text = pickLine(BASIL_NAME, bucket) || fallback;
+  const context = speakerContext(BASIL_NAME);
+  logLine(`${BASIL_NAME} ${context}: ${text}`, type);
+}
+
+function characterSpeak(characterName, bucket, fallback, type = "comms", statusOverride = null) {
   const text = pickLine(characterName, bucket) || fallback;
-  logLine(`${characterName}: ${text}`, type);
+  const context = speakerContext(characterName, statusOverride);
+  logLine(`${characterName} ${context}: ${text}`, type);
+}
+
+function queueCharacterMessage(delay, characterName, bucket, fallback, type = "comms", statusOverride = null) {
+  const context = speakerContext(characterName, statusOverride);
+  const text = pickLine(characterName, bucket) || fallback;
+  scheduleMessage(delay, `${characterName} ${context}: ${text}`, type);
 }
 
 async function loadReferenceData() {
@@ -268,11 +309,11 @@ function scheduleTransitComms(ship, destination, distance) {
     "report"
   );
   if (captain) {
-    scheduleMessage(midpoint, `${captain}: ${pickLine(captain, "neutral") || "Route remains stable."}`, "comms");
+    queueCharacterMessage(midpoint, captain, "neutral", "Route remains stable.", "comms", "arriving");
   }
   scheduleMessage(distance, `${ship.id} final: arrived at ${nodes[destination].label}. Awaiting dispatch.`, "report");
   if (captain) {
-    scheduleMessage(distance, `${captain}: ${pickLine(captain, "acknowledgements") || "On station."}`, "comms");
+    queueCharacterMessage(distance, captain, "acknowledgements", "On station.", "comms");
   }
 }
 
@@ -295,8 +336,10 @@ function sendShip(shipId, destination) {
     const arcworksInspector = "Inspector Dey Arcos";
     scheduleMessage(
       Math.max(1, distance - 1),
-      `${arcworksInspector}: ${pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."}`,
-      "comms"
+      `${arcworksInspector} ${speakerContext(arcworksInspector, "interdicting")}: ${
+        pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."
+      }`,
+      "comms",
     );
     basilSpeak("negative", `Order logged. ${ship.id} risk profile elevated.`, "basil");
   } else {
@@ -329,7 +372,7 @@ function assignContract(contractId, shipId) {
   scheduleMessage(Math.max(1, Math.floor(total / 2)), `${ship.id} mid-route check-in for ${contract.id}: cargo stable.`, "report");
   scheduleMessage(total, `${ship.id} delivered ${contract.id} at ${nodes[contract.to].label}.`, "report");
   if (captain) {
-    scheduleMessage(total, `${captain}: ${pickLine(captain, "positive") || "Delivery complete."}`, "comms");
+    queueCharacterMessage(total, captain, "positive", "Delivery complete.");
   }
 
   state.cash += contract.payout - (state.escort ? 60 : 0);
@@ -563,7 +606,7 @@ function updateSimulation() {
     const ambient = ["Cmdr. Elias Thorne", "Capt. Hadrik Venn", "Port Marshal Celia Wren"];
     const speaker = ambient[Math.floor(Math.random() * ambient.length)];
     const tone = state.risk >= 35 ? "negative" : "neutral";
-    scheduleMessage(1, `${speaker}: ${pickLine(speaker, tone) || "Traffic conditions noted."}`, "comms");
+    queueCharacterMessage(1, speaker, tone, "Traffic conditions noted.");
   }
 
   if (state.cash <= -600 || state.rep <= 0) {
