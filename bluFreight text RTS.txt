@@ -1,0 +1,472 @@
+﻿Lore and background
+Here’s a clean summary of the setting so far.
+
+
+Indigo System
+
+
+The Indigo system is centered on a gas giant whose atmosphere and surrounding ring system contain unusually rich concentrations of deuterium, making it one of the most strategically valuable fuel sources in the region. Control of Indigo means control over fusion fuel, shipping range, industrial growth, and military endurance. The system includes roughly a hundred small moons, ring infrastructure, stations, extraction platforms, and scattered settlements tied together by fragile logistics rather than any deep political unity.
+
+
+Political Situation
+
+
+Indigo is effectively in a state of war, but not a neat, symmetrical one. Factions will attack one another whenever they believe they can do so profitably or safely, yet the vastness of space means they spend much of their time moving through darkness, uncertainty, and stale information. Violence is not constant fleet battle. Instead, conflict concentrates at strategic points such as moon bases, stations, depots, relay points, and transit chokepoints. These confrontations usually take the form of raids, interdictions, seizures, sieges, or temporary blockades rather than outright annihilation.
+
+
+Ship-to-ship combat is shaped by detection lag and maneuvering rather than cinematic close combat. A typical attack begins with an enemy being detected on probe. A bomber or strike craft then burns toward a release point, launches interceptors or munitions, and immediately alters trajectory before its own movement is fully known through enemy communications. In practice, the first weapon is usually information: who saw whom first, whose intel is fresher, and who can act before the other side has a clear picture.
+
+
+Union of Free Planets (UFP)
+
+
+After Indigo’s deuterium wealth was confirmed, the Union of Free Planets moved to seize control of the system under the stated justification of ensuring security, stability, and the free market flow of goods. Officially, the UFP presents itself as the guarantor of open commerce and lawful order. In reality, it is also securing a vital strategic resource, preventing local monopolies from hardening into sovereignty, and maintaining a forward military and regulatory presence in the system.
+
+
+The UFP is not interested in indiscriminate destruction. It wants predictability, controlled extraction, reliable shipping, and a political environment in which deuterium keeps flowing.
+
+
+Arcworks
+
+
+Arcworks is a small but locally influential mining corporation that had operated in Indigo before the UFP takeover and regarded Indigo’s rings and moons as effectively its own territory. From Arcworks’ point of view, it built infrastructure, accepted frontier risk, invested early, and established local control long before the UFP arrived to formalize ownership under distant rules. It sees the Union’s seizure as an illegitimate expropriation dressed up as market stabilization.
+
+
+Arcworks is hostile to UFP-backed logistics, including bluFreight, because they represent Union-backed legitimacy in a system Arcworks still considers partly its own. However, Arcworks is not nihilistic. It will often treat bluFreight shipping as a legitimate target for detention, seizure, inspection, or arrest rather than destruction. A commercial freighter carrying food or ordinary goods may be ignored, redirected, or impounded rather than blown apart. Arcworks still depends on the system functioning; miners need food, oxygen, and supply chains too.
+
+
+Blister
+
+
+Blister is a rival faction organized more like a feudal patchwork of warlords than a conventional state. It competes with the UFP for access to resources and influence in the system. From the Union perspective, Blister appears chaotic and predatory, but in practice it operates according to its own transactional logic: tribute, deterrence, negotiated access, and clan-based power.
+
+
+Blister can be dangerous, but it is often more open to negotiation than its reputation suggests. Convoys that carry strong insurance, recognized transit agreements, or acceptable tribute arrangements may be left alone. Poorly insured, weakly escorted, or especially lucrative shipments are more attractive targets. Like the other factions, Blister benefits from instability, but not from the complete collapse of the system.
+
+
+Nature of the War
+
+
+The conflict in Indigo is constrained violence rather than total war. All major players need the system to keep working at some level. No one truly benefits if ring infrastructure is destroyed, mining collapses, stations starve, or deuterium exports stop entirely. As a result, much of the fighting takes the form of seizure, embargo, detention, convoy harassment, dock denial, raids, and siege pressure. Cargo disappears. Ships are detained. Stations are surrounded. Legal language becomes a weapon. Insurance becomes strategy.
+
+
+Because space is large and difficult to observe, the war also thrives on plausible deniability. A convoy can vanish and multiple factions can offer self-serving explanations. A raid may be blamed on pirates, a rogue warlord, a privateer, or a “security misunderstanding.” That ambiguity is part of the system.
+
+
+bluFreight
+
+
+bluFreight is a small civilian logistics company operating in Indigo. It is primarily a contractor for the UFP, though it also serves some local clients. It is not politically neutral in practice: it leans explicitly toward the Union and is frequently protected by UFP patrols. That alignment gives it protection and access, but also makes it a marked participant in the system rather than a harmless bystander.
+
+
+bluFreight is not ideological, patriotic, or humanitarian at its core. Its stated values are excellent customer service, exclusivity for the UFP when requested, and returns for shareholders. It exists to move goods reliably in a dangerous environment and to profit from doing so.
+
+
+The company’s shareholders quietly benefit from conflict continuing at a manageable level. Persistent instability increases demand for emergency shipments, military logistics, escorts, insurance coordination, and high-margin routing. What they do not want is escalation into full system collapse or total war, which would threaten assets, close routes, and potentially cause nationalization or military takeover of logistics.
+
+
+In that sense, bluFreight profits most from stable volatility: a war dangerous enough to create premiums, but controlled enough to remain commercially exploitable.
+
+
+Role of Insurance and Underwriters
+
+
+Underwriters are among the most powerful actors in the setting. Insurance determines which routes are viable, which convoys can move, what risks are acceptable, and which forms of harassment count as tolerable business cost versus strategic crisis. Transit agreements, risk ratings, seizure probabilities, and political exposure all flow through the insurance layer.
+
+
+This gives Indigo a distinctive tone: power is exercised not only through warships and bombers, but through dock access, route pricing, escort requirements, legal classifications, and whether a convoy is considered insurable at all. Even Blister may be easier to manage if the convoy’s insurance and negotiated guarantees are in order.
+
+
+Player Role
+
+
+The player character is an operations manager at bluFreight. They are not a military commander, politician, or corporate visionary. They are the person tasked with keeping ships moving in a system where every shipment is entangled with politics, risk, and conflict.
+
+
+Their work involves prioritizing deliveries, routing convoys, managing escort expectations, balancing civilian and strategic cargo, and navigating pressure from UFP authorities, local clients, Arcworks hostility, Blister negotiation, and shareholder expectations. Their power lies in deciding what moves, what waits, what is worth risking, and what kind of instability the company is willing to tolerate.
+
+
+Tone
+
+
+Indigo is not a heroic frontier or a glamorous star empire. It is a cold, dim, bureaucratically violent system held together by fuel demand, commercial habit, and armed self-interest. Long stretches of darkness and silence are punctuated by probe detections, convoy losses, inspections, raids, and hurried contractual decisions. The setting’s mood is less “epic space opera” and more “war-zone commercial shipping under uncertain sovereignty.”
+
+
+If you want, I can turn this next into either a one-page setting bible, a faction dossier, or an in-universe corporate briefing.
+
+
+
+
+
+
+Gameplay
+Here’s the gameplay and mechanics summary as discussed so far.
+
+
+Core Premise
+
+
+The player is an operations manager at bluFreight, a small civilian logistics company in the Indigo system. The job is to keep cargo, fuel, and supplies moving through a war-torn but commercially active system where communication is delayed, information is incomplete, and every route has political consequences.
+
+
+This is not a direct combat game. The player does not fly ships in real time or command battles tactically. The focus is logistics, delayed decision-making, risk management, and acting under uncertain information.
+
+
+Core Gameplay Fantasy
+
+
+The intended feel is “merchant marine operations in a cold war that keeps turning hot.” The player is not a fleet admiral or empire ruler. They are the person who decides what moves, what waits, what gets escorted, and what risks are worth taking.
+
+
+The central tension comes from having to make good decisions with stale information. Space is large, signal delay matters, and conflicts often happen at stations, moon bases, and transit chokepoints rather than in constant open battle.
+
+
+High-Level Structure
+
+
+The game is built from a few simple foundations.
+
+
+Pieces
+
+
+There are three broad categories of objects in the world:
+
+
+Player pieces: bluFreight assets, mainly ships and other hardware under direct player control
+
+
+NP pieces: non-player ships and units, including friend, foe, neutral, traffic, patrols, and potential attackers
+
+
+Environmental pieces: fixed or semi-fixed locations and objects such as stations, bays, resources, and space hazards
+
+
+
+
+Properties for these pieces are intentionally kept minimal at first and only added when needed.
+
+
+Board
+
+
+The board is a container for locations and their true time-distance relationships. Locations are discrete nodes rather than freeform space. The board tracks how many ticks apart locations are.
+
+
+Time and distance are deliberately unified:
+
+
+1 time tick = 1 second
+
+
+1 distance tick = 1 light-second
+
+
+
+
+This means communication delay and light-speed travel time are both naturally measured in the same unit. The game does not model relativistic time dilation or full orbital mechanics.
+
+
+To avoid a giant lookup table of distances between all locations, the board uses a weighted tree. Each connection between locations has a tick value, and distances are found by adding edge weights along the path between nodes.
+
+
+This keeps the world understandable and computationally simple while still allowing meaningful delay and geography.
+
+
+Time and Delay
+
+
+The game uses a global tick-based simulation. Time advances continuously in seconds, but under the hood it is still a discrete system.
+
+
+Communication delay is one of the defining mechanics. Because the board stores true time-distance, messages between locations take time proportional to separation. Nearby units coordinate more effectively because their signals are fresher. Farther units are effectively more autonomous because the player cannot micromanage them in real time.
+
+
+This delay is not just flavor. It is a major gameplay feature.
+
+
+Fog of War and Information
+
+
+Fog of war is based less on hidden graphics and more on delayed, partial, and stale observations. The player often learns about the world through reports, probes, and messages from their own units rather than direct omniscient vision.
+
+
+The intended gameplay effect is that uncertainty comes from questions like:
+
+
+Is the route still clear?
+
+
+Is the report still current?
+
+
+Has the enemy moved since the last observation?
+
+
+Can a nearby unit confirm before the order arrives?
+
+
+
+
+This makes detection and communication as important as movement.
+
+
+Orders and Autonomy
+
+
+A major planned mechanic is giving units not just simple movement commands, but limited conditional orders.
+
+
+For example, the player might issue instructions like:
+
+
+contact probe alpha 26 and proceed if clear
+
+
+rendezvous only if no hostile contacts are detected
+
+
+abort and return if local risk exceeds threshold
+
+
+
+
+The key idea is that the player can delegate a little decision-making to pieces in the field, especially because local units can often communicate with one another faster than with headquarters.
+
+
+This makes local proximity strategically important and helps avoid turning the game into impossible micromanagement.
+
+
+The interface for this is intended to feel like operational dispatch language rather than programming code.
+
+
+Movement and Travel
+
+
+Ships have per-piece speed values. Mass also matters, at least in some situations.
+
+
+A simple early mission concept established that a tug can physically push a tanker from one location to another, implying a minimal system with:
+
+
+ship speed
+
+
+ship mass
+
+
+attachment and detachment
+
+
+group movement
+
+
+
+
+Fuel exists in the fiction but is currently abstracted away for simplicity as unlimited and massless.
+
+
+The current design philosophy is to keep movement simple and only add complexity when needed.
+
+
+Combat and Threat Model
+
+
+The player is not expected to command tactical ship combat directly. Combat exists in the setting, but from the gameplay perspective it mostly appears as risk, route denial, interception, detention, siege, seizure, convoy loss, or station pressure.
+
+
+When violence occurs, it is usually because:
+
+
+an enemy was detected on probe
+
+
+a raid was launched at a known strategic point
+
+
+a convoy was intercepted or seized
+
+
+a station or base came under blockade or assault
+
+
+
+
+In mechanical terms, conflict is likely to affect the player through:
+
+
+route risk
+
+
+insurance rates
+
+
+convoy detention
+
+
+cargo seizure
+
+
+station accessibility
+
+
+asset loss
+
+
+changing faction relations
+
+
+
+
+So war is present, but usually experienced through logistics consequences rather than direct battlefield control.
+
+
+Strategic Geography
+
+
+Because space is huge and hard to observe, strategic activity clusters around important nodes:
+
+
+stations
+
+
+moon bases
+
+
+extraction facilities
+
+
+relay points
+
+
+transit hubs
+
+
+chokepoints
+
+
+
+
+This works well with the weighted-tree board structure. The player is not managing everywhere at once; they are managing movement between critical places.
+
+
+Economic and Political Layer
+
+
+Logistics choices are not purely operational. They also affect and are constrained by faction politics, client obligations, and insurance.
+
+
+The player works for bluFreight, which leans explicitly toward UFP and often receives UFP patrol protection. That helps with some threats and increases others. Arcworks may consider bluFreight a legitimate target for detention or cargo seizure, while Blister may be more negotiable, especially if the convoy is well insured.
+
+
+This means many player decisions involve balancing:
+
+
+speed versus safety
+
+
+escort versus political visibility
+
+
+profit versus reliability
+
+
+UFP demands versus local contracts
+
+
+shareholder return versus escalation risk
+
+
+
+
+Intended Tone of Play
+
+
+The game is meant to feel like operational decision-making in a cold, dim, bureaucratically violent frontier system. Not heroic dogfighting, not grand empire management, and not a conventional RTS built around tank rushes and base building.
+
+
+The likely emotional texture is:
+
+
+long stretches of planning and transit
+
+
+incomplete information
+
+
+message delays
+
+
+sudden crises
+
+
+political ambiguity
+
+
+commercial pressure
+
+
+occasional losses that may not even be fully explained
+
+
+
+
+Current Design Philosophy
+
+
+The mechanics are being built deliberately from the simplest possible pieces upward. The current approach is:
+
+
+define only the elements needed right now
+
+
+avoid overbuilding
+
+
+use discrete locations instead of full spatial simulation
+
+
+keep time and distance intuitive
+
+
+let communication delay and uncertainty do most of the heavy lifting
+
+
+
+
+The project is still at an early design stage, but the clearest mechanical identity so far is:
+
+
+a text-based logistics strategy game where communication delay, stale information, and conditional orders matter more than direct combat.
+
+
+If you want, the next useful step is probably either a concise “gameplay loop” summary or a list of concrete player actions.
+User Experience
+Here’s a brief description.
+
+
+User Input Handling
+
+
+Player input is handled through a simple structured command interface rather than full natural language. The player types short dispatch-style commands using a fixed grammar, such as assigning a ship, choosing an action, and naming a destination or target. The system only needs to recognize a small set of verbs, unit names, and location names, with a few optional aliases for convenience.
+
+
+Under the hood, the input parser breaks the command into tokens, matches it against a limited set of command patterns, and converts it into a normalized internal order. For example, several slightly different player phrasings can all resolve to the same mechanical action. This keeps implementation simple in JavaScript while preserving the feel of issuing operational orders through a console.
+
+
+The goal is for input to be mechanically strict but easy to learn. The player is not chatting with the game. They are entering dispatch commands.
+
+
+Output Handling
+
+
+Output is handled in two layers: mechanical status and characterful presentation.
+
+
+First, the game reports the actual result of the command in a clear and consistent way, such as whether the order was accepted, who received it, and what action is now underway. This ensures the player always understands the game state.
+
+
+Second, those same events are presented through in-world voices such as the dispatch computer, ship captains, station control, patrol officers, or insurers. These responses add tone and personality without changing the underlying mechanics. A rigid command can therefore produce a flavorful acknowledgment, a dry procedural notice, or a joking captain’s reply, depending on who is speaking.
+
+
+Routine dialogue is generated from small banks of handwritten lines and interchangeable phrase fragments keyed to speaker and event type. Important events can use fully authored lines. This allows output to feel alive and immersive without requiring advanced language generation or a huge parser.
