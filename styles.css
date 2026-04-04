@@ -13,6 +13,7 @@ body {
   max-width: 1150px;
   margin: 0 auto;
   padding: 1rem;
+  font-size: 0.84rem;
 }
 
 h1 {
@@ -58,17 +59,18 @@ h1 {
 
 .terminal {
   grid-column: span 2;
+  font-size: 1rem;
 }
 
 .feed {
-  height: 320px;
+  height: 440px;
   overflow: auto;
   background: #0a111a;
   border: 1px solid #3a5578;
   border-radius: 6px;
   padding: 0.5rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.91rem;
+  font-size: 1.03rem;
   white-space: pre-wrap;
 }
 
@@ -83,8 +85,8 @@ h1 {
   gap: 0.4rem;
 }
 
-input,
-button {
+.terminal input,
+.terminal button {
   border-radius: 6px;
   border: 1px solid #3f5f83;
   background: #0c1623;
