@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bluFreight Indigo Ops Prototype</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="layout">
+    <header>
+      <h1>bluFreight // Indigo Dispatch Console</h1>
+      <p>Tutorial Level: Complete 3 contracts. No contract deadlines. No level timer.</p>
+    </header>
+
+    <section class="stats" aria-label="Game statistics">
+      <div><strong>Clock:</strong> <span id="clock">00:00</span></div>
+      <div><strong>Cash:</strong> $<span id="cash">0</span></div>
+      <div><strong>Reputation:</strong> <span id="rep">0</span></div>
+      <div><strong>Insurance Risk:</strong> <span id="risk">0</span></div>
+      <div><strong>Escorts:</strong> <span id="escort">Off</span></div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>Tutorial Contracts</h2>
+        <ul id="contracts" class="list"></ul>
+      </article>
+
+      <article class="panel">
+        <h2>Fleet</h2>
+        <ul id="fleet" class="list"></ul>
+      </article>
+
+      <article class="panel terminal">
+        <h2>Dispatch Terminal</h2>
+        <div id="feed" class="feed" aria-live="polite"></div>
+        <form id="cmd-form" class="cmd-form">
+          <label for="cmd" class="sr-only">Command</label>
+          <input id="cmd" autocomplete="off" placeholder="Type: help" />
+          <button type="submit">Send</button>
+        </form>
+        <p class="hint">Try: <code>help</code>, <code>contracts</code>, <code>assign c-1 hauler-1</code>, <code>status</code></p>
+      </article>
+
+      <article class="panel">
+        <h2>Tutorial Goals</h2>
+        <ol>
+          <li>Use <code>contracts</code> to inspect available jobs.</li>
+          <li>Assign ships with <code>assign &lt;contract&gt; &lt;ship&gt;</code>.</li>
+          <li>Watch delayed ship reports in the terminal feed.</li>
+          <li>Complete 3 contracts to finish tutorial mode.</li>
+        </ol>
+      </article>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
