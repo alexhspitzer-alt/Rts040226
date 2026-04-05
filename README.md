@@ -9,7 +9,7 @@ Tutorial mode focuses on learning dispatch gameplay without time pressure.
 - Tutorial completes after **3 completed contracts**.
 - Ship comms include delayed mid-route and arrival updates.
 - Ship queries/orders are now constrained by signal travel time (round-trip delay).
-- BASIL gives command-time latency estimates when you issue ship commands.
+- BASIL tutorial narration is sourced from `scenario1.json` and reacts to command/report/tutorial-complete events.
 
 ## Run locally
 

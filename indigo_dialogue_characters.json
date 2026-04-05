@@ -1,35 +1,4 @@
 {
-  "BASIL": {
-    "name": "BASIL",
-    "faction": "bluFreight",
-    "dialogue": {
-      "acknowledgements": [
-        "Order accepted. Passing it along to the living.",
-        "Acknowledged. I have translated your intention into something transmissible.",
-        "Confirmed. Updating the schedule and everyone else's blood pressure."
-      ],
-      "greetings": [
-        "Dispatch online. Your problems are now my formatting problem.",
-        "Good shift. Traffic is active and paperwork remains undefeated.",
-        "Operations console ready. Try not to make this interesting too early."
-      ],
-      "positive": [
-        "That resolved more cleanly than expected.",
-        "A pleasingly efficient outcome.",
-        "Situation improved. I will mark this as a rare success."
-      ],
-      "negative": [
-        "That has, regrettably, become a problem.",
-        "Outcome unfavorable. I assume there will be follow-up complaints.",
-        "Conditions have worsened in a way I am legally required to call manageable."
-      ],
-      "neutral": [
-        "Routing remains available pending further human creativity.",
-        "Traffic remains within tolerable limits.",
-        "Status updated. The system continues to impersonate order."
-      ]
-    }
-  },
   "Capt. Mara Ibarra": {
     "name": "Capt. Mara Ibarra",
     "faction": "bluFreight",

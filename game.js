@@ -20,6 +20,7 @@ const BASIL_NAME = "BASIL";
 const PLAYER_NODE = "anchor";
 const DEFAULT_LORE_SUMMARY =
   "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks inspections, Blister deals, and insurance-driven risk management.";
+const SCENARIO_PATH = "./scenario1.json";
 
 const SHIP_CAPTAINS = {
   "hauler-1": "Capt. Soren Nnadi",
@@ -58,6 +59,7 @@ const state = {
   },
   loreSummary: DEFAULT_LORE_SUMMARY,
   dialogueDb: {},
+  scenarioDialogue: {},
   latencyBriefed: false,
   lastAmbientLine: null,
 };
@@ -135,6 +137,13 @@ function pickLine(characterName, bucket) {
   return choices[Math.floor(Math.random() * choices.length)];
 }
 
+function pickScenarioLine(bucket) {
+  const choices = state.scenarioDialogue?.[bucket];
+  if (!choices?.length) return null;
+  const selection = choices[Math.floor(Math.random() * choices.length)];
+  return selection?.text || null;
+}
+
 function formatShipId(shipId) {
   return shipId
     .split("-")
@@ -187,9 +196,10 @@ function queueCharacterMessage(delay, characterName, bucket, fallback, type = "c
 
 async function loadReferenceData() {
   try {
-    const [loreResponse, dialogueResponse] = await Promise.all([
+    const [loreResponse, dialogueResponse, scenarioResponse] = await Promise.all([
       fetch("./bluFreight%20text%20RTS.txt"),
       fetch("./indigo_dialogue_characters.json"),
+      fetch(SCENARIO_PATH),
     ]);
 
     if (loreResponse.ok) {
@@ -200,6 +210,19 @@ async function loadReferenceData() {
 
     if (dialogueResponse.ok) {
       state.dialogueDb = await dialogueResponse.json();
+    }
+
+    if (scenarioResponse.ok) {
+      const scenario = await scenarioResponse.json();
+      const basin = scenario?.basil_scenario_dialogue || {};
+      state.scenarioDialogue = {
+        intro_welcome: basin.intro_welcome?.text ? [basin.intro_welcome] : [],
+        intro_information_integrity: basin.intro_information_integrity?.text ? [basin.intro_information_integrity] : [],
+        intro_tutorial_scenario: basin.intro_tutorial_scenario?.text ? [basin.intro_tutorial_scenario] : [],
+        order_delay_acknowledgements: Array.isArray(basin.order_delay_acknowledgements) ? basin.order_delay_acknowledgements : [],
+        report_staleness_acknowledgements: Array.isArray(basin.report_staleness_acknowledgements) ? basin.report_staleness_acknowledgements : [],
+        tutorial_complete: basin.tutorial_complete?.text ? [basin.tutorial_complete] : [],
+      };
     }
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
@@ -243,10 +266,18 @@ function basilCommsLatencyLine(ship, commandNoun = "orders") {
   const captain = SHIP_CAPTAINS[ship.id] || "the assigned captain";
   const uplink = oneWaySignalToShip(ship);
   const rtt = uplink * 2;
-  basilInform(
-    `Contacting ${captain}. They will receive these ${commandNoun} in ${uplink} seconds. We can expect an acknowledgement in ${rtt} seconds... unless something has happened to their squishy and unreliable human body.`,
-    "basil"
-  );
+  const scenarioLine = pickScenarioLine("order_delay_acknowledgements");
+  if (scenarioLine) {
+    basilInform(
+      `${scenarioLine} Contacting ${captain}. They will receive these ${commandNoun} in ${uplink} seconds. We can expect an acknowledgement in ${rtt} seconds.`,
+      "basil"
+    );
+  } else {
+    basilInform(
+      `Contacting ${captain}. They will receive these ${commandNoun} in ${uplink} seconds. We can expect an acknowledgement in ${rtt} seconds... unless something has happened to their squishy and unreliable human body.`,
+      "basil"
+    );
+  }
   if (!state.tutorialDone) state.latencyBriefed = true;
 }
 
@@ -340,6 +371,7 @@ function shipReport(shipId) {
     : "Position should remain current while on-station.";
   basilInform(`${basilShipIntel(ship)} Report requested. Reply expected in ${rtt}s (uplink ${uplink}s each way). ${staleNote}`);
   scheduleMessage(rtt, `Report ${ship.id}: status=${ship.status}, lastKnown=${ship.lastKnownAt || ship.at}, eta=${eta}s (RTT ${rtt}s).`, "report");
+  scheduleMessage(rtt, () => pickScenarioLine("report_staleness_acknowledgements") || "Report received. Signal delay means this may already be out of date.", "basil");
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
     queueCharacterMessage(rtt, captain, "neutral", "Responding after comms delay. Standing by for tasking.", "comms");
@@ -480,7 +512,10 @@ function assignContract(contractId, shipId) {
   if (!state.tutorialDone && state.completedContracts >= TUTORIAL_GOAL) {
     state.tutorialDone = true;
     logLine("Tutorial complete: 3 contracts delivered.", "sys");
-    basilSpeak("positive", "Tutorial objectives complete. Dispatch confidence adjusted upward.", "basil");
+    basilInform(
+      pickScenarioLine("tutorial_complete") || "Tutorial objectives complete. Dispatch confidence adjusted upward.",
+      "basil"
+    );
   }
   return true;
 }
@@ -718,7 +753,7 @@ function updateSimulation() {
   });
   state.delayedMessages = state.delayedMessages.filter((m) => m.at > state.tick);
 
-  if (!state.tutorialDone && openContracts().length < 4 && state.tick % 10 === 0) generateContract();
+  if (!state.tutorialDone && openContracts().length < TUTORIAL_GOAL && state.tick % 10 === 0) generateContract();
 
   if (state.tick % 30 === 0) {
     state.risk += Math.random() < 0.5 ? 1 : -1;
@@ -753,8 +788,19 @@ async function init() {
   await loadReferenceData();
   generateContract();
   generateContract();
+  generateContract();
   state.selection.pending = "await_ship";
-  basilSpeak("greetings", "Dispatch online.", "basil");
+  basilInform(pickScenarioLine("intro_welcome") || "Dispatch online.", "basil");
+  basilInform(
+    pickScenarioLine("intro_information_integrity")
+      || "Signals take time. Reports are historical snapshots by the time they reach us.",
+    "basil"
+  );
+  basilInform(
+    pickScenarioLine("intro_tutorial_scenario")
+      || "Tutorial objective: complete three contracts and practice delayed-dispatch operations.",
+    "basil"
+  );
   logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys");
   showShipsList();
   render();
