@@ -144,6 +144,14 @@ function pickScenarioLine(bucket) {
   return selection?.text || null;
 }
 
+function canonicalNodeLabel(nodeId) {
+  return nodes[nodeId]?.label || nodeId;
+}
+
+function formatRoute(fromNodeId, toNodeId) {
+  return `${canonicalNodeLabel(fromNodeId)} -> ${canonicalNodeLabel(toNodeId)}`;
+}
+
 function formatShipId(shipId) {
   return shipId
     .split("-")
@@ -255,9 +263,9 @@ function oneWaySignalToShip(ship) {
 
 function basilShipIntel(ship) {
   const knownNode = ship.lastKnownAt || ship.at;
-  const knownLabel = nodes[knownNode]?.label || knownNode;
+  const knownLabel = canonicalNodeLabel(knownNode);
   const age = state.tick - (ship.lastContactTick || 0);
-  const heading = ship.destination ? `Presumed heading: ${nodes[ship.destination].label}.` : "No active heading.";
+  const heading = ship.destination ? `Presumed heading: ${canonicalNodeLabel(ship.destination)}.` : "No active heading.";
   return `${formatShipId(ship.id)} last confirmed at ${knownLabel} (${age}s ago). ${heading}`;
 }
 
@@ -315,7 +323,7 @@ function render() {
   ui.contracts.innerHTML = "";
   openContracts().slice(0, 7).forEach((c, idx) => {
     const li = document.createElement("li");
-    li.textContent = `${idx + 1}. ${c.id} ${nodes[c.from].label} → ${nodes[c.to].label} | +$${c.payout}`;
+    li.textContent = `${idx + 1}. ${c.id} ${canonicalNodeLabel(c.from)} → ${canonicalNodeLabel(c.to)} | +$${c.payout}`;
     ui.contracts.appendChild(li);
   });
   if (!ui.contracts.children.length) {
@@ -335,7 +343,7 @@ function render() {
 function showShipsList() {
   state.ships.forEach((s, idx) => {
     const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
-    logLine(`${idx + 1}. ${s.id} (${s.status}) @ ${s.at} | ${captain}`, "sys");
+    logLine(`${idx + 1}. ${s.id} (${s.status}) @ ${canonicalNodeLabel(s.at)} | ${captain}`, "sys");
   });
   logLine("Pick ship number or: select <ship-id>", "sys");
 }
@@ -348,7 +356,7 @@ function showContractsForSelectedShip() {
   const contracts = openContracts();
   if (!contracts.length) return logLine("No open contracts to assign.", "sys");
   logLine(`Assign ${state.selection.selectedShipId} to what contract?`, "sys");
-  contracts.forEach((c, idx) => logLine(`${idx + 1}. ${c.id} ${c.from} -> ${c.to} (+$${c.payout})`, "sys"));
+  contracts.forEach((c, idx) => logLine(`${idx + 1}. ${c.id} ${formatRoute(c.from, c.to)} (+$${c.payout})`, "sys"));
   logLine("Pick number or contract ID.", "sys");
 }
 
@@ -370,7 +378,11 @@ function shipReport(shipId) {
     ? "Ship is in transit; displayed position may be stale until reply arrives."
     : "Position should remain current while on-station.";
   basilInform(`${basilShipIntel(ship)} Report requested. Reply expected in ${rtt}s (uplink ${uplink}s each way). ${staleNote}`);
-  scheduleMessage(rtt, `Report ${ship.id}: status=${ship.status}, lastKnown=${ship.lastKnownAt || ship.at}, eta=${eta}s (RTT ${rtt}s).`, "report");
+  scheduleMessage(
+    rtt,
+    `Report ${ship.id}: status=${ship.status}, lastKnown=${canonicalNodeLabel(ship.lastKnownAt || ship.at)}, eta=${eta}s (RTT ${rtt}s).`,
+    "report"
+  );
   scheduleMessage(rtt, () => pickScenarioLine("report_staleness_acknowledgements") || "Report received. Signal delay means this may already be out of date.", "basil");
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
@@ -454,7 +466,7 @@ function sendShip(shipId, destination) {
     }
   }
 
-  logLine(`Transmission sent: ${ship.id} -> ${destination}. Uplink ${uplink}s, transit ${distance}s.`, "dispatch");
+  logLine(`Transmission sent: ${ship.id} -> ${canonicalNodeLabel(destination)}. Uplink ${uplink}s, transit ${distance}s.`, "dispatch");
   const reportLag = oneWaySignalToNode(destination);
   basilInform(
     `Timing estimate: uplink ${uplink}s + transit ${distance}s + return signal ${reportLag}s = ${uplink + distance + reportLag}s until arrival is confirmed here.`
@@ -481,7 +493,10 @@ function assignContract(contractId, shipId) {
   ship.destination = contract.to;
   contract.status = "assigned";
 
-  logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s.`, "dispatch");
+  logLine(
+    `Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + route ${total}s (pickup ${toPickup}s + contract leg ${toDrop}s).`,
+    "dispatch"
+  );
   const returnSignal = oneWaySignalToNode(contract.to);
   basilInform(
     `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, reposition ${toPickup}s to pickup, contract leg ${toDrop}s, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
@@ -495,27 +510,26 @@ function assignContract(contractId, shipId) {
     `${ship.id} mid-route check-in for ${contract.id}: cargo stable.`,
     "report"
   );
-  scheduleMessage(
-    uplink + total + oneWaySignalToNode(contract.to),
-    `${ship.id} delivered ${contract.id} at ${nodes[contract.to].label}.`,
-    "report"
-  );
+  scheduleMessage(uplink + total + oneWaySignalToNode(contract.to), () => {
+    contract.status = "completed";
+    state.cash += contract.payout - (state.escort ? 60 : 0);
+    state.rep = Math.min(100, state.rep + 2);
+    state.risk = Math.max(8, state.risk - 1);
+    state.completedContracts += 1;
+
+    if (!state.tutorialDone && state.completedContracts >= TUTORIAL_GOAL) {
+      state.tutorialDone = true;
+      logLine("Tutorial complete: 3 contracts delivered.", "sys");
+      basilInform(
+        pickScenarioLine("tutorial_complete") || "Tutorial objectives complete. Dispatch confidence adjusted upward.",
+        "basil"
+      );
+    }
+
+    return `${ship.id} delivered ${contract.id} at ${canonicalNodeLabel(contract.to)}.`;
+  }, "report");
   if (captain) {
     queueCharacterMessage(uplink + total + oneWaySignalToNode(contract.to), captain, "positive", "Delivery complete.");
-  }
-
-  state.cash += contract.payout - (state.escort ? 60 : 0);
-  state.rep = Math.min(100, state.rep + 2);
-  state.risk = Math.max(8, state.risk - 1);
-  state.completedContracts += 1;
-
-  if (!state.tutorialDone && state.completedContracts >= TUTORIAL_GOAL) {
-    state.tutorialDone = true;
-    logLine("Tutorial complete: 3 contracts delivered.", "sys");
-    basilInform(
-      pickScenarioLine("tutorial_complete") || "Tutorial objectives complete. Dispatch confidence adjusted upward.",
-      "basil"
-    );
   }
   return true;
 }
@@ -645,7 +659,7 @@ function handleLongForm(parts) {
   }
 
   if (parts[0] === "contracts") {
-    openContracts().forEach((c, idx) => logLine(`${idx + 1}. ${c.id} ${c.from} -> ${c.to}, $${c.payout}`, "sys"));
+    openContracts().forEach((c, idx) => logLine(`${idx + 1}. ${c.id} ${formatRoute(c.from, c.to)}, $${c.payout}`, "sys"));
     return true;
   }
 
@@ -753,14 +767,12 @@ function updateSimulation() {
   });
   state.delayedMessages = state.delayedMessages.filter((m) => m.at > state.tick);
 
-  if (!state.tutorialDone && openContracts().length < TUTORIAL_GOAL && state.tick % 10 === 0) generateContract();
-
   if (state.tick % 30 === 0) {
     state.risk += Math.random() < 0.5 ? 1 : -1;
     state.risk = Math.max(8, Math.min(70, state.risk));
   }
 
-  if (state.tick % 45 === 0) {
+  if (state.tutorialDone && state.tick % 45 === 0) {
     const ambient = ["Cmdr. Elias Thorne", "Capt. Hadrik Venn", "Port Marshal Celia Wren"];
     const speaker = ambient[Math.floor(Math.random() * ambient.length)];
     const tone = state.risk >= 35 ? "negative" : "neutral";
@@ -790,7 +802,15 @@ async function init() {
   generateContract();
   generateContract();
   state.selection.pending = "await_ship";
-  basilInform(pickScenarioLine("intro_welcome") || "Dispatch online.", "basil");
+
+  const welcome = pickScenarioLine("intro_welcome");
+  if (welcome && welcome.includes("Our purpose is simple:")) {
+    const [introSegment, missionSegment] = welcome.split("Our purpose is simple:");
+    basilInform(introSegment.trim(), "basil");
+    basilInform(`Our purpose is simple:${missionSegment}`, "basil");
+  } else {
+    basilInform(welcome || "Dispatch online.", "basil");
+  }
   basilInform(
     pickScenarioLine("intro_information_integrity")
       || "Signals take time. Reports are historical snapshots by the time they reach us.",
