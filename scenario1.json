@@ -1,0 +1,78 @@
+{
+  "basil_scenario_dialogue": {
+    "intro_welcome": {
+      "context": "Play once at the start of the tutorial scenario, before the player takes any action.",
+      "speaker": "BASIL",
+      "text": "Welcome to the Indigo system, Operations Manager. I do hope you are smarter than the last one. For the record, his death remains classified as operationally unrelated, which I am told is comforting. I am BASIL, the BluFreight Automated Scheduling, Interchange, and Liaison system assigned to this sector. As you know, bluFreight is a civilian logistics company primarily contracted to the Union of Free Planets, with additional local clients when profitable, permissible, or deniable. Our purpose is simple: keep cargo moving, keep customers satisfied, keep shareholders pleased, and, where possible, avoid losing expensive ships to politics, raids, inspections, sieges, misunderstandings, or initiative."
+    },
+    "intro_information_integrity": {
+      "context": "Play immediately after the welcome introduction, as the tutorial explanation of communication delay and stale information.",
+      "speaker": "BASIL",
+      "text": "My other role is helping you remember that information must travel like everything else. A report from a ship or station does not arrive here the instant it is sent; it crosses real distance at a finite speed, and by the time you read it, events may already have moved on. The farther away an asset is, the older its news will be when it reaches you, and the longer it will take for your reply to get back. My apologies that light remains so sluggish. I am assured Information Technology is doing everything in its power to improve this. In practice, this means you will often be making decisions based on what was true seconds, minutes, or longer ago rather than what is true now. My task is to keep those delays visible, so you do not mistake a last known position for a current one, or stale certainty for useful judgment."
+    },
+    "intro_tutorial_scenario": {
+      "context": "Play after the information-integrity explanation, when BASIL introduces the tutorial mission structure.",
+      "speaker": "BASIL",
+      "text": "For your initial exercise, bluFreight has placed three ships at your disposal and assigned you three routine contracts to complete at your leisure. There is no operational time limit, no active penalty for delay, and no expectation that you perform heroically on your first shift. This scenario exists to familiarize you with dispatch procedure, asset selection, basic routing, and the regrettable reality that even simple freight work acquires personality once people are involved. You may review your available ships, assign contracts as you see fit, and complete all three deliveries in whatever order seems least embarrassing."
+    },
+    "order_delay_acknowledgements": [
+      {
+        "context": "Use when the player issues an order to a ship and BASIL is acknowledging that the transmission has been sent but not yet received.",
+        "speaker": "BASIL",
+        "text": "Contacting the captain now. Please remember they will not know I am speaking to them until this transmission reaches their present location."
+      },
+      {
+        "context": "Use when the player issues an order to a ship and BASIL is acknowledging a pending uplink with distance-related delay.",
+        "speaker": "BASIL",
+        "text": "Order uplink in progress. The captain will receive it shortly, by the generous standards of interplanetary distance."
+      },
+      {
+        "context": "Use when an order has been dispatched but the target ship has not yet received it.",
+        "speaker": "BASIL",
+        "text": "Dispatch sent. Until the signal arrives, the ship remains productively unaware of your intentions."
+      },
+      {
+        "context": "Use when the player gives a command to a distant unit and BASIL needs to remind them that command latency is physical.",
+        "speaker": "BASIL",
+        "text": "Transmitting now. Do keep in mind that distant crews cannot obey orders they have not physically had time to hear."
+      },
+      {
+        "context": "Use when a task may be completed quickly once received, but the communication delay is significant.",
+        "speaker": "BASIL",
+        "text": "Message outbound. If the vessel is far enough from Anchor Station, the delay in reaching them may exceed the time required to complete the assignment itself."
+      }
+    ],
+    "report_staleness_acknowledgements": [
+      {
+        "context": "Use when BASIL receives a captain's report and presents it to the player with a reminder that the information is already old.",
+        "speaker": "BASIL",
+        "text": "I have received a report from the captain. Please remember that by the time it reached us, it was already several seconds old. Let us hope events have remained politely stationary since then."
+      },
+      {
+        "context": "Use when displaying any returned status report from a ship or station.",
+        "speaker": "BASIL",
+        "text": "Report received. As ever, this describes what was true when the captain sent it, not necessarily what is true now."
+      },
+      {
+        "context": "Use when a captain checks in during or after transit and BASIL wants to emphasize stale data risk.",
+        "speaker": "BASIL",
+        "text": "The captain has checked in. Kindly note that this information aged in transit, so any fresh disasters will have had time to become established."
+      },
+      {
+        "context": "Use when a ship report arrives from a remote location and BASIL is framing it as historical rather than current truth.",
+        "speaker": "BASIL",
+        "text": "Incoming report logged. By the time you are reading it, the situation it describes is already in the past, which is one of Indigo’s less charming features."
+      },
+      {
+        "context": "Use when a report contains reassuring or neutral news, but BASIL still needs to caution the player about latency.",
+        "speaker": "BASIL",
+        "text": "Captain’s report received. With sufficient distance, even reassuring news arrives pre-staled. I trust nothing catastrophic occurred between transmission and receipt."
+      }
+    ],
+    "tutorial_complete": {
+      "context": "Play once when the player completes all tutorial contracts.",
+      "speaker": "BASIL",
+      "text": "Tutorial complete, Operations Manager. All three contracts have been fulfilled, your ships remain mostly intact, and bluFreight continues to enjoy the illusion of orderly commerce. You have now demonstrated basic competence in asset selection, contract assignment, and the management of delayed information across system-scale distances. This officially places you above several of my previous operators, though I regret to inform you the sample size is troubling. When you are ready, we may proceed to scenarios involving tighter schedules, less cooperative traffic, and consequences with actual personality."
+    }
+  }
+}
