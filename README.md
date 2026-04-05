@@ -8,6 +8,8 @@ Tutorial mode focuses on learning dispatch gameplay without time pressure.
 - The level has **no time limit**.
 - Tutorial completes after **3 completed contracts**.
 - Ship comms include delayed mid-route and arrival updates.
+- Ship queries/orders are now constrained by signal travel time (round-trip delay).
+- BASIL gives command-time latency estimates when you issue ship commands.
 
 ## Run locally
 
@@ -34,6 +36,10 @@ You can use either **short interactive input** (recommended) or **long-form comm
 
 - `help`
 - `status`
+- `lore` (brief setting summary sourced from `bluFreight text RTS.txt`)
+- `factions`
+- `comms` (show known NPC comms contacts from dialogue JSON)
+- `hail <name>` (open a channel with a known character)
 - `map`
 - `ships`
 - `select <ship_id>`

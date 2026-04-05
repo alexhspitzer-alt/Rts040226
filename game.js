@@ -16,6 +16,24 @@ const edges = [
 ];
 
 const TUTORIAL_GOAL = 3;
+const BASIL_NAME = "BASIL";
+const PLAYER_NODE = "anchor";
+const DEFAULT_LORE_SUMMARY =
+  "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks inspections, Blister deals, and insurance-driven risk management.";
+
+const SHIP_CAPTAINS = {
+  "hauler-1": "Capt. Soren Nnadi",
+  "hauler-2": "Capt. Tamsin Rook",
+  "courier-1": "Capt. Laleh Mercer",
+};
+const DEFAULT_SPEAKER_STATUS = "on-station";
+const SPEAKER_PROFILES = {
+  BASIL: { location: "Dispatch Core", status: "active" },
+  "Cmdr. Elias Thorne": { location: "UFP Patrol Group", status: DEFAULT_SPEAKER_STATUS },
+  "Capt. Hadrik Venn": { location: "Blister Trade Lane", status: DEFAULT_SPEAKER_STATUS },
+  "Port Marshal Celia Wren": { location: "Anchor Station Docks", status: DEFAULT_SPEAKER_STATUS },
+  "Inspector Dey Arcos": { location: "Arcworks Transit Authority", status: DEFAULT_SPEAKER_STATUS },
+};
 
 const state = {
   tick: 0,
@@ -28,9 +46,9 @@ const state = {
   completedContracts: 0,
   tutorialDone: false,
   ships: [
-    { id: "hauler-1", at: "anchor", status: "idle", busyUntil: 0 },
-    { id: "hauler-2", at: "cinder_hub", status: "idle", busyUntil: 0 },
-    { id: "courier-1", at: "anchor", status: "idle", busyUntil: 0 },
+    { id: "hauler-1", at: "anchor", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "anchor", lastContactTick: 0 },
+    { id: "hauler-2", at: "cinder_hub", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "cinder_hub", lastContactTick: 0 },
+    { id: "courier-1", at: "anchor", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "anchor", lastContactTick: 0 },
   ],
   delayedMessages: [],
   nextContract: 1,
@@ -38,6 +56,9 @@ const state = {
     selectedShipId: null,
     pending: null,
   },
+  loreSummary: DEFAULT_LORE_SUMMARY,
+  dialogueDb: {},
+  latencyBriefed: false,
 };
 
 const ui = {
@@ -106,6 +127,77 @@ function logLine(text, type = "sys") {
   ui.feed.scrollTop = ui.feed.scrollHeight;
 }
 
+function pickLine(characterName, bucket) {
+  const actor = state.dialogueDb[characterName];
+  const choices = actor?.dialogue?.[bucket];
+  if (!choices?.length) return null;
+  return choices[Math.floor(Math.random() * choices.length)];
+}
+
+function formatShipId(shipId) {
+  return shipId
+    .split("-")
+    .map((chunk) => (Number.isNaN(Number(chunk)) ? `${chunk.charAt(0).toUpperCase()}${chunk.slice(1)}` : chunk))
+    .join("-");
+}
+
+function speakerContext(name, statusOverride) {
+  const shipId = Object.keys(SHIP_CAPTAINS).find((id) => SHIP_CAPTAINS[id] === name);
+  if (shipId) {
+    const ship = state.ships.find((s) => s.id === shipId);
+    if (!ship) return "";
+    const status = statusOverride || (ship.status === "enroute" ? "in transit" : DEFAULT_SPEAKER_STATUS);
+    const location = ship.status === "enroute" && ship.destination ? nodes[ship.destination].label : nodes[ship.at].label;
+    if (status === DEFAULT_SPEAKER_STATUS) return `[${formatShipId(shipId)}, ${location}]`;
+    return `[${formatShipId(shipId)}, ${location} (${status})]`;
+  }
+
+  const profile = SPEAKER_PROFILES[name];
+  if (!profile) return "";
+  const status = statusOverride || profile.status || DEFAULT_SPEAKER_STATUS;
+  if (status === DEFAULT_SPEAKER_STATUS) return `[${profile.location}]`;
+  return `[${profile.location} (${status})]`;
+}
+
+function basilSpeak(bucket, fallback, type = "basil") {
+  const text = pickLine(BASIL_NAME, bucket) || fallback;
+  const context = speakerContext(BASIL_NAME);
+  logLine(`${BASIL_NAME} ${context}: ${text}`, type);
+}
+
+function characterSpeak(characterName, bucket, fallback, type = "comms", statusOverride = null) {
+  const text = pickLine(characterName, bucket) || fallback;
+  const context = speakerContext(characterName, statusOverride);
+  logLine(`${characterName} ${context}: ${text}`, type);
+}
+
+function queueCharacterMessage(delay, characterName, bucket, fallback, type = "comms", statusOverride = null) {
+  const context = speakerContext(characterName, statusOverride);
+  const text = pickLine(characterName, bucket) || fallback;
+  scheduleMessage(delay, `${characterName} ${context}: ${text}`, type);
+}
+
+async function loadReferenceData() {
+  try {
+    const [loreResponse, dialogueResponse] = await Promise.all([
+      fetch("./bluFreight%20text%20RTS.txt"),
+      fetch("./indigo_dialogue_characters.json"),
+    ]);
+
+    if (loreResponse.ok) {
+      const loreText = await loreResponse.text();
+      const condensed = loreText.replace(/\s+/g, " ").trim();
+      if (condensed.length) state.loreSummary = condensed.slice(0, 340);
+    }
+
+    if (dialogueResponse.ok) {
+      state.dialogueDb = await dialogueResponse.json();
+    }
+  } catch (err) {
+    logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
+  }
+}
+
 function routeDistance(from, to, visited = new Set()) {
   if (from === to) return 0;
   visited.add(from);
@@ -120,6 +212,35 @@ function routeDistance(from, to, visited = new Set()) {
 
 function scheduleMessage(delay, text, type = "report") {
   state.delayedMessages.push({ at: state.tick + delay, text, type });
+}
+
+function oneWaySignalToNode(nodeId) {
+  return Math.max(1, routeDistance(PLAYER_NODE, nodeId));
+}
+
+function oneWaySignalToShip(ship) {
+  return oneWaySignalToNode(ship.lastKnownAt || ship.at);
+}
+
+function basilShipIntel(ship) {
+  const knownNode = ship.lastKnownAt || ship.at;
+  const knownLabel = nodes[knownNode]?.label || knownNode;
+  const age = state.tick - (ship.lastContactTick || 0);
+  const heading = ship.destination ? `Presumed heading: ${nodes[ship.destination].label}.` : "No active heading.";
+  return `${formatShipId(ship.id)} last confirmed at ${knownLabel} (${age}s ago). ${heading}`;
+}
+
+function basilCommsLatencyLine(ship, commandNoun = "orders") {
+  if (!ship) return;
+  const captain = SHIP_CAPTAINS[ship.id] || "the assigned captain";
+  const uplink = oneWaySignalToShip(ship);
+  const rtt = uplink * 2;
+  basilSpeak(
+    "neutral",
+    `Contacting ${captain}. They will receive these ${commandNoun} in ${uplink} seconds. We can expect an acknowledgement in ${rtt} seconds... unless something has happened to their squishy and unreliable human body.`,
+    "basil"
+  );
+  if (!state.tutorialDone) state.latencyBriefed = true;
 }
 
 function generateContract() {
@@ -175,7 +296,8 @@ function render() {
 
 function showShipsList() {
   state.ships.forEach((s, idx) => {
-    logLine(`${idx + 1}. ${s.id} (${s.status}) @ ${s.at}`, "sys");
+    const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
+    logLine(`${idx + 1}. ${s.id} (${s.status}) @ ${s.at} | ${captain}`, "sys");
   });
   logLine("Pick ship number or: select <ship-id>", "sys");
 }
@@ -203,14 +325,50 @@ function showDestinationsForSelectedShip() {
 function shipReport(shipId) {
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return logLine("Selected ship is unavailable.", "error");
-  const eta = ship.status === "enroute" ? Math.max(0, ship.busyUntil - state.tick) : 0;
-  logLine(`Report ${ship.id}: status=${ship.status}, location=${ship.at}, eta=${eta}s.`, "report");
+  basilSpeak("neutral", basilShipIntel(ship), "basil");
+  basilCommsLatencyLine(ship, "queries");
+  const uplink = oneWaySignalToShip(ship);
+  const rtt = uplink * 2;
+  const eta = ship.status === "enroute" || ship.status === "tasked" ? Math.max(0, ship.busyUntil - state.tick) : 0;
+  scheduleMessage(rtt, `Report ${ship.id}: status=${ship.status}, lastKnown=${ship.lastKnownAt || ship.at}, eta=${eta}s (RTT ${rtt}s).`, "report");
+  const captain = SHIP_CAPTAINS[ship.id];
+  if (captain) {
+    queueCharacterMessage(rtt, captain, "neutral", "Responding after comms delay. Standing by for tasking.", "comms");
+  }
 }
 
-function scheduleTransitComms(ship, destination, distance) {
+function scheduleTransitComms(ship, destination, distance, uplink) {
   const midpoint = Math.max(1, Math.floor(distance / 2));
-  scheduleMessage(midpoint, `${ship.id} update: passing relay corridor toward ${nodes[destination].label}.`, "report");
-  scheduleMessage(distance, `${ship.id} final: arrived at ${nodes[destination].label}. Awaiting dispatch.`, "report");
+  const captain = SHIP_CAPTAINS[ship.id];
+  scheduleMessage(
+    uplink + midpoint + oneWaySignalToNode(destination),
+    `${ship.id} update: passing relay corridor toward ${nodes[destination].label}.`,
+    "report"
+  );
+  if (captain) {
+    queueCharacterMessage(
+      uplink + midpoint + oneWaySignalToNode(destination),
+      captain,
+      "neutral",
+      "Route remains stable.",
+      "comms",
+      "arriving"
+    );
+  }
+  scheduleMessage(
+    uplink + distance + oneWaySignalToNode(destination),
+    `${ship.id} final: arrived at ${nodes[destination].label}. Awaiting dispatch.`,
+    "report"
+  );
+  if (captain) {
+    queueCharacterMessage(
+      uplink + distance + oneWaySignalToNode(destination),
+      captain,
+      "acknowledgements",
+      "On station.",
+      "comms"
+    );
+  }
 }
 
 function sendShip(shipId, destination) {
@@ -219,22 +377,43 @@ function sendShip(shipId, destination) {
   if (!nodes[destination]) return logLine(`Unknown destination: ${destination}.`, "error");
   if (ship.status !== "idle") return logLine(`${ship.id} is busy.`, "error");
 
+  const uplink = oneWaySignalToShip(ship);
   const distance = routeDistance(ship.at, destination);
-  ship.status = "enroute";
-  ship.busyUntil = state.tick + distance;
+  basilCommsLatencyLine(ship, "orders");
+  ship.status = "tasked";
+  ship.departAt = state.tick + uplink;
+  ship.busyUntil = ship.departAt + distance;
   ship.destination = destination;
+  ship.lastContactTick = state.tick;
 
   const effectiveRisk = state.risk + (state.escort ? -10 : 8);
   if (Math.random() * 100 < effectiveRisk * 0.3) {
-    scheduleMessage(distance, `${ship.id} detained briefly at ${nodes[destination].label}. Cargo released after inspection.`, "alert");
+    scheduleMessage(
+      uplink + distance + oneWaySignalToNode(destination),
+      `${ship.id} detained briefly at ${nodes[destination].label}. Cargo released after inspection.`,
+      "alert"
+    );
     state.cash -= 70;
     state.rep -= 1;
+    const arcworksInspector = "Inspector Dey Arcos";
+    scheduleMessage(
+      uplink + Math.max(1, distance - 1) + oneWaySignalToNode(destination),
+      `${arcworksInspector} ${speakerContext(arcworksInspector, "interdicting")}: ${
+        pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."
+      }`,
+      "comms",
+    );
+    basilSpeak("negative", `Order logged. ${ship.id} risk profile elevated.`, "basil");
   } else {
-    scheduleTransitComms(ship, destination, distance);
+    scheduleTransitComms(ship, destination, distance, uplink);
     state.rep = Math.min(100, state.rep + 1);
+    const captain = SHIP_CAPTAINS[ship.id];
+    if (captain) {
+      queueCharacterMessage(uplink * 2, captain, "acknowledgements", "Order received and executing.", "comms");
+    }
   }
 
-  logLine(`Order accepted: ${ship.id} -> ${destination} (${distance}s).`, "dispatch");
+  logLine(`Transmission sent: ${ship.id} -> ${destination}. Uplink ${uplink}s, transit ${distance}s.`, "dispatch");
 }
 
 function assignContract(contractId, shipId) {
@@ -243,18 +422,37 @@ function assignContract(contractId, shipId) {
   if (!idleShip(shipId)) return logLine(`${shipId} is not idle.`, "error");
 
   const ship = state.ships.find((s) => s.id === shipId);
+  const uplink = oneWaySignalToShip(ship);
+  basilCommsLatencyLine(ship, "orders");
   const toPickup = routeDistance(ship.at, contract.from);
   const toDrop = routeDistance(contract.from, contract.to);
   const total = toPickup + toDrop;
 
-  ship.status = "enroute";
-  ship.busyUntil = state.tick + total;
+  ship.status = "tasked";
+  ship.departAt = state.tick + uplink;
+  ship.busyUntil = ship.departAt + total;
   ship.destination = contract.to;
   contract.status = "assigned";
 
-  logLine(`Assigned ${ship.id} to ${contract.id}. Pickup ${toPickup}s + delivery ${toDrop}s.`, "dispatch");
-  scheduleMessage(Math.max(1, Math.floor(total / 2)), `${ship.id} mid-route check-in for ${contract.id}: cargo stable.`, "report");
-  scheduleMessage(total, `${ship.id} delivered ${contract.id} at ${nodes[contract.to].label}.`, "report");
+  logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s.`, "dispatch");
+  basilSpeak("neutral", basilShipIntel(ship), "basil");
+  const captain = SHIP_CAPTAINS[ship.id];
+  if (captain) {
+    queueCharacterMessage(uplink * 2, captain, "acknowledgements", "Proceeding as ordered.", "comms");
+  }
+  scheduleMessage(
+    uplink + Math.max(1, Math.floor(total / 2)) + oneWaySignalToNode(contract.to),
+    `${ship.id} mid-route check-in for ${contract.id}: cargo stable.`,
+    "report"
+  );
+  scheduleMessage(
+    uplink + total + oneWaySignalToNode(contract.to),
+    `${ship.id} delivered ${contract.id} at ${nodes[contract.to].label}.`,
+    "report"
+  );
+  if (captain) {
+    queueCharacterMessage(uplink + total + oneWaySignalToNode(contract.to), captain, "positive", "Delivery complete.");
+  }
 
   state.cash += contract.payout - (state.escort ? 60 : 0);
   state.rep = Math.min(100, state.rep + 2);
@@ -264,6 +462,7 @@ function assignContract(contractId, shipId) {
   if (!state.tutorialDone && state.completedContracts >= TUTORIAL_GOAL) {
     state.tutorialDone = true;
     logLine("Tutorial complete: 3 contracts delivered.", "sys");
+    basilSpeak("positive", "Tutorial objectives complete. Dispatch confidence adjusted upward.", "basil");
   }
 }
 
@@ -329,12 +528,37 @@ function handleShipMenuLetter(letter) {
 
 function handleLongForm(parts) {
   if (parts[0] === "help") {
-    logLine("help | status | map | ships | select <ship> | assign <contract> <ship> | send <ship> <destination> | escort on/off | pause", "sys");
+    logLine("help | status | lore | factions | comms | hail <name> | ships | select <ship> | assign <contract> <ship> | send <ship> <destination> | escort on/off | pause", "sys");
     return true;
   }
 
   if (parts[0] === "status") {
     logLine(`Cash $${state.cash} | Rep ${state.rep} | Risk ${state.risk} | Tutorial ${state.completedContracts}/${TUTORIAL_GOAL}`, "sys");
+    basilSpeak("neutral", "Status mirrors manageable instability.", "basil");
+    return true;
+  }
+
+  if (parts[0] === "lore") {
+    logLine(state.loreSummary, "sys");
+    return true;
+  }
+
+  if (parts[0] === "factions") {
+    logLine("Factions: bluFreight, UFP, Arcworks, Blister, civilian authorities.", "sys");
+    return true;
+  }
+
+  if (parts[0] === "comms") {
+    const names = Object.keys(state.dialogueDb);
+    if (!names.length) return logLine("Comms directory unavailable.", "error");
+    logLine(`Comms directory: ${names.join(" | ")}`, "sys");
+    return true;
+  }
+
+  if (parts[0] === "hail" && parts.length >= 2) {
+    const query = inputToName(parts.slice(1).join(" "));
+    if (!query) return logLine("Usage: hail <character-name>", "error");
+    characterSpeak(query, "greetings", "Channel open.", "comms");
     return true;
   }
 
@@ -429,12 +653,26 @@ function handleCommand(raw) {
   if (!handleLongForm(parts)) logLine("Unknown input. Try: ships or help", "error");
 }
 
+function inputToName(input) {
+  const candidates = Object.keys(state.dialogueDb);
+  if (!candidates.length) return null;
+  const exact = candidates.find((n) => n.toLowerCase() === input.toLowerCase());
+  if (exact) return exact;
+  return candidates.find((n) => n.toLowerCase().includes(input.toLowerCase())) || null;
+}
+
 function updateSimulation() {
   state.ships.forEach((ship) => {
+    if (ship.status === "tasked" && state.tick >= ship.departAt) {
+      ship.status = "enroute";
+    }
     if (ship.status === "enroute" && state.tick >= ship.busyUntil) {
       ship.at = ship.destination;
       ship.destination = undefined;
       ship.status = "idle";
+      ship.departAt = 0;
+      ship.lastKnownAt = ship.at;
+      ship.lastContactTick = state.tick;
     }
   });
 
@@ -447,6 +685,13 @@ function updateSimulation() {
   if (state.tick % 30 === 0) {
     state.risk += Math.random() < 0.5 ? 1 : -1;
     state.risk = Math.max(8, Math.min(70, state.risk));
+  }
+
+  if (state.tick % 45 === 0) {
+    const ambient = ["Cmdr. Elias Thorne", "Capt. Hadrik Venn", "Port Marshal Celia Wren"];
+    const speaker = ambient[Math.floor(Math.random() * ambient.length)];
+    const tone = state.risk >= 35 ? "negative" : "neutral";
+    queueCharacterMessage(1, speaker, tone, "Traffic conditions noted.");
   }
 
   if (state.cash <= -600 || state.rep <= 0) {
@@ -462,16 +707,22 @@ ui.cmdForm.addEventListener("submit", (event) => {
   render();
 });
 
-generateContract();
-generateContract();
-state.selection.pending = "await_ship";
-logLine("Tutorial online. Use ships -> number.", "sys");
-showShipsList();
-render();
-
-setInterval(() => {
-  if (!state.running) return;
-  state.tick += 1;
-  updateSimulation();
+async function init() {
+  await loadReferenceData();
+  generateContract();
+  generateContract();
+  state.selection.pending = "await_ship";
+  basilSpeak("greetings", "Dispatch online.", "basil");
+  logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys");
+  showShipsList();
   render();
-}, 1000);
+
+  setInterval(() => {
+    if (!state.running) return;
+    state.tick += 1;
+    updateSimulation();
+    render();
+  }, 1000);
+}
+
+init();
