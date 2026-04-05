@@ -8,6 +8,7 @@ Tutorial mode focuses on learning dispatch gameplay without time pressure.
 - The level has **no time limit**.
 - Tutorial completes after **3 completed contracts**.
 - Ship comms include delayed mid-route and arrival updates.
+- Ship queries/orders are now constrained by signal travel time (round-trip delay).
 
 ## Run locally
 
