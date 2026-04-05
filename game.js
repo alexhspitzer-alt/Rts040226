@@ -58,6 +58,8 @@ const state = {
   },
   loreSummary: DEFAULT_LORE_SUMMARY,
   dialogueDb: {},
+  latencyBriefed: false,
+  nextLatencyReminderTick: 45,
 };
 
 const ui = {
@@ -227,6 +229,18 @@ function basilShipIntel(ship) {
   const age = state.tick - (ship.lastContactTick || 0);
   const heading = ship.destination ? `Presumed heading: ${nodes[ship.destination].label}.` : "No active heading.";
   return `${formatShipId(ship.id)} last confirmed at ${knownLabel} (${age}s ago). ${heading}`;
+}
+
+function remindLatencyTutorial(force = false) {
+  if (state.tutorialDone) return;
+  if (!force && state.tick < state.nextLatencyReminderTick) return;
+  basilSpeak(
+    "neutral",
+    "Tutorial reminder: ship comms are lightspeed-limited. Orders and reports return only after round-trip signal delay.",
+    "basil"
+  );
+  state.latencyBriefed = true;
+  state.nextLatencyReminderTick = state.tick + 90;
 }
 
 function generateContract() {
@@ -646,6 +660,8 @@ function inputToName(input) {
 }
 
 function updateSimulation() {
+  remindLatencyTutorial(false);
+
   state.ships.forEach((ship) => {
     if (ship.status === "tasked" && state.tick >= ship.departAt) {
       ship.status = "enroute";
@@ -697,6 +713,7 @@ async function init() {
   generateContract();
   state.selection.pending = "await_ship";
   basilSpeak("greetings", "Dispatch online.", "basil");
+  remindLatencyTutorial(true);
   logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys");
   showShipsList();
   render();
