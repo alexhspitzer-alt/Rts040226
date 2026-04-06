@@ -62,6 +62,8 @@ const state = {
   scenarioDialogue: {},
   latencyBriefed: false,
   lastAmbientLine: null,
+  consoleReadyAtMs: Date.now(),
+  respondingToCommand: false,
 };
 
 const ui = {
@@ -112,7 +114,7 @@ function stylizeConsoleText(text) {
     .replace(/(^|\s)(A|S|R|B)(?=\s|$)/g, '$1<span class="choice">$2</span>');
 }
 
-function logLine(text, type = "sys") {
+function appendLine(text, type = "sys") {
   const div = document.createElement("div");
   div.className = "line";
 
@@ -128,6 +130,42 @@ function logLine(text, type = "sys") {
   div.appendChild(body);
   ui.feed.appendChild(div);
   ui.feed.scrollTop = ui.feed.scrollHeight;
+  return body;
+}
+
+function queueConsoleTask(task, earliestAt = Date.now()) {
+  const runAt = Math.max(state.consoleReadyAtMs, earliestAt);
+  const delay = Math.max(0, runAt - Date.now());
+  setTimeout(task, delay);
+  state.consoleReadyAtMs = runAt + 250;
+  return runAt;
+}
+
+function logLine(text, type = "sys", options = {}) {
+  const { immediate = false } = options;
+  if (immediate) {
+    appendLine(text, type);
+    state.consoleReadyAtMs = Math.max(state.consoleReadyAtMs, Date.now() + 250);
+    return;
+  }
+
+  if (state.respondingToCommand && type !== "cmd") {
+    const inputAt = Date.now();
+    let bodyNode = null;
+    const placeholderAt = queueConsoleTask(() => {
+      bodyNode = appendLine(". . .", type);
+    }, inputAt + 250);
+    const revealAt = Math.max(inputAt + 500, placeholderAt + 250);
+    setTimeout(() => {
+      if (!bodyNode) return;
+      bodyNode.innerHTML = ` ${stylizeConsoleText(text)}`;
+    }, Math.max(0, revealAt - Date.now()));
+    return;
+  }
+
+  queueConsoleTask(() => {
+    appendLine(text, type);
+  });
 }
 
 function pickLine(characterName, bucket) {
@@ -704,13 +742,20 @@ function handleCommand(raw) {
   const input = raw.trim();
   if (!input) return;
 
-  logLine(`> ${raw}`, "cmd");
+  logLine(`> ${raw}`, "cmd", { immediate: true });
   const lower = input.toLowerCase();
   const parts = lower.split(/\s+/);
+  state.respondingToCommand = true;
 
-  if (tryNumericSelection(lower) !== false) return;
+  if (tryNumericSelection(lower) !== false) {
+    state.respondingToCommand = false;
+    return;
+  }
 
-  if (state.selection.pending === "ship_menu" && lower.length === 1 && handleShipMenuLetter(lower)) return;
+  if (state.selection.pending === "ship_menu" && lower.length === 1 && handleShipMenuLetter(lower)) {
+    state.respondingToCommand = false;
+    return;
+  }
 
   if (state.selection.pending === "await_contract") {
     const contract = openContracts().find((c) => c.id.toLowerCase() === lower);
@@ -720,8 +765,11 @@ function handleCommand(raw) {
         state.selection.selectedShipId = null;
         state.selection.pending = "await_ship";
         logLine("Assignment uplinked. Returning to ship list.", "sys");
-        return showShipsList();
+        showShipsList();
+        state.respondingToCommand = false;
+        return;
       }
+      state.respondingToCommand = false;
       return true;
     }
   }
@@ -730,11 +778,14 @@ function handleCommand(raw) {
     if (nodes[lower]) {
       sendShip(state.selection.selectedShipId, lower);
       state.selection.pending = "ship_menu";
-      return showShipMenu(state.selection.selectedShipId);
+      showShipMenu(state.selection.selectedShipId);
+      state.respondingToCommand = false;
+      return;
     }
   }
 
   if (!handleLongForm(parts)) logLine("Unknown input. Try: ships or help", "error");
+  state.respondingToCommand = false;
 }
 
 function inputToName(input) {
