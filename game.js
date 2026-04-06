@@ -18,6 +18,9 @@ const edges = [
 const TUTORIAL_GOAL = 3;
 const BASIL_NAME = "BASIL";
 const PLAYER_NODE = "anchor";
+const CONSOLE_MESSAGE_GAP_MS = 750;
+const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
+const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
 const DEFAULT_LORE_SUMMARY =
   "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks inspections, Blister deals, and insurance-driven risk management.";
 const SCENARIO_PATH = "./scenario1.json";
@@ -137,7 +140,7 @@ function queueConsoleTask(task, earliestAt = Date.now()) {
   const runAt = Math.max(state.consoleReadyAtMs, earliestAt);
   const delay = Math.max(0, runAt - Date.now());
   setTimeout(task, delay);
-  state.consoleReadyAtMs = runAt + 250;
+  state.consoleReadyAtMs = runAt + CONSOLE_MESSAGE_GAP_MS;
   return runAt;
 }
 
@@ -145,7 +148,7 @@ function logLine(text, type = "sys", options = {}) {
   const { immediate = false } = options;
   if (immediate) {
     appendLine(text, type);
-    state.consoleReadyAtMs = Math.max(state.consoleReadyAtMs, Date.now() + 250);
+    state.consoleReadyAtMs = Math.max(state.consoleReadyAtMs, Date.now() + CONSOLE_MESSAGE_GAP_MS);
     return;
   }
 
@@ -154,8 +157,11 @@ function logLine(text, type = "sys", options = {}) {
     let bodyNode = null;
     const placeholderAt = queueConsoleTask(() => {
       bodyNode = appendLine(". . .", type);
-    }, inputAt + 250);
-    const revealAt = Math.max(inputAt + 500, placeholderAt + 250);
+    }, inputAt + COMMAND_RESPONSE_DOTS_DELAY_MS);
+    const revealAt = Math.max(
+      inputAt + COMMAND_RESPONSE_REVEAL_DELAY_MS,
+      placeholderAt + CONSOLE_MESSAGE_GAP_MS
+    );
     setTimeout(() => {
       if (!bodyNode) return;
       bodyNode.innerHTML = ` ${stylizeConsoleText(text)}`;
