@@ -11,19 +11,13 @@ export function createCommandInterpreter({
   showShipMenu,
   showContractsForSelectedShip,
   showDestinationsForSelectedShip,
-  characterSpeak,
   basilSpeak,
   formatRoute,
   tutorialGoal,
+  activeCommsContacts,
+  resolveActiveContactName,
+  hailContact,
 }) {
-  function inputToName(input) {
-    const candidates = Object.keys(state.dialogueDb);
-    if (!candidates.length) return null;
-    const exact = candidates.find((n) => n.toLowerCase() === input.toLowerCase());
-    if (exact) return exact;
-    return candidates.find((n) => n.toLowerCase().includes(input.toLowerCase())) || null;
-  }
-
   function tryNumericSelection(numericInput) {
     const n = Number(numericInput);
     if (!Number.isInteger(n) || n < 1) return false;
@@ -112,16 +106,16 @@ export function createCommandInterpreter({
     }
 
     if (parts[0] === "comms") {
-      const names = Object.keys(state.dialogueDb);
+      const names = activeCommsContacts();
       if (!names.length) return logLine("Comms directory unavailable.", "error");
       logLine(`Comms directory: ${names.join(" | ")}`, "sys");
       return true;
     }
 
     if (parts[0] === "hail" && parts.length >= 2) {
-      const query = inputToName(parts.slice(1).join(" "));
+      const query = resolveActiveContactName(parts.slice(1).join(" "));
       if (!query) return logLine("Usage: hail <character-name>", "error");
-      characterSpeak(query, "greetings", "Channel open.", "comms");
+      hailContact(query);
       return true;
     }
 

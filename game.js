@@ -33,6 +33,13 @@ const SHIP_CAPTAINS = {
   "hauler-2": "Capt. Tamsin Rook",
   "courier-1": "Capt. Laleh Mercer",
 };
+const CHARACTER_NODE_MAP = {
+  "Cmdr. Elias Thorne": "cinder_hub",
+  "Capt. Hadrik Venn": "mirrorgate",
+  "Port Marshal Celia Wren": "anchor",
+  "Inspector Dey Arcos": "mirrorgate",
+  BASIL: PLAYER_NODE,
+};
 const DEFAULT_SPEAKER_STATUS = "on-station";
 const SPEAKER_PROFILES = {
   BASIL: { location: "Dispatch Core", status: "active" },
@@ -117,7 +124,11 @@ function stylizeConsoleText(text) {
   return escaped
     .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
     .replace(/(^|\s)([ASRB]\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|\s)(A|S|R|B)(?=\s|$)/g, '$1<span class="choice">$2</span>');
+    .replace(/(^|\s)(A|S|R|B)(?=\s|$)/g, '$1<span class="choice">$2</span>')
+    .replace(/\[FRIENDLY\]/g, '<span class="rel-friendly">[FRIENDLY]</span>')
+    .replace(/\[NEUTRAL\]/g, '<span class="rel-neutral">[NEUTRAL]</span>')
+    .replace(/\[THREAT\]/g, '<span class="rel-threat">[THREAT]</span>')
+    .replace(/\[HOSTILE\]/g, '<span class="rel-hostile">[HOSTILE]</span>');
 }
 
 const { logLine } = createConsoleLogger({
@@ -177,28 +188,43 @@ function speakerContext(name, statusOverride) {
   return `[${profile.location} (${status})]`;
 }
 
+function speakerRelationTag(name, statusOverride = null) {
+  const status = String(statusOverride || "").toLowerCase();
+  if (status === "hostile" || status === "engaging") return "[HOSTILE]";
+
+  const faction = state.dialogueDb[name]?.faction;
+  if (name === BASIL_NAME || faction === "bluFreight") return "[FRIENDLY]";
+  if (faction === "UFP" || faction === "Civilian") return "[NEUTRAL]";
+  if (faction === "Arcworks" || faction === "Blister") return "[THREAT]";
+  return "[NEUTRAL]";
+}
+
+function formatSpeakerPrefix(name, statusOverride = null) {
+  return `${speakerRelationTag(name, statusOverride)} ${name}`;
+}
+
 function basilSpeak(bucket, fallback, type = "basil") {
   const text = pickLine(BASIL_NAME, bucket) || fallback;
   const context = speakerContext(BASIL_NAME);
-  logLine(`${BASIL_NAME} ${context}: ${text}`, type);
+  logLine(`${formatSpeakerPrefix(BASIL_NAME)} ${context}: ${text}`, type);
 }
 
 function basilInform(text, type = "basil") {
   const context = speakerContext(BASIL_NAME);
-  logLine(`${BASIL_NAME} ${context}: ${text}`, type);
+  logLine(`${formatSpeakerPrefix(BASIL_NAME)} ${context}: ${text}`, type);
 }
 
 function characterSpeak(characterName, bucket, fallback, type = "comms", statusOverride = null) {
   const text = pickLine(characterName, bucket) || fallback;
   const context = speakerContext(characterName, statusOverride);
-  logLine(`${characterName} ${context}: ${text}`, type);
+  logLine(`${formatSpeakerPrefix(characterName, statusOverride)} ${context}: ${text}`, type);
 }
 
 function queueCharacterMessage(delay, characterName, bucket, fallback, type = "comms", statusOverride = null) {
   scheduleMessage(delay, () => {
     const context = speakerContext(characterName, statusOverride);
     const text = pickLine(characterName, bucket) || fallback;
-    return `${characterName} ${context}: ${text}`;
+    return `${formatSpeakerPrefix(characterName, statusOverride)} ${context}: ${text}`;
   }, type);
 }
 
@@ -259,6 +285,46 @@ function oneWaySignalToNode(nodeId) {
 
 function oneWaySignalToShip(ship) {
   return oneWaySignalToNode(ship.lastKnownAt || ship.at);
+}
+
+function characterNode(name) {
+  const shipId = Object.keys(SHIP_CAPTAINS).find((id) => SHIP_CAPTAINS[id] === name);
+  if (shipId) {
+    const ship = state.ships.find((s) => s.id === shipId);
+    if (ship) return ship.lastKnownAt || ship.at;
+  }
+  return CHARACTER_NODE_MAP[name] || PLAYER_NODE;
+}
+
+function oneWaySignalToCharacter(name) {
+  return oneWaySignalToNode(characterNode(name));
+}
+
+function activeCommsContacts() {
+  const contacts = new Set([
+    BASIL_NAME,
+    ...Object.values(SHIP_CAPTAINS),
+    ...Object.keys(SPEAKER_PROFILES),
+  ]);
+  return Array.from(contacts).filter((name) => name === BASIL_NAME || state.dialogueDb[name] || SPEAKER_PROFILES[name]);
+}
+
+function resolveActiveContactName(input) {
+  const candidates = activeCommsContacts();
+  const exact = candidates.find((n) => n.toLowerCase() === input.toLowerCase());
+  if (exact) return exact;
+  return candidates.find((n) => n.toLowerCase().includes(input.toLowerCase())) || null;
+}
+
+function hailContact(name) {
+  const uplink = oneWaySignalToCharacter(name);
+  const rtt = uplink * 2;
+  basilInform(`Routing hail to ${name}. Uplink ${uplink}s; expected reply in ${rtt}s.`);
+  scheduleMessage(rtt, () => {
+    const context = speakerContext(name);
+    const text = pickLine(name, "greetings") || "Channel open.";
+    return `${formatSpeakerPrefix(name)} ${context}: ${text}`;
+  }, "comms");
 }
 
 function basilShipIntel(ship) {
@@ -451,7 +517,7 @@ function sendShip(shipId, destination) {
     const arcworksInspector = "Inspector Dey Arcos";
     scheduleMessage(
       uplink + Math.max(1, distance - 1) + oneWaySignalToNode(destination),
-      `${arcworksInspector} ${speakerContext(arcworksInspector, "interdicting")}: ${
+      `${formatSpeakerPrefix(arcworksInspector, "interdicting")} ${speakerContext(arcworksInspector, "interdicting")}: ${
         pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."
       }`,
       "comms",
@@ -547,10 +613,12 @@ const { handleCommand } = createCommandInterpreter({
   showShipMenu,
   showContractsForSelectedShip,
   showDestinationsForSelectedShip,
-  characterSpeak,
   basilSpeak,
   formatRoute,
   tutorialGoal: TUTORIAL_GOAL,
+  activeCommsContacts,
+  resolveActiveContactName,
+  hailContact,
 });
 
 function updateSimulation() {
@@ -587,7 +655,7 @@ function updateSimulation() {
     const line = pickLine(speaker, tone) || "Traffic conditions noted.";
     if (line !== state.lastAmbientLine) {
       state.lastAmbientLine = line;
-      scheduleMessage(1, () => `${speaker} ${speakerContext(speaker)}: ${line}`, "comms");
+      scheduleMessage(1, () => `${formatSpeakerPrefix(speaker)} ${speakerContext(speaker)}: ${line}`, "comms");
     }
   }
 

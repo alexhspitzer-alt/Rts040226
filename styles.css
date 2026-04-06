@@ -88,6 +88,26 @@ h1 {
   font-weight: 700;
 }
 
+.rel-friendly {
+  color: #93cdff;
+  font-weight: 700;
+}
+
+.rel-neutral {
+  color: #70da8a;
+  font-weight: 700;
+}
+
+.rel-threat {
+  color: #ffbb7a;
+  font-weight: 700;
+}
+
+.rel-hostile {
+  color: #ff7a7a;
+  font-weight: 700;
+}
+
 .cmd-form {
   margin-top: 0.6rem;
   display: grid;
