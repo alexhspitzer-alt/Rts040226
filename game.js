@@ -1,3 +1,5 @@
+import { createConsoleLogger } from "./console.js";
+
 const nodes = {
   anchor: { label: "Anchor Station" },
   cinder_hub: { label: "Cinder Hub" },
@@ -117,62 +119,15 @@ function stylizeConsoleText(text) {
     .replace(/(^|\s)(A|S|R|B)(?=\s|$)/g, '$1<span class="choice">$2</span>');
 }
 
-function appendLine(text, type = "sys") {
-  const div = document.createElement("div");
-  div.className = "line";
-
-  const stamp = document.createElement("span");
-  stamp.className = "stamp";
-  stamp.textContent = `[${fmtTime(state.tick)}][${type.toUpperCase()}]`;
-
-  const body = document.createElement("span");
-  body.className = "body";
-  body.innerHTML = ` ${stylizeConsoleText(text)}`;
-
-  div.appendChild(stamp);
-  div.appendChild(body);
-  ui.feed.appendChild(div);
-  ui.feed.scrollTop = ui.feed.scrollHeight;
-  return body;
-}
-
-function queueConsoleTask(task, earliestAt = Date.now()) {
-  const runAt = Math.max(state.consoleReadyAtMs, earliestAt);
-  const delay = Math.max(0, runAt - Date.now());
-  setTimeout(task, delay);
-  state.consoleReadyAtMs = runAt + CONSOLE_MESSAGE_GAP_MS;
-  return runAt;
-}
-
-function logLine(text, type = "sys", options = {}) {
-  const { immediate = false } = options;
-  if (immediate) {
-    appendLine(text, type);
-    state.consoleReadyAtMs = Math.max(state.consoleReadyAtMs, Date.now() + CONSOLE_MESSAGE_GAP_MS);
-    return;
-  }
-
-  if (state.respondingToCommand && type !== "cmd") {
-    const inputAt = Date.now();
-    let bodyNode = null;
-    const placeholderAt = queueConsoleTask(() => {
-      bodyNode = appendLine(". . .", type);
-    }, inputAt + COMMAND_RESPONSE_DOTS_DELAY_MS);
-    const revealAt = Math.max(
-      inputAt + COMMAND_RESPONSE_REVEAL_DELAY_MS,
-      placeholderAt + CONSOLE_MESSAGE_GAP_MS
-    );
-    setTimeout(() => {
-      if (!bodyNode) return;
-      bodyNode.innerHTML = ` ${stylizeConsoleText(text)}`;
-    }, Math.max(0, revealAt - Date.now()));
-    return;
-  }
-
-  queueConsoleTask(() => {
-    appendLine(text, type);
-  });
-}
+const { logLine } = createConsoleLogger({
+  state,
+  ui,
+  fmtTime,
+  stylizeConsoleText,
+  messageGapMs: CONSOLE_MESSAGE_GAP_MS,
+  dotsDelayMs: COMMAND_RESPONSE_DOTS_DELAY_MS,
+  revealDelayMs: COMMAND_RESPONSE_REVEAL_DELAY_MS,
+});
 
 function pickLine(characterName, bucket) {
   const actor = state.dialogueDb[characterName];
