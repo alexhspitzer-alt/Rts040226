@@ -125,10 +125,7 @@ function stylizeConsoleText(text) {
     .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
     .replace(/(^|\s)([ASRB]\.)/g, '$1<span class="choice">$2</span>')
     .replace(/(^|\s)(A|S|R|B)(?=\s|$)/g, '$1<span class="choice">$2</span>')
-    .replace(/\[FRIENDLY\]/g, '<span class="rel-friendly">[FRIENDLY]</span>')
-    .replace(/\[NEUTRAL\]/g, '<span class="rel-neutral">[NEUTRAL]</span>')
-    .replace(/\[THREAT\]/g, '<span class="rel-threat">[THREAT]</span>')
-    .replace(/\[HOSTILE\]/g, '<span class="rel-hostile">[HOSTILE]</span>');
+    .replace(/\[\[REL:(friendly|neutral|threat|hostile)\|(.+?)\]\]/g, '<span class="rel-$1">$2</span>');
 }
 
 const { logLine } = createConsoleLogger({
@@ -188,43 +185,44 @@ function speakerContext(name, statusOverride) {
   return `[${profile.location} (${status})]`;
 }
 
-function speakerRelationTag(name, statusOverride = null) {
+function speakerRelation(name, statusOverride = null) {
   const status = String(statusOverride || "").toLowerCase();
-  if (status === "hostile" || status === "engaging") return "[HOSTILE]";
+  if (status === "hostile" || status === "engaging") return "hostile";
 
   const faction = state.dialogueDb[name]?.faction;
-  if (name === BASIL_NAME || faction === "bluFreight") return "[FRIENDLY]";
-  if (faction === "UFP" || faction === "Civilian") return "[NEUTRAL]";
-  if (faction === "Arcworks" || faction === "Blister") return "[THREAT]";
-  return "[NEUTRAL]";
+  if (name === BASIL_NAME || faction === "bluFreight") return "friendly";
+  if (faction === "UFP" || faction === "Civilian") return "neutral";
+  if (faction === "Arcworks" || faction === "Blister") return "threat";
+  return "neutral";
 }
 
-function formatSpeakerPrefix(name, statusOverride = null) {
-  return `${speakerRelationTag(name, statusOverride)} ${name}`;
+function relationStyledContext(name, context, statusOverride = null) {
+  if (!context) return "";
+  return `[[REL:${speakerRelation(name, statusOverride)}|${context}]]`;
 }
 
 function basilSpeak(bucket, fallback, type = "basil") {
   const text = pickLine(BASIL_NAME, bucket) || fallback;
   const context = speakerContext(BASIL_NAME);
-  logLine(`${formatSpeakerPrefix(BASIL_NAME)} ${context}: ${text}`, type);
+  logLine(`${BASIL_NAME} ${relationStyledContext(BASIL_NAME, context)}: ${text}`, type);
 }
 
 function basilInform(text, type = "basil") {
   const context = speakerContext(BASIL_NAME);
-  logLine(`${formatSpeakerPrefix(BASIL_NAME)} ${context}: ${text}`, type);
+  logLine(`${BASIL_NAME} ${relationStyledContext(BASIL_NAME, context)}: ${text}`, type);
 }
 
 function characterSpeak(characterName, bucket, fallback, type = "comms", statusOverride = null) {
   const text = pickLine(characterName, bucket) || fallback;
   const context = speakerContext(characterName, statusOverride);
-  logLine(`${formatSpeakerPrefix(characterName, statusOverride)} ${context}: ${text}`, type);
+  logLine(`${characterName} ${relationStyledContext(characterName, context, statusOverride)}: ${text}`, type);
 }
 
 function queueCharacterMessage(delay, characterName, bucket, fallback, type = "comms", statusOverride = null) {
   scheduleMessage(delay, () => {
     const context = speakerContext(characterName, statusOverride);
     const text = pickLine(characterName, bucket) || fallback;
-    return `${formatSpeakerPrefix(characterName, statusOverride)} ${context}: ${text}`;
+    return `${characterName} ${relationStyledContext(characterName, context, statusOverride)}: ${text}`;
   }, type);
 }
 
@@ -323,7 +321,7 @@ function hailContact(name) {
   scheduleMessage(rtt, () => {
     const context = speakerContext(name);
     const text = pickLine(name, "greetings") || "Channel open.";
-    return `${formatSpeakerPrefix(name)} ${context}: ${text}`;
+    return `${name} ${relationStyledContext(name, context)}: ${text}`;
   }, "comms");
 }
 
@@ -517,7 +515,7 @@ function sendShip(shipId, destination) {
     const arcworksInspector = "Inspector Dey Arcos";
     scheduleMessage(
       uplink + Math.max(1, distance - 1) + oneWaySignalToNode(destination),
-      `${formatSpeakerPrefix(arcworksInspector, "interdicting")} ${speakerContext(arcworksInspector, "interdicting")}: ${
+      `${arcworksInspector} ${relationStyledContext(arcworksInspector, speakerContext(arcworksInspector, "interdicting"), "interdicting")}: ${
         pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."
       }`,
       "comms",
@@ -655,7 +653,7 @@ function updateSimulation() {
     const line = pickLine(speaker, tone) || "Traffic conditions noted.";
     if (line !== state.lastAmbientLine) {
       state.lastAmbientLine = line;
-      scheduleMessage(1, () => `${formatSpeakerPrefix(speaker)} ${speakerContext(speaker)}: ${line}`, "comms");
+      scheduleMessage(1, () => `${speaker} ${relationStyledContext(speaker, speakerContext(speaker))}: ${line}`, "comms");
     }
   }
 
