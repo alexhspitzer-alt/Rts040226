@@ -1,23 +1,10 @@
-const nodes = {
-  anchor: { label: "Anchor Station" },
-  cinder_hub: { label: "Cinder Hub" },
-  mirrorgate: { label: "Mirrorgate Relay" },
-  ninth_moon: { label: "Ninth Moon" },
-  frostline: { label: "Frostline Port" },
-  driftbay: { label: "Driftbay Depot" },
-};
-
-const edges = [
-  ["anchor", "cinder_hub", 6],
-  ["anchor", "mirrorgate", 10],
-  ["cinder_hub", "ninth_moon", 8],
-  ["mirrorgate", "frostline", 7],
-  ["ninth_moon", "driftbay", 6],
-];
+let nodes = {};
+let edges = [];
 
 const TUTORIAL_GOAL = 3;
 const BASIL_NAME = "BASIL";
-const PLAYER_NODE = "anchor";
+const BUDDE_NAME = "BUDDE";
+const PLAYER_NODE = "anchor_station";
 const DEFAULT_LORE_SUMMARY =
   "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks inspections, Blister deals, and insurance-driven risk management.";
 
@@ -29,6 +16,7 @@ const SHIP_CAPTAINS = {
 const DEFAULT_SPEAKER_STATUS = "on-station";
 const SPEAKER_PROFILES = {
   BASIL: { location: "Dispatch Core", status: "active" },
+  BUDDE: { location: "Navigation Layer", status: "active" },
   "Cmdr. Elias Thorne": { location: "UFP Patrol Group", status: DEFAULT_SPEAKER_STATUS },
   "Capt. Hadrik Venn": { location: "Blister Trade Lane", status: DEFAULT_SPEAKER_STATUS },
   "Port Marshal Celia Wren": { location: "Anchor Station Docks", status: DEFAULT_SPEAKER_STATUS },
@@ -46,9 +34,9 @@ const state = {
   completedContracts: 0,
   tutorialDone: false,
   ships: [
-    { id: "hauler-1", at: "anchor", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "anchor", lastContactTick: 0 },
-    { id: "hauler-2", at: "cinder_hub", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "cinder_hub", lastContactTick: 0 },
-    { id: "courier-1", at: "anchor", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "anchor", lastContactTick: 0 },
+    { id: "hauler-1", at: "anchor_station", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "anchor_station", lastContactTick: 0 },
+    { id: "hauler-2", at: "refinery", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "refinery", lastContactTick: 0 },
+    { id: "courier-1", at: "indigo_station", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "indigo_station", lastContactTick: 0 },
   ],
   delayedMessages: [],
   nextContract: 1,
@@ -60,6 +48,8 @@ const state = {
   dialogueDb: {},
   latencyBriefed: false,
   lastAmbientLine: null,
+  mapData: null,
+  buddeData: null,
 };
 
 const ui = {
@@ -75,7 +65,7 @@ const ui = {
   cmdInput: document.getElementById("cmd"),
 };
 
-const adjacency = buildGraph();
+let adjacency = {};
 
 function buildGraph() {
   const graph = {};
@@ -87,6 +77,133 @@ function buildGraph() {
     graph[b].push({ to: a, cost: w });
   });
   return graph;
+}
+
+
+function angleDelta(a, b) {
+  const raw = Math.abs(a - b) % 360;
+  return Math.min(raw, 360 - raw);
+}
+
+function estimateRouteCost(fromNode, toNode, layer0) {
+  if (fromNode.id === toNode.id) return 0;
+  if (fromNode.moon === toNode.moon) {
+    return Math.max(1, 2 + Math.round((fromNode.approach + toNode.approach) / 3));
+  }
+
+  const moonA = layer0.moons[fromNode.moon];
+  const moonB = layer0.moons[toNode.moon];
+  const orbitBands = layer0.orbits;
+  const orbitDelta = Math.abs((orbitBands[moonA.orbit] || 1) - (orbitBands[moonB.orbit] || 1));
+  const arc = angleDelta(moonA.angle, moonB.angle);
+  const arcCost = Math.max(1, Math.round(arc / 30));
+  const approachVariance = Math.round((fromNode.approach + toNode.approach) / 4);
+  return Math.max(2, arcCost + orbitDelta * 2 + approachVariance);
+}
+
+function buildCanonicalTutorialMap(mapData) {
+  const scenario = mapData?.layer1?.tutorialScenario;
+  const layer0 = mapData?.layer0;
+  if (!scenario || !layer0) return false;
+
+  const builtNodes = {};
+  const locationEntries = [];
+  Object.entries(scenario.activeMoons || {}).forEach(([moonId, moon]) => {
+    Object.entries(moon.locations || {}).forEach(([locId, location]) => {
+      builtNodes[locId] = {
+        label: location.name,
+        moon: moonId,
+        moonName: moon.name,
+        approach: location.approach,
+      };
+      locationEntries.push({ id: locId, moon: moonId, approach: location.approach });
+    });
+  });
+
+  if (!Object.keys(builtNodes).length) return false;
+
+  const builtEdges = [];
+  for (let i = 0; i < locationEntries.length; i += 1) {
+    for (let j = i + 1; j < locationEntries.length; j += 1) {
+      const a = locationEntries[i];
+      const b = locationEntries[j];
+      const cost = estimateRouteCost(a, b, layer0);
+      builtEdges.push([a.id, b.id, cost]);
+    }
+  }
+
+  nodes = builtNodes;
+  edges = builtEdges;
+  adjacency = buildGraph();
+  return true;
+}
+
+function nodeLabel(nodeId) {
+  const node = nodes[nodeId];
+  if (!node) return nodeId;
+  return `${node.label}${node.moonName ? ` (${node.moonName})` : ""}`;
+}
+
+function buddeSpeak(bucket, fallback, type = "budde") {
+  const text = state.buddeData?.budde?.sampleLines?.[bucket]?.[Math.floor(Math.random() * state.buddeData.budde.sampleLines[bucket].length)] || fallback;
+  const context = speakerContext(BUDDE_NAME);
+  logLine(`${BUDDE_NAME} ${context}: ${text}`, type);
+}
+
+function buddeInform(text, type = "budde") {
+  const context = speakerContext(BUDDE_NAME);
+  logLine(`${BUDDE_NAME} ${context}: ${text}`, type);
+}
+
+function adviseContractOptions(shipId) {
+  const ship = state.ships.find((s) => s.id === shipId);
+  const contracts = openContracts();
+  if (!ship || contracts.length < 1) return;
+
+  const scored = contracts.map((c) => {
+    const reposition = routeDistance(ship.at, c.from);
+    const delivery = routeDistance(c.from, c.to);
+    return { contract: c, total: reposition + delivery, reposition, delivery };
+  }).sort((a, b) => a.total - b.total);
+
+  const best = scored[0];
+  const alt = scored[1];
+  const bestLabel = `${best.contract.id} (${nodeLabel(best.contract.from)} → ${nodeLabel(best.contract.to)})`;
+  if (alt) {
+    const savings = Math.max(1, Math.round(((alt.total - best.total) / alt.total) * 100));
+    buddeInform(`Contract routing options available. Recommend ${bestLabel}. Fastest mission profile by ${savings}% versus ${alt.contract.id}.`);
+  } else {
+    buddeInform(`Only one contract route available: ${bestLabel}. No alternate optimization path.`);
+  }
+
+  const destinationApproach = nodes[best.contract.to]?.approach || 0;
+  if (destinationApproach >= 7) {
+    buddeSpeak("highVarianceApproach", "Destination approach variance is high. Treat ETA as an estimate, not a promise.");
+  }
+}
+
+function adviseDestinationOptions(shipId) {
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return;
+
+  const choices = Object.keys(nodes)
+    .filter((nodeId) => nodeId !== ship.at)
+    .map((nodeId) => ({ nodeId, distance: routeDistance(ship.at, nodeId) }))
+    .sort((a, b) => a.distance - b.distance);
+
+  if (!choices.length) return;
+  const best = choices[0];
+  const alt = choices[1];
+  if (alt) {
+    const savings = Math.max(1, Math.round(((alt.distance - best.distance) / alt.distance) * 100));
+    buddeInform(`Destination options available. Recommend ${nodeLabel(best.nodeId)}. Transit is ${savings}% shorter than ${nodeLabel(alt.nodeId)}.`);
+  } else {
+    buddeInform(`Single reachable destination candidate: ${nodeLabel(best.nodeId)}.`);
+  }
+
+  if ((nodes[best.nodeId]?.approach || 0) >= 7) {
+    buddeSpeak("highVarianceApproach", "Local approach spread is high at this destination. Expect variable final timing.");
+  }
 }
 
 function fmtTime(total) {
@@ -148,7 +265,7 @@ function speakerContext(name, statusOverride) {
     const ship = state.ships.find((s) => s.id === shipId);
     if (!ship) return "";
     const status = statusOverride || (ship.status === "enroute" ? "in transit" : DEFAULT_SPEAKER_STATUS);
-    const location = ship.status === "enroute" && ship.destination ? nodes[ship.destination].label : nodes[ship.at].label;
+    const location = ship.status === "enroute" && ship.destination ? nodeLabel(ship.destination) : nodeLabel(ship.at);
     if (status === DEFAULT_SPEAKER_STATUS) return `[${formatShipId(shipId)}, ${location}]`;
     return `[${formatShipId(shipId)}, ${location} (${status})]`;
   }
@@ -187,9 +304,11 @@ function queueCharacterMessage(delay, characterName, bucket, fallback, type = "c
 
 async function loadReferenceData() {
   try {
-    const [loreResponse, dialogueResponse] = await Promise.all([
+    const [loreResponse, dialogueResponse, mapResponse, buddeResponse] = await Promise.all([
       fetch("./bluFreight%20text%20RTS.txt"),
       fetch("./indigo_dialogue_characters.json"),
+      fetch("./map.json"),
+      fetch("./budde.json"),
     ]);
 
     if (loreResponse.ok) {
@@ -201,6 +320,16 @@ async function loadReferenceData() {
     if (dialogueResponse.ok) {
       state.dialogueDb = await dialogueResponse.json();
     }
+
+    if (mapResponse.ok) {
+      state.mapData = await mapResponse.json();
+      const loaded = buildCanonicalTutorialMap(state.mapData);
+      if (!loaded) logLine("Map load warning: tutorial layer unavailable. Using fallback graph.", "error");
+    }
+
+    if (buddeResponse.ok) {
+      state.buddeData = await buddeResponse.json();
+    }
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
   }
@@ -209,7 +338,7 @@ async function loadReferenceData() {
 function routeDistance(from, to, visited = new Set()) {
   if (from === to) return 0;
   visited.add(from);
-  const choices = adjacency[from]
+  const choices = (adjacency[from] || [])
     .filter((n) => !visited.has(n.to))
     .map((n) => {
       const sub = routeDistance(n.to, to, new Set(visited));
@@ -232,9 +361,9 @@ function oneWaySignalToShip(ship) {
 
 function basilShipIntel(ship) {
   const knownNode = ship.lastKnownAt || ship.at;
-  const knownLabel = nodes[knownNode]?.label || knownNode;
+  const knownLabel = nodeLabel(knownNode);
   const age = state.tick - (ship.lastContactTick || 0);
-  const heading = ship.destination ? `Presumed heading: ${nodes[ship.destination].label}.` : "No active heading.";
+  const heading = ship.destination ? `Presumed heading: ${nodeLabel(ship.destination)}.` : "No active heading.";
   return `${formatShipId(ship.id)} last confirmed at ${knownLabel} (${age}s ago). ${heading}`;
 }
 
@@ -284,7 +413,7 @@ function render() {
   ui.contracts.innerHTML = "";
   openContracts().slice(0, 7).forEach((c, idx) => {
     const li = document.createElement("li");
-    li.textContent = `${idx + 1}. ${c.id} ${nodes[c.from].label} → ${nodes[c.to].label} | +$${c.payout}`;
+    li.textContent = `${idx + 1}. ${c.id} ${nodeLabel(c.from)} → ${nodeLabel(c.to)} | +$${c.payout}`;
     ui.contracts.appendChild(li);
   });
   if (!ui.contracts.children.length) {
@@ -296,7 +425,7 @@ function render() {
   ui.fleet.innerHTML = "";
   state.ships.forEach((s, idx) => {
     const li = document.createElement("li");
-    li.textContent = `${idx + 1}. ${s.id} @ ${nodes[s.at].label} | ${s.status}`;
+    li.textContent = `${idx + 1}. ${s.id} @ ${nodeLabel(s.at)} | ${s.status}`;
     ui.fleet.appendChild(li);
   });
 }
@@ -317,14 +446,16 @@ function showContractsForSelectedShip() {
   const contracts = openContracts();
   if (!contracts.length) return logLine("No open contracts to assign.", "sys");
   logLine(`Assign ${state.selection.selectedShipId} to what contract?`, "sys");
-  contracts.forEach((c, idx) => logLine(`${idx + 1}. ${c.id} ${c.from} -> ${c.to} (+$${c.payout})`, "sys"));
+  adviseContractOptions(state.selection.selectedShipId);
+  contracts.forEach((c, idx) => logLine(`${idx + 1}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)} (+$${c.payout})`, "sys"));
   logLine("Pick number or contract ID.", "sys");
 }
 
 function showDestinationsForSelectedShip() {
   logLine(`Send ${state.selection.selectedShipId} to what destination?`, "sys");
+  adviseDestinationOptions(state.selection.selectedShipId);
   Object.keys(nodes).forEach((nodeId, idx) => {
-    logLine(`${idx + 1}. ${nodeId} (${nodes[nodeId].label})`, "sys");
+    logLine(`${idx + 1}. ${nodeId} (${nodeLabel(nodeId)})`, "sys");
   });
   logLine("Pick number or destination ID.", "sys");
 }
@@ -351,7 +482,7 @@ function scheduleTransitComms(ship, destination, distance, uplink) {
   const captain = SHIP_CAPTAINS[ship.id];
   scheduleMessage(
     uplink + midpoint + oneWaySignalToNode(destination),
-    `${ship.id} update: passing relay corridor toward ${nodes[destination].label}.`,
+    `${ship.id} update: passing relay corridor toward ${nodeLabel(destination)}.`,
     "report"
   );
   if (captain) {
@@ -366,7 +497,7 @@ function scheduleTransitComms(ship, destination, distance, uplink) {
   }
   scheduleMessage(
     uplink + distance + oneWaySignalToNode(destination),
-    `${ship.id} final: arrived at ${nodes[destination].label}. Awaiting dispatch.`,
+    `${ship.id} final: arrived at ${nodeLabel(destination)}. Awaiting dispatch.`,
     "report"
   );
   if (captain) {
@@ -388,6 +519,16 @@ function sendShip(shipId, destination) {
 
   const uplink = oneWaySignalToShip(ship);
   const distance = routeDistance(ship.at, destination);
+  const alternatives = Object.keys(nodes).filter((n) => n !== ship.at && n !== destination).map((nodeId) => ({ nodeId, distance: routeDistance(ship.at, nodeId) })).sort((a, b) => a.distance - b.distance);
+  if (alternatives[0]) {
+    const savingsVsAlt = Math.round(((alternatives[0].distance - distance) / Math.max(1, alternatives[0].distance)) * 100);
+    if (savingsVsAlt < 0) {
+      buddeSpeak("objections", "Selected destination is not the shortest viable route.");
+      buddeInform(`Alternative available: ${nodeLabel(alternatives[0].nodeId)} at ${alternatives[0].distance}s versus selected ${distance}s.`);
+    } else {
+      buddeSpeak("recommendations", `Selected route accepted. Efficiency delta +${savingsVsAlt}% versus nearest alternative.`);
+    }
+  }
   basilCommsLatencyLine(ship, "orders");
   ship.status = "tasked";
   ship.departAt = state.tick + uplink;
@@ -399,7 +540,7 @@ function sendShip(shipId, destination) {
   if (Math.random() * 100 < effectiveRisk * 0.3) {
     scheduleMessage(
       uplink + distance + oneWaySignalToNode(destination),
-      `${ship.id} detained briefly at ${nodes[destination].label}. Cargo released after inspection.`,
+      `${ship.id} detained briefly at ${nodeLabel(destination)}. Cargo released after inspection.`,
       "alert"
     );
     state.cash -= 70;
@@ -442,6 +583,13 @@ function assignContract(contractId, shipId) {
   const toPickup = routeDistance(ship.at, contract.from);
   const toDrop = routeDistance(contract.from, contract.to);
   const total = toPickup + toDrop;
+  const comparison = openContracts().filter((c) => c.id !== contract.id).map((c) => ({ id: c.id, total: routeDistance(ship.at, c.from) + routeDistance(c.from, c.to) })).sort((a, b) => a.total - b.total)[0];
+  if (comparison && comparison.total < total) {
+    buddeSpeak("objections", "Current assignment is not top efficiency.");
+    buddeInform(`${comparison.id} would complete in ${comparison.total}s versus ${contract.id} at ${total}s. Maintaining your selected order.`);
+  } else {
+    buddeSpeak("recommendations", `Assignment ${contract.id} accepted. Current route is within optimal tolerance.`);
+  }
 
   ship.status = "tasked";
   ship.departAt = state.tick + uplink;
@@ -465,7 +613,7 @@ function assignContract(contractId, shipId) {
   );
   scheduleMessage(
     uplink + total + oneWaySignalToNode(contract.to),
-    `${ship.id} delivered ${contract.id} at ${nodes[contract.to].label}.`,
+    `${ship.id} delivered ${contract.id} at ${nodeLabel(contract.to)}.`,
     "report"
   );
   if (captain) {
@@ -552,7 +700,7 @@ function handleShipMenuLetter(letter) {
 
 function handleLongForm(parts) {
   if (parts[0] === "help") {
-    logLine("help | status | lore | factions | comms | hail <name> | ships | select <ship> | assign <contract> <ship> | send <ship> <destination> | escort on/off | pause", "sys");
+    logLine("help | status | lore | factions | comms | hail <name> | map | ships | select <ship> | assign <contract> <ship> | send <ship> <destination> | escort on/off | pause", "sys");
     return true;
   }
 
@@ -587,6 +735,10 @@ function handleLongForm(parts) {
   }
 
   if (parts[0] === "map") {
+    logLine("Layer 1 tutorial locations visible to player:", "sys");
+    Object.entries(nodes).forEach(([id, node]) => {
+      logLine(`- ${id}: ${nodeLabel(id)} | approach ${node.approach ?? "n/a"}`, "sys");
+    });
     logLine(edges.map((e) => `${e[0]}<->${e[1]}:${e[2]}s`).join(" | "), "sys");
     return true;
   }
@@ -610,7 +762,7 @@ function handleLongForm(parts) {
   }
 
   if (parts[0] === "contracts") {
-    openContracts().forEach((c, idx) => logLine(`${idx + 1}. ${c.id} ${c.from} -> ${c.to}, $${c.payout}`, "sys"));
+    openContracts().forEach((c, idx) => logLine(`${idx + 1}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)}, $${c.payout}`, "sys"));
     return true;
   }
 
@@ -751,10 +903,20 @@ ui.cmdForm.addEventListener("submit", (event) => {
 
 async function init() {
   await loadReferenceData();
+  if (!Object.keys(nodes).length) {
+    nodes = {
+      anchor_station: { label: "Anchor Station", moonName: "Cat's Eye", approach: 2 },
+      refinery: { label: "Refinery", moonName: "Oxblood", approach: 3 },
+      indigo_station: { label: "Indigo Station", moonName: "Sulphide", approach: 4 },
+    };
+    edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
+    adjacency = buildGraph();
+  }
   generateContract();
   generateContract();
   state.selection.pending = "await_ship";
   basilSpeak("greetings", "Dispatch online.", "basil");
+  buddeSpeak("greetings", "Navigation layer active. Route options available.", "budde");
   logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys");
   showShipsList();
   render();
