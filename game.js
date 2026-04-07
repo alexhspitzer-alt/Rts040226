@@ -5,6 +5,14 @@ const TUTORIAL_GOAL = 3;
 const BASIL_NAME = "BASIL";
 const BUDDE_NAME = "BUDDE";
 const PLAYER_NODE = "anchor_station";
+const LEGACY_NODE_ALIASES = {
+  anchor: "anchor_station",
+  cinder_hub: "refinery",
+  mirrorgate: "ufp_outpost_delta",
+  ninth_moon: "yard",
+  frostline: "indigo_station",
+  driftbay: "deep_space_transfer_lane",
+};
 const DEFAULT_LORE_SUMMARY =
   "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks inspections, Blister deals, and insurance-driven risk management.";
 
@@ -144,8 +152,22 @@ function nodeLabel(nodeId) {
   return `${node.label}${node.moonName ? ` (${node.moonName})` : ""}`;
 }
 
+function normalizeNodeInput(rawNodeId) {
+  if (!rawNodeId) return null;
+  if (nodes[rawNodeId]) return rawNodeId;
+  const alias = LEGACY_NODE_ALIASES[rawNodeId];
+  if (alias && nodes[alias]) return alias;
+  return null;
+}
+
+function pickBuddeLine(bucket) {
+  const lines = state.buddeData?.budde?.sampleLines?.[bucket];
+  if (!lines?.length) return null;
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
 function buddeSpeak(bucket, fallback, type = "budde") {
-  const text = state.buddeData?.budde?.sampleLines?.[bucket]?.[Math.floor(Math.random() * state.buddeData.budde.sampleLines[bucket].length)] || fallback;
+  const text = pickBuddeLine(bucket) || fallback;
   const context = speakerContext(BUDDE_NAME);
   logLine(`${BUDDE_NAME} ${context}: ${text}`, type);
 }
@@ -381,6 +403,7 @@ function basilCommsLatencyLine(ship, commandNoun = "orders") {
 
 function generateContract() {
   const origins = Object.keys(nodes);
+  if (origins.length < 2) return;
   const from = origins[Math.floor(Math.random() * origins.length)];
   let to = from;
   while (to === from) to = origins[Math.floor(Math.random() * origins.length)];
@@ -513,13 +536,14 @@ function scheduleTransitComms(ship, destination, distance, uplink) {
 
 function sendShip(shipId, destination) {
   const ship = state.ships.find((s) => s.id === shipId);
+  const normalizedDestination = normalizeNodeInput(destination);
   if (!ship) return logLine(`Unknown ship: ${shipId}.`, "error");
-  if (!nodes[destination]) return logLine(`Unknown destination: ${destination}.`, "error");
+  if (!normalizedDestination) return logLine(`Unknown destination: ${destination}.`, "error");
   if (ship.status !== "idle") return logLine(`${ship.id} is busy.`, "error");
 
   const uplink = oneWaySignalToShip(ship);
-  const distance = routeDistance(ship.at, destination);
-  const alternatives = Object.keys(nodes).filter((n) => n !== ship.at && n !== destination).map((nodeId) => ({ nodeId, distance: routeDistance(ship.at, nodeId) })).sort((a, b) => a.distance - b.distance);
+  const distance = routeDistance(ship.at, normalizedDestination);
+  const alternatives = Object.keys(nodes).filter((n) => n !== ship.at && n !== normalizedDestination).map((nodeId) => ({ nodeId, distance: routeDistance(ship.at, nodeId) })).sort((a, b) => a.distance - b.distance);
   if (alternatives[0]) {
     const savingsVsAlt = Math.round(((alternatives[0].distance - distance) / Math.max(1, alternatives[0].distance)) * 100);
     if (savingsVsAlt < 0) {
@@ -533,21 +557,21 @@ function sendShip(shipId, destination) {
   ship.status = "tasked";
   ship.departAt = state.tick + uplink;
   ship.busyUntil = ship.departAt + distance;
-  ship.destination = destination;
+  ship.destination = normalizedDestination;
   ship.lastContactTick = state.tick;
 
   const effectiveRisk = state.risk + (state.escort ? -10 : 8);
   if (Math.random() * 100 < effectiveRisk * 0.3) {
     scheduleMessage(
-      uplink + distance + oneWaySignalToNode(destination),
-      `${ship.id} detained briefly at ${nodeLabel(destination)}. Cargo released after inspection.`,
+      uplink + distance + oneWaySignalToNode(normalizedDestination),
+      `${ship.id} detained briefly at ${nodeLabel(normalizedDestination)}. Cargo released after inspection.`,
       "alert"
     );
     state.cash -= 70;
     state.rep -= 1;
     const arcworksInspector = "Inspector Dey Arcos";
     scheduleMessage(
-      uplink + Math.max(1, distance - 1) + oneWaySignalToNode(destination),
+      uplink + Math.max(1, distance - 1) + oneWaySignalToNode(normalizedDestination),
       `${arcworksInspector} ${speakerContext(arcworksInspector, "interdicting")}: ${
         pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."
       }`,
@@ -555,7 +579,7 @@ function sendShip(shipId, destination) {
     );
     basilSpeak("negative", `Order logged. ${ship.id} risk profile elevated.`, "basil");
   } else {
-    scheduleTransitComms(ship, destination, distance, uplink);
+    scheduleTransitComms(ship, normalizedDestination, distance, uplink);
     state.rep = Math.min(100, state.rep + 1);
     const captain = SHIP_CAPTAINS[ship.id];
     if (captain) {
@@ -564,7 +588,7 @@ function sendShip(shipId, destination) {
   }
 
   logLine(`Transmission sent: ${ship.id} -> ${destination}. Uplink ${uplink}s, transit ${distance}s.`, "dispatch");
-  const reportLag = oneWaySignalToNode(destination);
+  const reportLag = oneWaySignalToNode(normalizedDestination);
   basilInform(
     `Timing estimate: uplink ${uplink}s + transit ${distance}s + return signal ${reportLag}s = ${uplink + distance + reportLag}s until arrival is confirmed here.`
   );
@@ -830,8 +854,9 @@ function handleCommand(raw) {
   }
 
   if (state.selection.pending === "await_destination") {
-    if (nodes[lower]) {
-      sendShip(state.selection.selectedShipId, lower);
+    const normalized = normalizeNodeInput(lower);
+    if (normalized) {
+      sendShip(state.selection.selectedShipId, normalized);
       state.selection.pending = "ship_menu";
       return showShipMenu(state.selection.selectedShipId);
     }
