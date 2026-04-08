@@ -404,6 +404,12 @@ async function loadReferenceData() {
         intro_welcome: basilScenario.intro_welcome?.text || null,
         intro_information_integrity: basilScenario.intro_information_integrity?.text || null,
         intro_tutorial_scenario: basilScenario.intro_tutorial_scenario?.text || null,
+        order_delay_acknowledgements: Array.isArray(basilScenario.order_delay_acknowledgements)
+          ? basilScenario.order_delay_acknowledgements.map((entry) => entry?.text).filter(Boolean)
+          : [],
+        report_staleness_acknowledgements: Array.isArray(basilScenario.report_staleness_acknowledgements)
+          ? basilScenario.report_staleness_acknowledgements.map((entry) => entry?.text).filter(Boolean)
+          : [],
         tutorial_complete: basilScenario.tutorial_complete?.text || null,
       };
     }
@@ -420,7 +426,13 @@ function playScenarioIntro() {
   ].filter(Boolean);
 
   if (!introLines.length) return;
-  introLines.forEach((line) => basilInform(line, "basil"));
+  introLines.forEach((line) => logLine(`${BASIL_NAME} ${speakerContext(BASIL_NAME)}: ${line}`, "basil", { immediate: true }));
+}
+
+function pickScenarioArrayLine(key) {
+  const lines = state.scenarioDialogue?.[key];
+  if (!Array.isArray(lines) || !lines.length) return null;
+  return lines[Math.floor(Math.random() * lines.length)];
 }
 
 function routeDistance(from, to, visited = new Set()) {
@@ -461,7 +473,8 @@ function basilCommsLatencyLine(ship, commandNoun = "orders") {
   const uplink = oneWaySignalToShip(ship);
   const rtt = uplink * 2;
   basilInform(
-    `Contacting ${captain}. They will receive these ${commandNoun} in ${uplink} seconds. We can expect an acknowledgement in ${rtt} seconds... unless something has happened to their squishy and unreliable human body.`,
+    pickScenarioArrayLine("order_delay_acknowledgements")
+      || `Contacting ${captain}. They will receive these ${commandNoun} in ${uplink} seconds. We can expect an acknowledgement in ${rtt} seconds... unless something has happened to their squishy and unreliable human body.`,
     "basil"
   );
   if (!state.tutorialDone) state.latencyBriefed = true;
@@ -558,7 +571,10 @@ function shipReport(shipId) {
   const staleNote = ship.status === "enroute" || ship.status === "tasked"
     ? "Ship is in transit; displayed position may be stale until reply arrives."
     : "Position should remain current while on-station.";
-  basilInform(`${basilShipIntel(ship)} Report requested. Reply expected in ${rtt}s (uplink ${uplink}s each way). ${staleNote}`);
+  const scenarioStalenessLine = pickScenarioArrayLine("report_staleness_acknowledgements");
+  basilInform(
+    `${scenarioStalenessLine || "Report requested."} ${basilShipIntel(ship)} Reply expected in ${rtt}s (uplink ${uplink}s each way). ${staleNote}`
+  );
   scheduleMessage(rtt, `Report ${ship.id}: status=${ship.status}, lastKnown=${ship.lastKnownAt || ship.at}, eta=${eta}s (RTT ${rtt}s).`, "report");
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
@@ -1025,7 +1041,7 @@ async function init() {
   basilSpeak("greetings", "Dispatch online.", "basil");
   playScenarioIntro();
   buddeSpeak("greetings", "Navigation layer active. Route options available.", "budde");
-  logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys");
+  logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys", { immediate: true });
   showShipsList();
   render();
 
