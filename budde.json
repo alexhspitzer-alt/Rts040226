@@ -46,6 +46,11 @@
         "My recommendation is clockwise transfer. Current lane geometry favors a longer first leg and a shorter overall plan.",
         "Attached route is suboptimal. I have corrected it for your convenience."
       ],
+      "wiseChoice": [
+        "Wise and efficient choice. Your selection matches my recommendation exactly.",
+        "Excellent. You selected the most efficient maneuver available.",
+        "Confirmed. That was a disciplined optimization decision."
+      ],
       "objections": [
         "Objection. Current assignment does not use the shortest viable path.",
         "I do not recommend BASIL's preferred route. It is careful in ways I consider expensive.",

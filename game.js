@@ -641,7 +641,7 @@ function sendShip(shipId, destination) {
       buddeSpeak("objections", "Selected destination is not the shortest viable route.");
       buddeInform(`My recommended maneuver would have decreased flight time by ${Math.abs(savingsVsRecommendation)} seconds. But I have relayed your coordinates as ordered.`);
     } else {
-      buddeSpeak("recommendations", `Your selection matches my recommendation. No faster direct maneuver detected.`);
+      buddeSpeak("wiseChoice", "Wise and efficient choice. Your selection matches my recommendation.");
     }
   }
   basilCommsLatencyLine(ship, "orders");
@@ -704,7 +704,7 @@ function assignContract(contractId, shipId) {
     buddeSpeak("objections", "Current assignment is not top efficiency.");
     buddeInform(`My recommendation would have reduced mission time by ${total - comparison.total} seconds. Your selection has been relayed as ordered.`);
   } else {
-    buddeSpeak("recommendations", `Your selection aligns with my recommendation for ${contract.id}.`);
+    buddeSpeak("wiseChoice", `Wise and efficient choice. Your selection aligns with my recommendation for ${contract.id}.`);
   }
 
   ship.status = "tasked";
