@@ -1,3 +1,5 @@
+import { createConsoleLogger } from "./console.js";
+
 let nodes = {};
 let edges = [];
 
@@ -262,59 +264,15 @@ function stylizeConsoleText(text) {
     .replace(/(^|\s)(A|S|R|B)(?=\s|$)/g, '$1<span class="choice">$2</span>');
 }
 
-function appendLogLine(text, type = "sys") {
-  const div = document.createElement("div");
-  div.className = "line";
-
-  const stamp = document.createElement("span");
-  stamp.className = "stamp";
-  stamp.textContent = `[${fmtTime(state.tick)}][${type.toUpperCase()}]`;
-
-  const body = document.createElement("span");
-  body.className = "body";
-  body.innerHTML = ` ${stylizeConsoleText(text)}`;
-
-  div.appendChild(stamp);
-  div.appendChild(body);
-  ui.feed.appendChild(div);
-  ui.feed.scrollTop = ui.feed.scrollHeight;
-  return body;
-}
-
-function queueConsoleTask(task, earliestAt = Date.now()) {
-  const runAt = Math.max(state.consoleReadyAtMs, earliestAt);
-  const delay = Math.max(0, runAt - Date.now());
-  setTimeout(task, delay);
-  state.consoleReadyAtMs = runAt + CONSOLE_MESSAGE_GAP_MS;
-  return runAt;
-}
-
-function logLine(text, type = "sys", options = {}) {
-  const { immediate = false } = options;
-  if (immediate) {
-    appendLogLine(text, type);
-    state.consoleReadyAtMs = Math.max(state.consoleReadyAtMs, Date.now() + CONSOLE_MESSAGE_GAP_MS);
-    return;
-  }
-
-  if (state.respondingToCommand && type !== "cmd") {
-    const inputAt = Date.now();
-    let bodyNode = null;
-    const placeholderAt = queueConsoleTask(() => {
-      bodyNode = appendLogLine(". . .", type);
-    }, inputAt + COMMAND_RESPONSE_DOTS_DELAY_MS);
-    const revealAt = Math.max(inputAt + COMMAND_RESPONSE_REVEAL_DELAY_MS, placeholderAt + CONSOLE_MESSAGE_GAP_MS);
-    setTimeout(() => {
-      if (!bodyNode) return;
-      bodyNode.innerHTML = ` ${stylizeConsoleText(text)}`;
-    }, Math.max(0, revealAt - Date.now()));
-    return;
-  }
-
-  queueConsoleTask(() => {
-    appendLogLine(text, type);
-  });
-}
+const { logLine } = createConsoleLogger({
+  state,
+  ui,
+  fmtTime,
+  stylizeConsoleText,
+  messageGapMs: CONSOLE_MESSAGE_GAP_MS,
+  dotsDelayMs: COMMAND_RESPONSE_DOTS_DELAY_MS,
+  revealDelayMs: COMMAND_RESPONSE_REVEAL_DELAY_MS,
+});
 
 function pickLine(characterName, bucket) {
   const actor = state.dialogueDb[characterName];
@@ -451,7 +409,7 @@ function playScenarioIntro() {
   ].filter(Boolean);
 
   if (!introLines.length) return;
-  introLines.forEach((line) => logLine(`${BASIL_NAME} ${speakerContext(BASIL_NAME)}: ${line}`, "basil", { immediate: true }));
+  introLines.forEach((line) => logLine(`${BASIL_NAME} ${speakerContext(BASIL_NAME)}: ${line}`, "basil"));
 }
 
 function pickScenarioArrayLine(key) {
@@ -950,7 +908,7 @@ function handleCommand(raw) {
   const input = raw.trim();
   if (!input) return;
 
-  logLine(`> ${raw}`, "cmd", { immediate: true });
+  logLine(`> ${raw}`, "cmd");
   const lower = input.toLowerCase();
   const parts = lower.split(/\s+/);
   state.respondingToCommand = true;
@@ -1078,7 +1036,7 @@ async function init() {
   basilSpeak("greetings", "Dispatch online.", "basil");
   playScenarioIntro();
   buddeSpeak("greetings", "Navigation layer active. Route options available.", "budde");
-  logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys", { immediate: true });
+  logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys");
   showShipsList();
   render();
 
