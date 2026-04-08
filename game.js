@@ -85,6 +85,7 @@ const ui = {
   contracts: document.getElementById("contracts"),
   fleet: document.getElementById("fleet"),
   feed: document.getElementById("feed"),
+  copyConsole: document.getElementById("copy-console"),
   cmdForm: document.getElementById("cmd-form"),
   cmdInput: document.getElementById("cmd"),
 };
@@ -1043,11 +1044,49 @@ function updateSimulation() {
   }
 }
 
+function consoleTranscriptText() {
+  return Array.from(ui.feed.querySelectorAll(".line"))
+    .map((line) => line.textContent?.replace(/\s+/g, " ").trim() || "")
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function copyConsoleToClipboard() {
+  const text = consoleTranscriptText();
+  if (!text) {
+    logLine("Nothing to copy yet.", "sys");
+    return;
+  }
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    }
+    logLine("Console log copied to clipboard.", "sys");
+  } catch (err) {
+    logLine(`Copy failed: ${err?.message || "clipboard unavailable"}.`, "error");
+  }
+}
+
 ui.cmdForm.addEventListener("submit", (event) => {
   event.preventDefault();
   handleCommand(ui.cmdInput.value);
   ui.cmdInput.value = "";
   render();
+});
+
+ui.copyConsole?.addEventListener("click", () => {
+  copyConsoleToClipboard();
 });
 
 async function init() {
