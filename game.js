@@ -5,6 +5,10 @@ const TUTORIAL_GOAL = 3;
 const BASIL_NAME = "BASIL";
 const BUDDE_NAME = "BUDDE";
 const PLAYER_NODE = "anchor_station";
+const CONSOLE_MESSAGE_GAP_MS = 750;
+const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
+const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
+const SCENARIO_PATH = "./scenario1.json";
 const LEGACY_NODE_ALIASES = {
   anchor: "anchor_station",
   cinder_hub: "refinery",
@@ -58,6 +62,9 @@ const state = {
   lastAmbientLine: null,
   mapData: null,
   buddeData: null,
+  scenarioDialogue: {},
+  consoleReadyAtMs: Date.now(),
+  respondingToCommand: false,
 };
 
 const ui = {
@@ -249,7 +256,7 @@ function stylizeConsoleText(text) {
     .replace(/(^|\s)(A|S|R|B)(?=\s|$)/g, '$1<span class="choice">$2</span>');
 }
 
-function logLine(text, type = "sys") {
+function appendLogLine(text, type = "sys") {
   const div = document.createElement("div");
   div.className = "line";
 
@@ -265,6 +272,42 @@ function logLine(text, type = "sys") {
   div.appendChild(body);
   ui.feed.appendChild(div);
   ui.feed.scrollTop = ui.feed.scrollHeight;
+  return body;
+}
+
+function queueConsoleTask(task, earliestAt = Date.now()) {
+  const runAt = Math.max(state.consoleReadyAtMs, earliestAt);
+  const delay = Math.max(0, runAt - Date.now());
+  setTimeout(task, delay);
+  state.consoleReadyAtMs = runAt + CONSOLE_MESSAGE_GAP_MS;
+  return runAt;
+}
+
+function logLine(text, type = "sys", options = {}) {
+  const { immediate = false } = options;
+  if (immediate) {
+    appendLogLine(text, type);
+    state.consoleReadyAtMs = Math.max(state.consoleReadyAtMs, Date.now() + CONSOLE_MESSAGE_GAP_MS);
+    return;
+  }
+
+  if (state.respondingToCommand && type !== "cmd") {
+    const inputAt = Date.now();
+    let bodyNode = null;
+    const placeholderAt = queueConsoleTask(() => {
+      bodyNode = appendLogLine(". . .", type);
+    }, inputAt + COMMAND_RESPONSE_DOTS_DELAY_MS);
+    const revealAt = Math.max(inputAt + COMMAND_RESPONSE_REVEAL_DELAY_MS, placeholderAt + CONSOLE_MESSAGE_GAP_MS);
+    setTimeout(() => {
+      if (!bodyNode) return;
+      bodyNode.innerHTML = ` ${stylizeConsoleText(text)}`;
+    }, Math.max(0, revealAt - Date.now()));
+    return;
+  }
+
+  queueConsoleTask(() => {
+    appendLogLine(text, type);
+  });
 }
 
 function pickLine(characterName, bucket) {
@@ -326,11 +369,12 @@ function queueCharacterMessage(delay, characterName, bucket, fallback, type = "c
 
 async function loadReferenceData() {
   try {
-    const [loreResponse, dialogueResponse, mapResponse, buddeResponse] = await Promise.all([
+    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse] = await Promise.all([
       fetch("./bluFreight%20text%20RTS.txt"),
       fetch("./indigo_dialogue_characters.json"),
       fetch("./map.json"),
       fetch("./budde.json"),
+      fetch(SCENARIO_PATH),
     ]);
 
     if (loreResponse.ok) {
@@ -352,9 +396,31 @@ async function loadReferenceData() {
     if (buddeResponse.ok) {
       state.buddeData = await buddeResponse.json();
     }
+
+    if (scenarioResponse.ok) {
+      const scenario = await scenarioResponse.json();
+      const basilScenario = scenario?.basil_scenario_dialogue || {};
+      state.scenarioDialogue = {
+        intro_welcome: basilScenario.intro_welcome?.text || null,
+        intro_information_integrity: basilScenario.intro_information_integrity?.text || null,
+        intro_tutorial_scenario: basilScenario.intro_tutorial_scenario?.text || null,
+        tutorial_complete: basilScenario.tutorial_complete?.text || null,
+      };
+    }
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
   }
+}
+
+function playScenarioIntro() {
+  const introLines = [
+    state.scenarioDialogue?.intro_welcome,
+    state.scenarioDialogue?.intro_information_integrity,
+    state.scenarioDialogue?.intro_tutorial_scenario,
+  ].filter(Boolean);
+
+  if (!introLines.length) return;
+  introLines.forEach((line) => basilInform(line, "basil"));
 }
 
 function routeDistance(from, to, visited = new Set()) {
@@ -652,7 +718,10 @@ function assignContract(contractId, shipId) {
   if (!state.tutorialDone && state.completedContracts >= TUTORIAL_GOAL) {
     state.tutorialDone = true;
     logLine("Tutorial complete: 3 contracts delivered.", "sys");
-    basilSpeak("positive", "Tutorial objectives complete. Dispatch confidence adjusted upward.", "basil");
+    basilInform(
+      state.scenarioDialogue?.tutorial_complete || "Tutorial objectives complete. Dispatch confidence adjusted upward.",
+      "basil"
+    );
   }
   return true;
 }
@@ -831,13 +900,20 @@ function handleCommand(raw) {
   const input = raw.trim();
   if (!input) return;
 
-  logLine(`> ${raw}`, "cmd");
+  logLine(`> ${raw}`, "cmd", { immediate: true });
   const lower = input.toLowerCase();
   const parts = lower.split(/\s+/);
+  state.respondingToCommand = true;
 
-  if (tryNumericSelection(lower) !== false) return;
+  if (tryNumericSelection(lower) !== false) {
+    state.respondingToCommand = false;
+    return;
+  }
 
-  if (state.selection.pending === "ship_menu" && lower.length === 1 && handleShipMenuLetter(lower)) return;
+  if (state.selection.pending === "ship_menu" && lower.length === 1 && handleShipMenuLetter(lower)) {
+    state.respondingToCommand = false;
+    return;
+  }
 
   if (state.selection.pending === "await_contract") {
     const contract = openContracts().find((c) => c.id.toLowerCase() === lower);
@@ -847,8 +923,11 @@ function handleCommand(raw) {
         state.selection.selectedShipId = null;
         state.selection.pending = "await_ship";
         logLine("Assignment uplinked. Returning to ship list.", "sys");
-        return showShipsList();
+        showShipsList();
+        state.respondingToCommand = false;
+        return;
       }
+      state.respondingToCommand = false;
       return true;
     }
   }
@@ -858,11 +937,14 @@ function handleCommand(raw) {
     if (normalized) {
       sendShip(state.selection.selectedShipId, normalized);
       state.selection.pending = "ship_menu";
-      return showShipMenu(state.selection.selectedShipId);
+      showShipMenu(state.selection.selectedShipId);
+      state.respondingToCommand = false;
+      return;
     }
   }
 
   if (!handleLongForm(parts)) logLine("Unknown input. Try: ships or help", "error");
+  state.respondingToCommand = false;
 }
 
 function inputToName(input) {
@@ -941,6 +1023,7 @@ async function init() {
   generateContract();
   state.selection.pending = "await_ship";
   basilSpeak("greetings", "Dispatch online.", "basil");
+  playScenarioIntro();
   buddeSpeak("greetings", "Navigation layer active. Route options available.", "budde");
   logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys");
   showShipsList();
