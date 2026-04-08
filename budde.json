@@ -1,7 +1,7 @@
 {
   "budde": {
     "name": "BUDDE",
-    "fullName": "Benchmark Unified Directions Dedicated Engine",
+    "fullName": "Benchmark Unified Dedicated Directions Engine",
     "role": "route optimization and navigation advisory system",
     "summary": "BUDDE is a shipboard navigation optimizer focused on transit efficiency, burn planning, detour selection, and route geometry. It is mathematically competent, operationally aggressive, and notably less concerned than BASIL with regulation, tactical exposure, cargo sensitivity, or crew comfort.",
     "designIntent": {
