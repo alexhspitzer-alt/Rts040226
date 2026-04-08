@@ -209,9 +209,9 @@ function adviseContractOptions(shipId) {
   const bestLabel = `${best.contract.id} (${nodeLabel(best.contract.from)} → ${nodeLabel(best.contract.to)})`;
   if (alt) {
     const savings = Math.max(1, Math.round(((alt.total - best.total) / alt.total) * 100));
-    buddeInform(`Contract routing options available. Recommend ${bestLabel}. Fastest mission profile by ${savings}% versus ${alt.contract.id}.`);
+    buddeInform(`Contract routing options available. My recommendation is ${bestLabel}. It is ${savings}% faster than your next best contract choice.`);
   } else {
-    buddeInform(`Only one contract route available: ${bestLabel}. No alternate optimization path.`);
+    buddeInform(`Only one contract route available: ${bestLabel}.`);
   }
 
   const destinationApproach = nodes[best.contract.to]?.approach || 0;
@@ -234,7 +234,7 @@ function adviseDestinationOptions(shipId) {
   const alt = choices[1];
   if (alt) {
     const savings = Math.max(1, Math.round(((alt.distance - best.distance) / alt.distance) * 100));
-    buddeInform(`Destination options available. Recommend ${nodeLabel(best.nodeId)}. Transit is ${savings}% shorter than ${nodeLabel(alt.nodeId)}.`);
+    buddeInform(`Destination options available. My recommendation is ${nodeLabel(best.nodeId)}. Estimated transit is ${savings}% shorter than your other immediate option.`);
   } else {
     buddeInform(`Single reachable destination candidate: ${nodeLabel(best.nodeId)}.`);
   }
@@ -634,12 +634,13 @@ function sendShip(shipId, destination) {
   const distance = routeDistance(ship.at, normalizedDestination);
   const alternatives = Object.keys(nodes).filter((n) => n !== ship.at && n !== normalizedDestination).map((nodeId) => ({ nodeId, distance: routeDistance(ship.at, nodeId) })).sort((a, b) => a.distance - b.distance);
   if (alternatives[0]) {
-    const savingsVsAlt = Math.round(((alternatives[0].distance - distance) / Math.max(1, alternatives[0].distance)) * 100);
-    if (savingsVsAlt < 0) {
+    const recommended = alternatives[0];
+    const savingsVsRecommendation = recommended.distance - distance;
+    if (savingsVsRecommendation < 0) {
       buddeSpeak("objections", "Selected destination is not the shortest viable route.");
-      buddeInform(`Alternative available: ${nodeLabel(alternatives[0].nodeId)} at ${alternatives[0].distance}s versus selected ${distance}s.`);
+      buddeInform(`My recommended maneuver would have decreased flight time by ${Math.abs(savingsVsRecommendation)} seconds. But I have relayed your coordinates as ordered.`);
     } else {
-      buddeSpeak("recommendations", `Selected route accepted. Efficiency delta +${savingsVsAlt}% versus nearest alternative.`);
+      buddeSpeak("recommendations", `Your selection matches my recommendation. No faster direct maneuver detected.`);
     }
   }
   basilCommsLatencyLine(ship, "orders");
@@ -700,9 +701,9 @@ function assignContract(contractId, shipId) {
   const comparison = openContracts().filter((c) => c.id !== contract.id).map((c) => ({ id: c.id, total: routeDistance(ship.at, c.from) + routeDistance(c.from, c.to) })).sort((a, b) => a.total - b.total)[0];
   if (comparison && comparison.total < total) {
     buddeSpeak("objections", "Current assignment is not top efficiency.");
-    buddeInform(`${comparison.id} would complete in ${comparison.total}s versus ${contract.id} at ${total}s. Maintaining your selected order.`);
+    buddeInform(`My recommendation would have reduced mission time by ${total - comparison.total} seconds. Your selection has been relayed as ordered.`);
   } else {
-    buddeSpeak("recommendations", `Assignment ${contract.id} accepted. Current route is within optimal tolerance.`);
+    buddeSpeak("recommendations", `Your selection aligns with my recommendation for ${contract.id}.`);
   }
 
   ship.status = "tasked";

@@ -19,7 +19,7 @@
       ],
       "speakingStyle": [
         "prefers percentages and comparative savings",
-        "frames alternatives as optimization problems",
+        "frames recommendation gaps as optimization problems",
         "rarely acknowledges fear, politics, or legality as primary concerns",
         "sounds sincere rather than malicious"
       ]
@@ -28,8 +28,8 @@
       "macroLayer": "Uses moon position, orbit band, and direction of travel around Indigo from map layer 0.",
       "localLayer": "Uses destination approach values from map layer 1 to estimate final-route variability.",
       "preferredOutputs": [
-        "recommended route direction",
-        "alternate route direction",
+        "my recommended route direction",
+        "your selected route direction",
         "estimated time savings",
         "estimated fuel savings",
         "warnings about uncertain approach geometry"
@@ -43,13 +43,13 @@
       ],
       "recommendations": [
         "Recommend clockwise transfer. Estimated savings: 8% fuel, 5% time.",
-        "Recommend alternate route. Current lane geometry favors a longer first leg and a shorter overall plan.",
+        "My recommendation is clockwise transfer. Current lane geometry favors a longer first leg and a shorter overall plan.",
         "Attached route is suboptimal. I have corrected it for your convenience."
       ],
       "objections": [
         "Objection. Current assignment does not use the shortest viable path.",
         "I do not recommend BASIL's preferred route. It is careful in ways I consider expensive.",
-        "Alternative route rejected. Estimated waste exceeds my tolerance."
+        "Your selection differs from my recommendation. Estimated waste exceeds my tolerance."
       ],
       "highVarianceApproach": [
         "Destination approach geometry is unstable. Final timing confidence reduced.",
@@ -64,7 +64,7 @@
     },
     "interactionModel": {
       "withBASIL": "BUDDE should disagree with BASIL only when there is a meaningful tradeoff between immediate efficiency and other concerns such as safety, cargo handling, political exposure, or downstream positioning.",
-      "withPlayer": "BUDDE should present route choices cleanly and quantitatively, usually with a recommendation and at least one alternative.",
+      "withPlayer": "BUDDE should present route choices cleanly and quantitatively, contrasting my recommendation against your selection.",
       "withMap": "BUDDE is the narrative owner of map interpretation and route advice but should not own the actual game state."
     }
   }
