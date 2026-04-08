@@ -9,7 +9,8 @@ export function createConsoleLogger({
 }) {
   function appendLine(text, type = "sys") {
     const div = document.createElement("div");
-    div.className = "line";
+    const safeType = String(type || "sys").toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+    div.className = `line type-${safeType}`;
 
     const stamp = document.createElement("span");
     stamp.className = "stamp";

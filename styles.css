@@ -78,9 +78,40 @@ h1 {
   margin-bottom: 0.35rem;
 }
 
+.body {
+  color: #e9f2fb;
+}
 
 .stamp {
   color: #63a7ff;
+}
+
+.line.type-sys .body {
+  color: #a4acb8;
+}
+
+.line.type-basil .body {
+  color: #9cf3b1;
+}
+
+.line.type-budde .body {
+  color: #d7b8ff;
+}
+
+.line.type-comms-blufreight .body {
+  color: #95c9ff;
+}
+
+.line.type-comms-ufp .body {
+  color: #ffd86a;
+}
+
+.line.type-comms-blister .body {
+  color: #ffb076;
+}
+
+.line.type-comms-arcworks .body {
+  color: #b38762;
 }
 
 .choice {

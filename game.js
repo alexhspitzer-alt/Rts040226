@@ -323,22 +323,36 @@ function activeCommsContacts() {
   return Object.keys(state.dialogueDb).filter((name) => name !== BASIL_NAME && name !== BUDDE_NAME && isContactPresent(name));
 }
 
+function speakerMessageType(name) {
+  if (name === BASIL_NAME) return "basil";
+  if (name === BUDDE_NAME) return "budde";
+
+  const faction = String(state.dialogueDb[name]?.faction || "").toLowerCase();
+  if (SHIP_CAPTAINS && Object.values(SHIP_CAPTAINS).includes(name)) return "comms-blufreight";
+  if (faction === "blufreight") return "comms-blufreight";
+  if (faction === "ufp") return "comms-ufp";
+  if (faction === "blister") return "comms-blister";
+  if (faction === "arcworks") return "comms-arcworks";
+  return "comms";
+}
+
 function basilSpeak(bucket, fallback, type = "basil") {
   const text = pickLine(BASIL_NAME, bucket) || fallback;
   const context = speakerContext(BASIL_NAME);
-  logLine(`${BASIL_NAME} ${context}: ${text}`, type);
+  logLine(`${BASIL_NAME} ${context}: ${text}`, type || speakerMessageType(BASIL_NAME));
 }
 
 function basilInform(text, type = "basil") {
   const context = speakerContext(BASIL_NAME);
-  logLine(`${BASIL_NAME} ${context}: ${text}`, type);
+  logLine(`${BASIL_NAME} ${context}: ${text}`, type || speakerMessageType(BASIL_NAME));
 }
 
 function characterSpeak(characterName, bucket, fallback, type = "comms", statusOverride = null) {
   if (!isContactPresent(characterName)) return;
   const text = pickLine(characterName, bucket) || fallback;
   const context = speakerContext(characterName, statusOverride);
-  logLine(`${characterName} ${context}: ${text}`, type);
+  const lineType = type === "comms" ? speakerMessageType(characterName) : type;
+  logLine(`${characterName} ${context}: ${text}`, lineType);
 }
 
 function queueCharacterMessage(delay, characterName, bucket, fallback, type = "comms", statusOverride = null) {
@@ -347,7 +361,7 @@ function queueCharacterMessage(delay, characterName, bucket, fallback, type = "c
     const context = speakerContext(characterName, statusOverride);
     const text = pickLine(characterName, bucket) || fallback;
     return `${characterName} ${context}: ${text}`;
-  }, type);
+  }, type === "comms" ? speakerMessageType(characterName) : type);
 }
 
 async function loadReferenceData() {
@@ -828,7 +842,11 @@ function handleLongForm(parts) {
       const uplink = oneWaySignalToNode(targetNode);
       const rtt = uplink * 2;
       basilInform(`Hailing ${query} at ${nodeLabel(targetNode)}. Uplink ${uplink}s, expected reply in ~${rtt}s.`);
-      scheduleMessage(rtt, () => `${query} ${speakerContext(query)}: ${pickLine(query, "greetings") || "Channel open."}`, "comms");
+      scheduleMessage(
+        rtt,
+        () => `${query} ${speakerContext(query)}: ${pickLine(query, "greetings") || "Channel open."}`,
+        speakerMessageType(query)
+      );
     } else {
       characterSpeak(query, "greetings", "Channel open.", "comms");
     }
@@ -1001,7 +1019,7 @@ function updateSimulation() {
       const line = pickLine(speaker, tone) || "Traffic conditions noted.";
       if (line !== state.lastAmbientLine) {
         state.lastAmbientLine = line;
-        scheduleMessage(1, () => `${speaker} ${speakerContext(speaker)}: ${line}`, "comms");
+        scheduleMessage(1, () => `${speaker} ${speakerContext(speaker)}: ${line}`, speakerMessageType(speaker));
       }
     }
   }
