@@ -74,5 +74,12 @@
       "speaker": "BASIL",
       "text": "Tutorial complete, Operations Manager. All three contracts have been fulfilled, your ships remain mostly intact, and bluFreight continues to enjoy the illusion of orderly commerce. You have now demonstrated basic competence in asset selection, contract assignment, and the management of delayed information across system-scale distances. This officially places you above several of my previous operators, though I regret to inform you the sample size is troubling. When you are ready, we may proceed to scenarios involving tighter schedules, less cooperative traffic, and consequences with actual personality."
     }
+  },
+  "budde_scenario_dialogue": {
+    "intro": {
+      "context": "Trigger once, after the first successful contract assignment or destination send order.",
+      "speaker": "BUDDE",
+      "text": "Hello. I am BUDDE: Benchmark Unified Dedicated Delivery Environment. My purpose is route optimization, transfer planning, and identifying more efficient alternatives when your first plan is not the best plan."
+    }
   }
 }

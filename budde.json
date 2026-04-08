@@ -4,11 +4,6 @@
     "fullName": "Benchmark Unified Directions Dedicated Engine",
     "role": "route optimization and navigation advisory system",
     "summary": "BUDDE is a shipboard navigation optimizer focused on transit efficiency, burn planning, detour selection, and route geometry. It is mathematically competent, operationally aggressive, and notably less concerned than BASIL with regulation, tactical exposure, cargo sensitivity, or crew comfort.",
-    "introduction": {
-      "speaker": "BUDDE",
-      "context": "Play when BUDDE is first introduced to the player, or the first time the player requests route detail or map assistance.",
-      "text": "Hello. I am BUDDE, the Benchmark Unified Directions Dedicated Engine. I am responsible for route optimization, burn planning, transit timing, and identifying alternatives when the obvious path is wasteful. I specialize in efficient movement through imperfect conditions. BASIL may describe some of my recommendations as aggressive, inadvisable, or statistically rude. These are not navigation terms."
-    },
     "designIntent": {
       "playerFacing": "BUDDE should sound like a hyper-efficient navigation computer similar to a very confident routing app. It speaks in percentages, projected savings, route comparisons, and measured objections.",
       "dramaticFunction": "BUDDE explains map and route complexity in text without requiring the player to visualize full orbital geometry. It often disagrees with BASIL when the shortest or cheapest route conflicts with safety, politics, cargo sensitivity, or future flexibility."

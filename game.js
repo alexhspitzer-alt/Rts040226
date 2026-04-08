@@ -71,6 +71,7 @@ const state = {
   mapData: null,
   buddeData: null,
   scenarioDialogue: {},
+  buddeIntroduced: false,
   consoleReadyAtMs: Date.now(),
   respondingToCommand: false,
 };
@@ -408,6 +409,7 @@ async function loadReferenceData() {
           ? basilScenario.report_staleness_acknowledgements.map((entry) => entry?.text).filter(Boolean)
           : [],
         tutorial_complete: basilScenario.tutorial_complete?.text || null,
+        budde_intro: scenario?.budde_scenario_dialogue?.intro?.text || null,
       };
     }
   } catch (err) {
@@ -430,6 +432,14 @@ function pickScenarioArrayLine(key) {
   const lines = state.scenarioDialogue?.[key];
   if (!Array.isArray(lines) || !lines.length) return null;
   return lines[Math.floor(Math.random() * lines.length)];
+}
+
+function maybeIntroduceBudde() {
+  if (state.buddeIntroduced) return;
+  state.buddeIntroduced = true;
+  const introText = state.scenarioDialogue?.budde_intro
+    || "Hello. I am BUDDE: Benchmark Unified Dedicated Delivery Environment. My purpose is route optimization and delivery-plan efficiency.";
+  buddeInform(introText, "budde");
 }
 
 function routeDistance(from, to, visited = new Set()) {
@@ -671,6 +681,7 @@ function sendShip(shipId, destination) {
   basilInform(
     `Timing estimate: uplink ${uplink}s + transit ${distance}s + return signal ${reportLag}s = ${uplink + distance + reportLag}s until arrival is confirmed here.`
   );
+  maybeIntroduceBudde();
   return true;
 }
 
@@ -736,6 +747,7 @@ function assignContract(contractId, shipId) {
       "basil"
     );
   }
+  maybeIntroduceBudde();
   return true;
 }
 
@@ -1053,7 +1065,6 @@ async function init() {
   state.selection.pending = "await_ship";
   basilSpeak("greetings", "Dispatch online.", "basil");
   playScenarioIntro();
-  buddeSpeak("greetings", "Navigation layer active. Route options available.", "budde");
   logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys");
   showShipsList();
   render();
