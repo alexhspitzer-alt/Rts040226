@@ -57,3 +57,21 @@ export function createConsoleLogger({
 
   return { logLine };
 }
+
+export function normalizeConsoleInput(raw) {
+  return String(raw || "").trim().replace(/\s+/g, " ");
+}
+
+export function normalizeContractIdToken(token) {
+  const clean = String(token || "").trim().toUpperCase().replace(/\s+/g, "");
+  const m = clean.match(/^C-?(\d+)$/);
+  if (!m) return null;
+  return `C-${Number(m[1])}`;
+}
+
+export function normalizeShipIdToken(token) {
+  const clean = String(token || "").trim().toLowerCase().replace(/\s+/g, "");
+  const m = clean.match(/^([a-z_]+)-?(\d+)$/);
+  if (!m) return null;
+  return `${m[1]}-${Number(m[2])}`;
+}
