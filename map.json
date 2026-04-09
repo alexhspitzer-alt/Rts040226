@@ -1,0 +1,145 @@
+{
+  "layer0": {
+    "description": "System-scale moon layout for the Indigo system. Each moon has a fixed orbit band and angle relative to Indigo. This layer is stable and used for macro route planning.",
+    "orbits": {
+      "low": 1,
+      "ring": 2,
+      "high": 3,
+      "outer": 4
+    },
+    "moons": {
+      "cats_eye": {
+        "name": "Cat's Eye",
+        "orbit": "high",
+        "angle": 0
+      },
+      "corkscrew": {
+        "name": "Corkscrew",
+        "orbit": "high",
+        "angle": 110
+      },
+      "libbons": {
+        "name": "Libbons",
+        "orbit": "high",
+        "angle": 235
+      },
+      "oxblood": {
+        "name": "Oxblood",
+        "orbit": "ring",
+        "angle": 35
+      },
+      "patch": {
+        "name": "Patch",
+        "orbit": "ring",
+        "angle": 160
+      },
+      "onion_skin": {
+        "name": "Onion Skin",
+        "orbit": "ring",
+        "angle": 300
+      },
+      "shooter": {
+        "name": "Shooter",
+        "orbit": "low",
+        "angle": 80
+      },
+      "sulphide": {
+        "name": "Sulphide",
+        "orbit": "low",
+        "angle": 250
+      },
+      "clambroth": {
+        "name": "Clambroth",
+        "orbit": "outer",
+        "angle": 145
+      },
+      "end_of_day": {
+        "name": "End-of-Day",
+        "orbit": "outer",
+        "angle": 325
+      }
+    },
+    "player_start": {
+      "near": "cats_eye",
+      "orbit": "high",
+      "notes": "Player operations begin from a station near Cat's Eye in high orbit."
+    }
+  },
+  "layer1": {
+    "description": "Scenario-scale destination layer for tutorial routing. Each sublocation belongs to a parent moon and has an approach value from 1 to 10. Approach represents local routing variance relative to the moon rather than literal geometry.",
+    "approachScale": {
+      "1-3": "tight and stable local approach; functionally near the parent moon",
+      "4-6": "moderate local variation; destination may differ meaningfully from the moon-level route",
+      "7-8": "wide and route-sensitive local approach",
+      "9-10": "high local variance; destination may behave unpredictably relative to its parent moon"
+    },
+    "buddeDistanceModel": {
+      "description": "Opaque navigation model used by BUDDE for scenario-level distance estimates. Player-facing dialogue may summarize results, but this formula should remain internally consistent.",
+      "formula": "distance = (arcLength * orbitChangeModifier) + Normal(0, approach)",
+      "terms": {
+        "arcLength": "Macro route distance between parent moons derived from layer0 geometry.",
+        "orbitChangeModifier": "Multiplier representing the cost of rising or dropping between orbit bands during the route. A value of 1.0 means no band change penalty. Larger values increase effective distance.",
+        "Normal(0, approach)": "A normal random value with mean 0 and standard deviation equal to the destination sublocation's approach value."
+      },
+      "implementationNotes": [
+        "Use the destination sublocation's approach value as the standard deviation for the random term.",
+        "Apply randomness after macro route and orbit-change cost are computed.",
+        "This randomness represents local approach variation, traffic spread, station drift, and destination geometry rather than literal orbital simulation.",
+        "Clamp final distance to a minimum value greater than 0.",
+        "If deterministic replay is needed, seed the random draw by route, scenario, and tick or contract context."
+      ]
+    },
+    "tutorialScenario": {
+      "activeMoons": {
+        "cats_eye": {
+          "name": "Cat's Eye",
+          "locations": {
+            "anchor_station": {
+              "name": "Anchor Station",
+              "approach": 2
+            },
+            "ring_transfer_lane": {
+              "name": "Ring Transfer Lane",
+              "approach": 7
+            }
+          }
+        },
+        "oxblood": {
+          "name": "Oxblood",
+          "locations": {
+            "refinery": {
+              "name": "Refinery",
+              "approach": 3
+            },
+            "yard": {
+              "name": "Yard",
+              "approach": 6
+            }
+          }
+        },
+        "corkscrew": {
+          "name": "Corkscrew",
+          "locations": {
+            "ufp_outpost_delta": {
+              "name": "UFP Outpost Delta",
+              "approach": 5
+            }
+          }
+        },
+        "sulphide": {
+          "name": "Sulphide",
+          "locations": {
+            "deep_space_transfer_lane": {
+              "name": "Deep Space Transfer Lane",
+              "approach": 9
+            },
+            "indigo_station": {
+              "name": "Indigo Station",
+              "approach": 4
+            }
+          }
+        }
+      }
+    }
+  }
+}

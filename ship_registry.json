@@ -1,0 +1,102 @@
+{
+  "hauler": {
+    "description": "Hauler-class freight vessel. A civilian workhorse: slow enough to be unremarkable, roomy enough to stay employed, and rarely the wrong answer for ordinary paying cargo.",
+    "faction": "civilian",
+    "role": "general cargo freighter",
+    "speed": 1,
+    "cargoSpace": 8,
+    "armor": 2,
+    "guns": 0,
+    "utility": "no"
+  },
+  "courier": {
+    "description": "Courier-class light freighter. Built to move smaller loads quickly and make urgent people slightly less unbearable. Best used where speed matters more than volume.",
+    "faction": "civilian",
+    "role": "fast light freighter",
+    "speed": 3,
+    "cargoSpace": 3,
+    "armor": 1,
+    "guns": 0,
+    "utility": "no"
+  },
+  "tug": {
+    "description": "Tug-class utility vessel. Little cargo space, limited dignity, and a genuinely useful ability to move heavier objects faster than they would manage alone.",
+    "faction": "civilian",
+    "role": "tow and utility ship",
+    "speed": 2,
+    "cargoSpace": 0,
+    "armor": 2,
+    "guns": 0,
+    "utility": "yes"
+  },
+  "shuttle": {
+    "description": "Shuttle-class passenger vessel. Built for moving people first and cargo second: quicker than a hauler, roomier than a courier, and usually full of schedules, complaints, or both.",
+    "faction": "civilian",
+    "role": "passenger and light cargo transport",
+    "speed": 2,
+    "cargoSpace": 2,
+    "armor": 1,
+    "guns": 0,
+    "utility": "no"
+  },
+  "probe": {
+    "description": "Probe-class sensor platform. A stationary observation unit used by every faction with enough patience to leave a sensor package somewhere useful and hope no one shoots it first.",
+    "faction": "all",
+    "role": "sensor platform",
+    "speed": 0,
+    "cargoSpace": 0,
+    "armor": 0,
+    "guns": 0,
+    "utility": "no"
+  },
+  "kestrel": {
+    "description": "Kestrel-class UFP interceptor. Extremely fast, armed with intent, and built to arrive first, strike hard, and avoid prolonged arguments with anything heavier.",
+    "faction": "UFP",
+    "role": "interceptor",
+    "speed": 5,
+    "cargoSpace": 1,
+    "armor": 1,
+    "guns": 4,
+    "utility": "no"
+  },
+  "pelican": {
+    "description": "Pelican-class UFP logistics freighter. Functionally a hauler with state funding and mounted guns: tougher, louder, and a clear sign that the Union expects its cargo to arrive.",
+    "faction": "UFP",
+    "role": "armed logistics freighter",
+    "speed": 1,
+    "cargoSpace": 8,
+    "armor": 3,
+    "guns": 2,
+    "utility": "no"
+  },
+  "dragoon": {
+    "description": "Dragoon-class Blister interceptor. Not especially fast or graceful, but durable, aggressive, and entirely willing to keep fighting after refinement would have withdrawn.",
+    "faction": "Blister",
+    "role": "heavy interceptor",
+    "speed": 3,
+    "cargoSpace": 1,
+    "armor": 4,
+    "guns": 3,
+    "utility": "no"
+  },
+  "mk-iv": {
+    "description": "MK-IV Arcworks interceptor. Officially an industrial tug retrofit. Practically a labor dispute with guns, improvised armor, and enough engine to make itself everyone else's problem.",
+    "faction": "Arcworks",
+    "role": "retrofitted interceptor",
+    "speed": 2,
+    "cargoSpace": 0,
+    "armor": 3,
+    "guns": 3,
+    "utility": "yes"
+  },
+  "mm-ix": {
+    "description": "MM-IX Arcworks utility platform. A prospecting and service hull retrofitted for local defense: heavier, uglier, and more useful around rigs and stations than in elegant pursuit.",
+    "faction": "Arcworks",
+    "role": "armed utility platform",
+    "speed": 1,
+    "cargoSpace": 2,
+    "armor": 4,
+    "guns": 2,
+    "utility": "yes"
+  }
+}

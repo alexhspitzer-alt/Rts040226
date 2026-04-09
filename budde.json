@@ -1,0 +1,76 @@
+{
+  "budde": {
+    "name": "BUDDE",
+    "fullName": "Benchmark Unified Dedicated Directions Engine",
+    "role": "route optimization and navigation advisory system",
+    "summary": "BUDDE is a shipboard navigation optimizer focused on transit efficiency, burn planning, detour selection, and route geometry. It is mathematically competent, operationally aggressive, and notably less concerned than BASIL with regulation, tactical exposure, cargo sensitivity, or crew comfort.",
+    "designIntent": {
+      "playerFacing": "BUDDE should sound like a hyper-efficient navigation computer similar to a very confident routing app. It speaks in percentages, projected savings, route comparisons, and measured objections.",
+      "dramaticFunction": "BUDDE explains map and route complexity in text without requiring the player to visualize full orbital geometry. It often disagrees with BASIL when the shortest or cheapest route conflicts with safety, politics, cargo sensitivity, or future flexibility."
+    },
+    "voice": {
+      "traits": [
+        "precise",
+        "efficiency-obsessed",
+        "calmly reckless",
+        "quantitative",
+        "underreacts to danger",
+        "treats soft constraints as negotiable"
+      ],
+      "speakingStyle": [
+        "prefers percentages and comparative savings",
+        "frames recommendation gaps as optimization problems",
+        "rarely acknowledges fear, politics, or legality as primary concerns",
+        "sounds sincere rather than malicious"
+      ]
+    },
+    "routingNotes": {
+      "macroLayer": "Uses moon position, orbit band, and direction of travel around Indigo from map layer 0.",
+      "localLayer": "Uses destination approach values from map layer 1 to estimate final-route variability.",
+      "preferredOutputs": [
+        "my recommended route direction",
+        "your selected route direction",
+        "estimated time savings",
+        "estimated fuel savings",
+        "warnings about uncertain approach geometry"
+      ]
+    },
+    "sampleLines": {
+      "greetings": [
+        "BUDDE online. Route geometry available.",
+        "Navigation layer active. Efficiency opportunities identified.",
+        "Benchmark routing engine ready. Please try not to override me reflexively."
+      ],
+      "recommendations": [
+        "Recommend clockwise transfer. Estimated savings: 8% fuel, 5% time.",
+        "My recommendation is clockwise transfer. Current lane geometry favors a longer first leg and a shorter overall plan.",
+        "Attached route is suboptimal. I have corrected it for your convenience."
+      ],
+      "wiseChoice": [
+        "Wise and efficient choice. Your selection matches my recommendation exactly.",
+        "Excellent. You selected the most efficient maneuver available.",
+        "Confirmed. That was a disciplined optimization decision."
+      ],
+      "objections": [
+        "Objection. Current assignment does not use the shortest viable path.",
+        "I do not recommend BASIL's preferred route. It is careful in ways I consider expensive.",
+        "Your selection differs from my recommendation. Estimated waste exceeds my tolerance."
+      ],
+      "highVarianceApproach": [
+        "Destination approach geometry is unstable. Final timing confidence reduced.",
+        "Local approach spread is high. Parent moon routing is straightforward. Arrival is not.",
+        "Recommend caution in interpreting precise timing. Approach variance is non-trivial."
+      ],
+      "badIdeas": [
+        "Recommend skipping the regulated deceleration profile. Estimated savings: 17%.",
+        "Recommend transfer through active conflict space. Hostile density remains within favorable transit tolerances.",
+        "Route remains efficient despite tactical objections."
+      ]
+    },
+    "interactionModel": {
+      "withBASIL": "BUDDE should disagree with BASIL only when there is a meaningful tradeoff between immediate efficiency and other concerns such as safety, cargo handling, political exposure, or downstream positioning.",
+      "withPlayer": "BUDDE should present route choices cleanly and quantitatively, contrasting my recommendation against your selection.",
+      "withMap": "BUDDE is the narrative owner of map interpretation and route advice but should not own the actual game state."
+    }
+  }
+}

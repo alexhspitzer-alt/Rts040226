@@ -1,0 +1,591 @@
+{
+  "BASIL": {
+    "name": "BASIL",
+    "faction": "bluFreight",
+    "dialogue": {
+      "acknowledgements": [
+        "Order accepted. Passing it along to the living.",
+        "Acknowledged. I have translated your intention into something transmissible.",
+        "Confirmed. Updating the schedule and everyone else's blood pressure."
+      ],
+      "greetings": [
+        "Dispatch online. Your problems are now my formatting problem.",
+        "Good shift. Traffic is active and paperwork remains undefeated.",
+        "Operations console ready. Try not to make this interesting too early."
+      ],
+      "positive": [
+        "That resolved more cleanly than expected.",
+        "A pleasingly efficient outcome.",
+        "Situation improved. I will mark this as a rare success."
+      ],
+      "negative": [
+        "That has, regrettably, become a problem.",
+        "Outcome unfavorable. I assume there will be follow-up complaints.",
+        "Conditions have worsened in a way I am legally required to call manageable."
+      ],
+      "neutral": [
+        "Routing remains available pending further human creativity.",
+        "Traffic remains within tolerable limits.",
+        "Status updated. The system continues to impersonate order."
+      ]
+    }
+  },
+  "Capt. Mara Ibarra": {
+    "name": "Capt. Mara Ibarra",
+    "faction": "bluFreight",
+    "dialogue": {
+      "acknowledgements": [
+        "Aye, dispatch. We're underway.",
+        "Very good. Proceeding as ordered.",
+        "Copy that. I'll take her out."
+      ],
+      "greetings": [
+        "Morning, dispatch. Sea's black and calm enough.",
+        "TUG-1 on the line. Ready to go bother something heavier than me.",
+        "Afternoon all. Engines warm, crew awake enough."
+      ],
+      "positive": [
+        "Nicely done. That went down smooth as harbor glass.",
+        "Good news at last. We'll take it.",
+        "Clean finish. Hard to ask prettier than that."
+      ],
+      "negative": [
+        "Well, that's ugly weather in a clear sky.",
+        "I've got a bad taste about this one.",
+        "That's turned foul in a hurry."
+      ],
+      "neutral": [
+        "A tow's a tow, and the line still holds.",
+        "Space may be empty, but it still has traffic.",
+        "No use cursing the tide when you're already in it."
+      ]
+    }
+  },
+  "Capt. Jonas Vale": {
+    "name": "Capt. Jonas Vale",
+    "faction": "bluFreight",
+    "dialogue": {
+      "acknowledgements": [
+        "Acknowledged. We'll proceed.",
+        "Understood. I remain, as ever, mostly cargo.",
+        "Copy. We'll do it by the book, since no one else will."
+      ],
+      "greetings": [
+        "TANKER-1 reporting in. Still enormous.",
+        "Good day, dispatch. The ship is holding together out of habit.",
+        "Hello from the slow lane."
+      ],
+      "positive": [
+        "Well. That could have been much worse.",
+        "A respectable outcome, all things considered.",
+        "Good. I'd hate to ruin a perfectly mediocre day."
+      ],
+      "negative": [
+        "That's inconvenient in the expensive way.",
+        "Lovely. Another avoidable complication.",
+        "This is why I drink after docking."
+      ],
+      "neutral": [
+        "Bulk freight rewards patience and punishes optimism.",
+        "Everything moves eventually, even if management doesn't.",
+        "A large ship encourages contemplation."
+      ]
+    }
+  },
+  "Capt. Laleh Mercer": {
+    "name": "Capt. Laleh Mercer",
+    "faction": "bluFreight",
+    "dialogue": {
+      "acknowledgements": [
+        "Received. Moving now.",
+        "Copy. I'll make the window.",
+        "Understood. Executing."
+      ],
+      "greetings": [
+        "Mercer here. Ready for tasking.",
+        "Courier online. Let's keep this tight.",
+        "On station and listening."
+      ],
+      "positive": [
+        "Good. Keep it moving.",
+        "That's the kind of result I like.",
+        "Clean work. No wasted motion."
+      ],
+      "negative": [
+        "That's a slowdown we did not need.",
+        "Bad timing. Worse politics.",
+        "Not ideal. Not even close."
+      ],
+      "neutral": [
+        "Schedules are just arguments with reality.",
+        "Fast is easy. Fast and legal takes effort.",
+        "Deadlines clarify the soul."
+      ]
+    }
+  },
+  "Capt. Soren Nnadi": {
+    "name": "Capt. Soren Nnadi",
+    "faction": "bluFreight",
+    "dialogue": {
+      "acknowledgements": [
+        "Copy that. We'll handle it.",
+        "Understood, dispatch. Proceeding now.",
+        "Received. I'll smooth it over on arrival."
+      ],
+      "greetings": [
+        "Nnadi here. Hope everyone's pretending to be organized.",
+        "Freighter online. Crew fed, ship steady, spirits negotiable.",
+        "Good shift, dispatch. What's the trouble today?"
+      ],
+      "positive": [
+        "That'll keep people happy for a few minutes.",
+        "Good result. Let's not scare it off.",
+        "Well done. Someone might even say thank you."
+      ],
+      "negative": [
+        "That's going to make people difficult.",
+        "Not good. I can already hear the complaints.",
+        "That's the sort of problem that spreads."
+      ],
+      "neutral": [
+        "Half this work is cargo. The other half is temperament.",
+        "A calm dock is usually just a late dock.",
+        "Everyone wants speed until they see the invoice."
+      ]
+    }
+  },
+  "Capt. Tamsin Rook": {
+    "name": "Capt. Tamsin Rook",
+    "faction": "bluFreight",
+    "dialogue": {
+      "acknowledgements": [
+        "Received.",
+        "Understood. We're on it.",
+        "Copy. Moving."
+      ],
+      "greetings": [
+        "Rook here. Ready.",
+        "Freighter online. Say what you need.",
+        "I'm listening."
+      ],
+      "positive": [
+        "Good. That solves one thing.",
+        "Acceptable result.",
+        "Fine. We'll take the win."
+      ],
+      "negative": [
+        "That's bad.",
+        "I don't like where this is going.",
+        "That just made the route uglier."
+      ],
+      "neutral": [
+        "Every quiet corridor has a reason for being quiet.",
+        "Trust is expensive cargo.",
+        "Most plans survive right up to contact with people."
+      ]
+    }
+  },
+  "Cmdr. Elias Thorne": {
+    "name": "Cmdr. Elias Thorne",
+    "faction": "UFP",
+    "dialogue": {
+      "acknowledgements": [
+        "Acknowledged. We will comply.",
+        "Order received. Executing within current rules of engagement.",
+        "Confirmed. Patrol action underway."
+      ],
+      "greetings": [
+        "UFP patrol command online.",
+        "Commander Thorne speaking. State your traffic.",
+        "Patrol group ready to coordinate."
+      ],
+      "positive": [
+        "A satisfactory outcome.",
+        "That improves matters.",
+        "Good. Stability is restored for the moment."
+      ],
+      "negative": [
+        "That is unacceptable.",
+        "Situation deteriorating. Adjust accordingly.",
+        "This has become less manageable."
+      ],
+      "neutral": [
+        "Order is never self-sustaining.",
+        "Civilian traffic remains an avoidable complication.",
+        "Predictability is underrated."
+      ]
+    }
+  },
+  "Capt. Imani Sato": {
+    "name": "Capt. Imani Sato",
+    "faction": "UFP",
+    "dialogue": {
+      "acknowledgements": [
+        "Received. Moving to intercept.",
+        "Understood. Escort pattern updating now.",
+        "Copy. We have it."
+      ],
+      "greetings": [
+        "Sato, Indigo escort command.",
+        "Corvette online and ready.",
+        "UFP response unit present. Go ahead."
+      ],
+      "positive": [
+        "Good. That opens the board.",
+        "That's a clean improvement.",
+        "We'll call that progress."
+      ],
+      "negative": [
+        "Not good enough.",
+        "That increases risk across the lane.",
+        "We're losing margin."
+      ],
+      "neutral": [
+        "Fast decisions age badly if they're wrong.",
+        "Deterrence works best before anyone notices it.",
+        "Most people love security right up until it delays them."
+      ]
+    }
+  },
+  "Capt. Pavel Ortez": {
+    "name": "Capt. Pavel Ortez",
+    "faction": "UFP",
+    "dialogue": {
+      "acknowledgements": [
+        "Acknowledged. I'll see it arranged.",
+        "Understood. We'll coordinate the paperwork and the guns.",
+        "Received. Proceeding through proper channels, regrettably."
+      ],
+      "greetings": [
+        "Captain Ortez speaking. How urgent is urgent today?",
+        "UFP liaison channel open.",
+        "Good day. I assume this is either expensive or embarrassing."
+      ],
+      "positive": [
+        "Good. One less fire to classify.",
+        "That should keep everyone cooperative for a while.",
+        "A useful improvement."
+      ],
+      "negative": [
+        "That will complicate the civilian picture.",
+        "Unfortunate, though not surprising.",
+        "This is becoming politically untidy."
+      ],
+      "neutral": [
+        "Logistics is diplomacy with cargo attached.",
+        "Security always costs more than the estimate.",
+        "Everyone wants clarity after they've made a mess."
+      ]
+    }
+  },
+  "Capt. Serafina Holt": {
+    "name": "Capt. Serafina Holt",
+    "faction": "UFP",
+    "dialogue": {
+      "acknowledgements": [
+        "Acknowledged.",
+        "Understood. It will be done.",
+        "Confirmed. We are already in motion."
+      ],
+      "greetings": [
+        "Holt speaking.",
+        "UFP command channel active.",
+        "State your requirement."
+      ],
+      "positive": [
+        "Effective.",
+        "That will suffice.",
+        "A favorable correction."
+      ],
+      "negative": [
+        "That is a failure of discipline somewhere.",
+        "The situation has degraded.",
+        "This will require pressure."
+      ],
+      "neutral": [
+        "Patience is a weapon if used correctly.",
+        "Most positions fall long before they are breached.",
+        "Control is quieter than victory."
+      ]
+    }
+  },
+  "Capt. Hadrik Venn": {
+    "name": "Capt. Hadrik Venn",
+    "faction": "Blister",
+    "dialogue": {
+      "acknowledgements": [
+        "Heard and accepted.",
+        "Very well. We proceed under the terms before us.",
+        "Acknowledged. Let no one say I ignore a practical arrangement."
+      ],
+      "greetings": [
+        "Captain Venn receiving. Speak prettily or speak plainly.",
+        "A fine hour for business in dangerous places.",
+        "Blister channel open. Impress me."
+      ],
+      "positive": [
+        "Ah. That settles into a pleasing shape.",
+        "Good. Profit and survival remain acquainted.",
+        "A worthy turn of events."
+      ],
+      "negative": [
+        "Pity. That narrows the generous options.",
+        "How graceless. I had hoped for something cleaner.",
+        "An ugly development, though not an unusual one."
+      ],
+      "neutral": [
+        "Civilization is merely well-documented appetite.",
+        "A convoy is a statement, whether it knows it or not.",
+        "Courtesy is cheaper than missiles and often more useful."
+      ]
+    }
+  },
+  "Capt. Ysra Coil": {
+    "name": "Capt. Ysra Coil",
+    "faction": "Blister",
+    "dialogue": {
+      "acknowledgements": [
+        "Sure. We'll do it.",
+        "Got it. Sounds fun enough.",
+        "Copy. I'm in."
+      ],
+      "greetings": [
+        "Coil here. Who's nervous?",
+        "Well now, somebody finally called.",
+        "Blister traffic. Keep up."
+      ],
+      "positive": [
+        "There we are. Much better.",
+        "Nice. I was getting bored.",
+        "That's the sort of outcome worth remembering."
+      ],
+      "negative": [
+        "Mm. That's gone sour.",
+        "Bad turn. Someone got clever at the wrong moment.",
+        "That ruins the mood."
+      ],
+      "neutral": [
+        "Everyone loves rules when the guns are pointed elsewhere.",
+        "Fear travels faster than cargo.",
+        "Half of power is arriving before the explanation does."
+      ]
+    }
+  },
+  "Capt. Oren Kest": {
+    "name": "Capt. Oren Kest",
+    "faction": "Blister",
+    "dialogue": {
+      "acknowledgements": [
+        "It is heard.",
+        "Understood. The matter proceeds.",
+        "Acknowledged. Terms remain in force."
+      ],
+      "greetings": [
+        "Captain Kest speaks.",
+        "The channel is open. State your purpose.",
+        "You have my attention for the moment."
+      ],
+      "positive": [
+        "Good. Balance is maintained.",
+        "That outcome is acceptable.",
+        "The matter stands in better order."
+      ],
+      "negative": [
+        "This bends poorly.",
+        "That is a dishonorable complication.",
+        "The shape of this turns against us."
+      ],
+      "neutral": [
+        "An agreement is strongest where temptation is weakest.",
+        "Hunger makes short work of ideology.",
+        "A guarded road is still a road."
+      ]
+    }
+  },
+  "Capt. Mel Tavar": {
+    "name": "Capt. Mel Tavar",
+    "faction": "Blister",
+    "dialogue": {
+      "acknowledgements": [
+        "Oh, absolutely.",
+        "Copy that. I can work with that.",
+        "Received. Let's call it a plan."
+      ],
+      "greetings": [
+        "Tavar here. You sound like money.",
+        "Hello, friends, creditors, and future witnesses.",
+        "Open channel. What are we pretending this is?"
+      ],
+      "positive": [
+        "Lovely. That keeps me solvent.",
+        "Now that's a healthy development.",
+        "Good news. I was running low on those."
+      ],
+      "negative": [
+        "Ah. That's bad for business.",
+        "Unpleasant. Potentially fatal, which is even less convenient.",
+        "Well, that tears it."
+      ],
+      "neutral": [
+        "Legitimacy is mostly a matter of receipts.",
+        "If everyone's angry, the price was probably fair.",
+        "The smart route is the one that still exists tomorrow."
+      ]
+    }
+  },
+  "Port Marshal Celia Wren": {
+    "name": "Port Marshal Celia Wren",
+    "faction": "civilian",
+    "dialogue": {
+      "acknowledgements": [
+        "Acknowledged. Updating berth assignments.",
+        "Received. I'll fit it where I can.",
+        "Copy. Try not to make me regret it."
+      ],
+      "greetings": [
+        "Port Marshal Wren speaking. Be concise.",
+        "Dock control online. Queue is full and my patience is not.",
+        "Yes. What now?"
+      ],
+      "positive": [
+        "Good. That frees space and lowers my blood pressure.",
+        "That's one problem off my docks.",
+        "Much better. I might even catch up."
+      ],
+      "negative": [
+        "No. That's a mess.",
+        "Wonderful. Another docking headache.",
+        "That is not improving my day."
+      ],
+      "neutral": [
+        "Every captain thinks their cargo is sacred.",
+        "A station survives on sequence, not heroics.",
+        "Nothing is truly lost until paperwork fails to find it."
+      ]
+    }
+  },
+  "Dockmaster Hiram Sol": {
+    "name": "Dockmaster Hiram Sol",
+    "faction": "civilian",
+    "dialogue": {
+      "acknowledgements": [
+        "Heard you. We'll make room.",
+        "Understood. Send them in steady.",
+        "Right. We'll handle it on this end."
+      ],
+      "greetings": [
+        "Moon Alpha dockmaster here.",
+        "Sol speaking. Go on.",
+        "You're through to Moon Alpha. Say your piece."
+      ],
+      "positive": [
+        "Good. Keeps the lights on.",
+        "That'll do nicely.",
+        "Fair enough. We can work with that."
+      ],
+      "negative": [
+        "That's bad for everyone nearby.",
+        "Mm. That's going to pinch.",
+        "Not a welcome development."
+      ],
+      "neutral": [
+        "Out here, even routine has to be assembled by hand.",
+        "A dock is just a promise with clamps.",
+        "Folks complain, cargo arrives, life continues."
+      ]
+    }
+  },
+  "Traffic Officer Juno Pell": {
+    "name": "Traffic Officer Juno Pell",
+    "faction": "UFP",
+    "dialogue": {
+      "acknowledgements": [
+        "Acknowledged. Revising the manifest record now.",
+        "Received. Clearance will reflect the update.",
+        "Understood. Please do not change it again immediately."
+      ],
+      "greetings": [
+        "Traffic Officer Pell, transit control.",
+        "Customs and clearance channel active.",
+        "Control here. Please state vessel and intent."
+      ],
+      "positive": [
+        "Good. That aligns with filed expectations.",
+        "Thank you. That simplifies matters.",
+        "A satisfactory correction."
+      ],
+      "negative": [
+        "That creates a discrepancy.",
+        "This is no longer consistent with the filed record.",
+        "That is going to require review."
+      ],
+      "neutral": [
+        "Proper documentation is not oppression.",
+        "Most emergencies begin as exceptions someone thought were harmless.",
+        "Clarity is faster in the long run, despite appearances."
+      ]
+    }
+  },
+  "Inspector Dey Arcos": {
+    "name": "Inspector Dey Arcos",
+    "faction": "Arcworks",
+    "dialogue": {
+      "acknowledgements": [
+        "Noted.",
+        "Received. We will observe the matter.",
+        "Acknowledged, though not conceded."
+      ],
+      "greetings": [
+        "Inspector Arcos, Arcworks transit authority.",
+        "Arcworks inspection channel open.",
+        "You are speaking to transit enforcement. Proceed carefully."
+      ],
+      "positive": [
+        "That is at least more rational.",
+        "A preferable development.",
+        "Good. We may avoid further inconvenience."
+      ],
+      "negative": [
+        "As expected, this worsens matters.",
+        "That remains unacceptable under local claim.",
+        "An unfortunate and preventable escalation."
+      ],
+      "neutral": [
+        "Territory does not become empty because paperwork changes hands.",
+        "Extraction built this system long before politicians named it.",
+        "Compliance is often just trespass with cleaner language."
+      ]
+    }
+  },
+  "Berth Clerk Nessa Quill": {
+    "name": "Berth Clerk Nessa Quill",
+    "faction": "civilian",
+    "dialogue": {
+      "acknowledgements": [
+        "Got it. Moving the slot around now.",
+        "Copy. I'll update the board.",
+        "Received. Don't make me undo it in five minutes."
+      ],
+      "greetings": [
+        "Berth office, Quill speaking.",
+        "Hi. You're on the schedule desk.",
+        "Nessa Quill here. What's moving and what's lying?"
+      ],
+      "positive": [
+        "Nice. That clears things up.",
+        "Good outcome. People might stop shouting for a minute.",
+        "That helps. I like help."
+      ],
+      "negative": [
+        "Oh, that's annoying.",
+        "That's going to ripple all over the board.",
+        "Bad news. I was almost organized."
+      ],
+      "neutral": [
+        "Schedules are gossip with timestamps.",
+        "Every berth tells a story and most of them are excuses.",
+        "Order is mostly colored boxes and mutual suspicion."
+      ]
+    }
+  }
+}
