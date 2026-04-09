@@ -529,8 +529,8 @@ function generateContract() {
   while (to === from) to = origins[Math.floor(Math.random() * origins.length)];
 
   const scenario2Fields = state.scenario2Dialogue?.metadata?.contractFields || {};
-  const clients = Array.isArray(scenario2Fields.client) ? scenario2Fields.client : [];
-  const cargoTypes = Array.isArray(scenario2Fields.cargoType) ? scenario2Fields.cargoType : [];
+  const clients = state.currentScenario === 2 && Array.isArray(scenario2Fields.client) ? scenario2Fields.client : [];
+  const cargoTypes = state.currentScenario === 2 && Array.isArray(scenario2Fields.cargoType) ? scenario2Fields.cargoType : [];
 
   state.contracts.push({
     id: `C-${state.nextContract++}`,
@@ -1208,7 +1208,8 @@ function updateSimulation() {
           state.cash += contract.payout - (state.escort ? 60 : 0);
           state.rep = Math.min(100, state.rep + 2);
           state.risk = Math.max(8, state.risk - 1);
-          state.completedContracts += 1;
+          const countsForProgress = state.currentScenario === 1 || Boolean(contract.client);
+          if (countsForProgress) state.completedContracts += 1;
           checkScenarioCompletion();
         }
       }
