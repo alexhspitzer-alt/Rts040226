@@ -58,6 +58,8 @@ const state = {
   contracts: [],
   completedContracts: 0,
   tutorialDone: false,
+  currentScenario: 1,
+  scenario2Activated: false,
   ships: [
     { id: "hauler-1", at: "anchor_station", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "anchor_station", lastContactTick: 0 },
     { id: "hauler-2", at: "refinery", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "refinery", lastContactTick: 0 },
@@ -76,10 +78,15 @@ const state = {
   mapData: null,
   buddeData: null,
   scenarioDialogue: {},
+  scenario2Dialogue: null,
   buddeIntroduced: false,
   consoleReadyAtMs: Date.now(),
   respondingToCommand: false,
 };
+
+function isPlayerBankrupt() {
+  return state.cash <= -600 || state.rep <= 0;
+}
 
 const ui = {
   clock: document.getElementById("clock"),
@@ -131,9 +138,7 @@ function estimateRouteCost(fromNode, toNode, layer0) {
   return Math.max(2, arcCost + orbitDelta * 2 + approachVariance);
 }
 
-function buildCanonicalTutorialMap(mapData) {
-  const scenario = mapData?.layer1?.tutorialScenario;
-  const layer0 = mapData?.layer0;
+function buildCanonicalScenarioMap(scenario, layer0) {
   if (!scenario || !layer0) return false;
 
   const builtNodes = {};
@@ -166,6 +171,31 @@ function buildCanonicalTutorialMap(mapData) {
   edges = builtEdges;
   adjacency = buildGraph();
   return true;
+}
+
+function buildCanonicalTutorialMap(mapData) {
+  return buildCanonicalScenarioMap(mapData?.layer1?.tutorialScenario, mapData?.layer0);
+}
+
+function buildScenario2Map(mapData) {
+  return buildCanonicalScenarioMap(mapData?.layer2?.scenario2, mapData?.layer0);
+}
+
+function commandNodeId() {
+  if (nodes[PLAYER_NODE]) return PLAYER_NODE;
+  const [firstNode] = Object.keys(nodes);
+  return firstNode || PLAYER_NODE;
+}
+
+function syncShipLocationsToActiveMap() {
+  const fallbackNode = commandNodeId();
+  state.ships.forEach((ship) => {
+    if (!nodes[ship.at]) ship.at = fallbackNode;
+    if (!nodes[ship.lastKnownAt]) ship.lastKnownAt = ship.at;
+    if (ship.destination && !nodes[ship.destination] && ship.status === "idle") {
+      ship.destination = undefined;
+    }
+  });
 }
 
 function nodeLabel(nodeId) {
@@ -407,6 +437,7 @@ async function loadReferenceData() {
       state.mapData = await mapResponse.json();
       const loaded = buildCanonicalTutorialMap(state.mapData);
       if (!loaded) logLine("Map load warning: tutorial layer unavailable. Using fallback graph.", "error");
+      syncShipLocationsToActiveMap();
     }
 
     if (buddeResponse.ok) {
@@ -429,6 +460,7 @@ async function loadReferenceData() {
         tutorial_complete: basilScenario.tutorial_complete?.text || null,
         budde_intro: scenario?.budde_scenario_dialogue?.intro?.text || null,
       };
+      state.scenario2Dialogue = scenario?.scenario2_dialogue || null;
     }
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
@@ -444,6 +476,14 @@ function playScenarioIntro() {
 
   if (!introLines.length) return;
   introLines.forEach((line) => logLine(`${BASIL_NAME} ${speakerContext(BASIL_NAME)}: ${line}`, "basil"));
+}
+
+function playScenario2Intro() {
+  const introLines = state.scenario2Dialogue?.introSequence || [];
+  introLines
+    .map((entry) => entry?.text)
+    .filter(Boolean)
+    .forEach((line) => logLine(`${BUDDE_NAME} ${speakerContext(BUDDE_NAME)}: ${line}`, "budde"));
 }
 
 function pickScenarioArrayLine(key) {
@@ -477,7 +517,7 @@ function scheduleMessage(delay, textOrFactory, type = "report") {
 }
 
 function oneWaySignalToNode(nodeId) {
-  return Math.max(1, routeDistance(PLAYER_NODE, nodeId));
+  return Math.max(1, routeDistance(commandNodeId(), nodeId));
 }
 
 function oneWaySignalToShip(ship) {
@@ -512,12 +552,18 @@ function generateContract() {
   let to = from;
   while (to === from) to = origins[Math.floor(Math.random() * origins.length)];
 
+  const scenario2Fields = state.scenario2Dialogue?.metadata?.contractFields || {};
+  const clients = state.currentScenario === 2 && Array.isArray(scenario2Fields.client) ? scenario2Fields.client : [];
+  const cargoTypes = state.currentScenario === 2 && Array.isArray(scenario2Fields.cargoType) ? scenario2Fields.cargoType : [];
+
   state.contracts.push({
     id: `C-${state.nextContract++}`,
     from,
     to,
     payout: 300 + Math.floor(Math.random() * 160),
     status: "open",
+    client: clients.length ? clients[Math.floor(Math.random() * clients.length)] : null,
+    cargoType: cargoTypes.length ? cargoTypes[Math.floor(Math.random() * cargoTypes.length)] : null,
   });
 }
 
@@ -631,7 +677,10 @@ function render() {
   openContracts().slice(0, 7).forEach((c, idx) => {
     const li = document.createElement("li");
     const displayNumber = contractNumber(c.id) || (idx + 1);
-    li.textContent = `${displayNumber}. ${c.id} ${nodeLabel(c.from)} → ${nodeLabel(c.to)} | +$${c.payout}`;
+    const scenario2Flavor = state.currentScenario === 2 && c.client && c.cargoType
+      ? ` | ${c.client} | ${c.cargoType}`
+      : "";
+    li.textContent = `${displayNumber}. ${c.id} ${nodeLabel(c.from)} → ${nodeLabel(c.to)}${scenario2Flavor} | +$${c.payout}`;
     ui.contracts.appendChild(li);
   });
   if (!ui.contracts.children.length) {
@@ -667,9 +716,53 @@ function showContractsForSelectedShip() {
   adviseContractOptions(state.selection.selectedShipId);
   contracts.forEach((c, idx) => {
     const displayNumber = contractNumber(c.id) || (idx + 1);
-    logLine(`${displayNumber}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)} (+$${c.payout})`, "sys");
+    const scenario2Flavor = state.currentScenario === 2 && c.client && c.cargoType
+      ? ` | ${c.client} | ${c.cargoType}`
+      : "";
+    logLine(`${displayNumber}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)}${scenario2Flavor} (+$${c.payout})`, "sys");
   });
   logLine("Pick number or contract ID.", "sys");
+}
+
+function checkScenarioCompletion() {
+  if (state.completedContracts < TUTORIAL_GOAL) return;
+  if (isPlayerBankrupt()) return;
+
+  if (state.currentScenario === 1 && !state.tutorialDone) {
+    state.tutorialDone = true;
+    logLine("Scenario 1 complete: 3 contracts delivered.", "sys");
+    basilInform(
+      state.scenarioDialogue?.tutorial_complete || "Tutorial objectives complete. Dispatch confidence adjusted upward.",
+      "basil"
+    );
+    if (!state.scenario2Activated) {
+      state.scenario2Activated = true;
+      state.currentScenario = 2;
+      state.completedContracts = 0;
+      const switchedToScenario2Map = buildScenario2Map(state.mapData);
+      if (!switchedToScenario2Map) {
+        logLine("Scenario 2 map warning: layer2 scenario data unavailable. Continuing with current routing layer.", "error");
+      } else {
+        syncShipLocationsToActiveMap();
+      }
+      state.contracts = state.contracts.filter((contract) => contract.status !== "open");
+      while (openContracts().length < 4) generateContract();
+      logLine("Scenario 2 unlocked: Fuel, Gravity, and Actual Consequences.", "sys");
+      playScenario2Intro();
+    }
+    return;
+  }
+
+  if (state.currentScenario === 2) {
+    const completionText = state.scenario2Dialogue?.completion?.text;
+    if (!state.scenario2Dialogue?.oneTimeFlags?.tutorial_complete_scenario2) {
+      logLine("Scenario 2 complete: 3 contracts delivered without bankruptcy.", "sys");
+      if (completionText) buddeInform(completionText, "budde");
+      if (state.scenario2Dialogue?.oneTimeFlags) {
+        state.scenario2Dialogue.oneTimeFlags.tutorial_complete_scenario2 = true;
+      }
+    }
+  }
 }
 
 function showDestinationsForSelectedShip() {
@@ -824,6 +917,7 @@ function assignContract(contractId, shipId) {
   ship.busyUntil = ship.departAt + total;
   ship.destination = contract.to;
   contract.status = "assigned";
+  ship.activeContractId = contract.id;
 
   logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s.`, "dispatch");
   const returnSignal = oneWaySignalToNode(contract.to);
@@ -848,19 +942,6 @@ function assignContract(contractId, shipId) {
     queueCharacterMessage(uplink + total + oneWaySignalToNode(contract.to), captain, "positive", "Delivery complete.");
   }
 
-  state.cash += contract.payout - (state.escort ? 60 : 0);
-  state.rep = Math.min(100, state.rep + 2);
-  state.risk = Math.max(8, state.risk - 1);
-  state.completedContracts += 1;
-
-  if (!state.tutorialDone && state.completedContracts >= TUTORIAL_GOAL) {
-    state.tutorialDone = true;
-    logLine("Tutorial complete: 3 contracts delivered.", "sys");
-    basilInform(
-      state.scenarioDialogue?.tutorial_complete || "Tutorial objectives complete. Dispatch confidence adjusted upward.",
-      "basil"
-    );
-  }
   maybeIntroduceBudde();
   return true;
 }
@@ -942,7 +1023,7 @@ function handleLongForm(parts) {
   }
 
   if (command === "status") {
-    logLine(`Cash $${state.cash} | Rep ${state.rep} | Risk ${state.risk} | Tutorial ${state.completedContracts}/${TUTORIAL_GOAL}`, "sys");
+    logLine(`Cash $${state.cash} | Rep ${state.rep} | Risk ${state.risk} | Scenario ${state.currentScenario}: ${state.completedContracts}/${TUTORIAL_GOAL}`, "sys");
     basilSpeak("neutral", "Status mirrors manageable instability.", "basil");
     return true;
   }
@@ -1150,8 +1231,21 @@ function updateSimulation() {
       ship.status = "enroute";
     }
     if (ship.status === "enroute" && state.tick >= ship.busyUntil) {
+      if (ship.activeContractId) {
+        const contract = state.contracts.find((c) => c.id === ship.activeContractId);
+        if (contract && contract.status === "assigned") {
+          contract.status = "completed";
+          state.cash += contract.payout - (state.escort ? 60 : 0);
+          state.rep = Math.min(100, state.rep + 2);
+          state.risk = Math.max(8, state.risk - 1);
+          const countsForProgress = state.currentScenario === 1 || Boolean(contract.client);
+          if (countsForProgress) state.completedContracts += 1;
+          checkScenarioCompletion();
+        }
+      }
       ship.at = ship.destination;
       ship.destination = undefined;
+      ship.activeContractId = undefined;
       ship.status = "idle";
       ship.departAt = 0;
       ship.lastKnownAt = ship.at;
@@ -1187,7 +1281,7 @@ function updateSimulation() {
     }
   }
 
-  if (state.cash <= -600 || state.rep <= 0) {
+  if (isPlayerBankrupt()) {
     logLine("bluFreight insolvency event. Simulation halted.", "alert");
     state.running = false;
   }

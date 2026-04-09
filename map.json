@@ -141,5 +141,53 @@
         }
       }
     }
+  },
+  "layer2": {
+    "description": "Scenario-scale destination layer for scenario 2 routing. Each sublocation belongs to a parent moon and has an approach value from 1 to 10. Approach represents local routing variance relative to the moon rather than literal geometry.",
+    "approachScale": {
+      "1-3": "tight and stable local approach; functionally near the parent moon",
+      "4-6": "moderate local variation; destination may differ meaningfully from the moon-level route",
+      "7-8": "wide and route-sensitive local approach",
+      "9-10": "high local variance; destination may behave unpredictably relative to its parent moon"
+    },
+    "scenario2": {
+      "activeMoons": {
+        "end_of_day": {
+          "name": "End-of-Day",
+          "locations": {
+            "ufp_science_station": {
+              "name": "UFP Science Station",
+              "approach": 9
+            }
+          }
+        },
+        "onion_skin": {
+          "name": "Onion Skin",
+          "locations": {
+            "arcworks_operations_hub": {
+              "name": "Arcworks Operations Hub",
+              "approach": 2
+            },
+            "arcworks_militia_barracks": {
+              "name": "Arcworks Militia Barracks",
+              "approach": 5
+            }
+          }
+        },
+        "patch": {
+          "name": "Patch",
+          "locations": {
+            "low_orbit_transfer_lane": {
+              "name": "Low Orbit Transfer Lane",
+              "approach": 2
+            },
+            "ufp_outpost_bravo": {
+              "name": "UFP Outpost Bravo",
+              "approach": 5
+            }
+          }
+        }
+      }
+    }
   }
 }
