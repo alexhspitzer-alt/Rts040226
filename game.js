@@ -234,67 +234,113 @@ function buddeInform(text, type = "budde") {
   logLine(`${BUDDE_NAME} ${context}: ${text}`, type);
 }
 
-function adviseContractOptions(shipId) {
-  const ship = state.ships.find((s) => s.id === shipId);
-  const contracts = openContracts();
-  if (!ship || contracts.length < 1) return;
+const NavigationModel = {
+  routeDistance(from, to, visited = new Set()) {
+    if (from === to) return 0;
+    visited.add(from);
+    const choices = (adjacency[from] || [])
+      .filter((n) => !visited.has(n.to))
+      .map((n) => {
+        const sub = this.routeDistance(n.to, to, new Set(visited));
+        return Number.isFinite(sub) ? n.cost + sub : Infinity;
+      });
+    return choices.length ? Math.min(...choices) : Infinity;
+  },
+  safeRouteDistance(from, to) {
+    const distance = this.routeDistance(from, to);
+    if (Number.isFinite(distance)) return Math.max(1, distance);
+    return Math.max(1, Object.keys(nodes).length * 3);
+  },
+  shipSpeed(shipId) {
+    return Math.max(1, SHIP_SPEED_BY_ID[shipId] || 1);
+  },
+  travelTimeForLegs(shipId, legCount = 1) {
+    const speed = this.shipSpeed(shipId);
+    const perLeg = Math.max(1, Math.round(12 / speed));
+    return perLeg * Math.max(1, legCount);
+  },
+  orbitBandValue(moonId) {
+    const moon = state.mapData?.layer0?.moons?.[moonId];
+    if (!moon) return 1;
+    return state.mapData?.layer0?.orbits?.[moon.orbit] || 1;
+  },
+  fuelCostForRoute(fromNodeId, toNodeId) {
+    const fromNode = nodes[fromNodeId];
+    const toNode = nodes[toNodeId];
+    if (!fromNode || !toNode) return 0;
+    const distance = this.safeRouteDistance(fromNodeId, toNodeId);
+    const fromBand = this.orbitBandValue(fromNode.moon);
+    const toBand = this.orbitBandValue(toNode.moon);
+    const bandDelta = toBand - fromBand;
+    const gravityMultiplier = bandDelta > 0 ? 2 : bandDelta < 0 ? 0.35 : 1;
+    return Math.max(10, Math.round(distance * 12 * gravityMultiplier));
+  },
+  fuelBillingActive() {
+    return state.currentScenario >= 2;
+  },
+  oneWaySignalToNode(nodeId) {
+    return this.safeRouteDistance(commandNodeId(), nodeId);
+  },
+  oneWaySignalToShip(ship) {
+    return this.oneWaySignalToNode(ship.lastKnownAt || ship.at);
+  },
+};
 
-  const scored = contracts.map((c) => {
-    const fuel = fuelCostForRoute(ship.at, c.from) + fuelCostForRoute(c.from, c.to);
-    return { contract: c, fuel };
-  }).sort((a, b) => a.fuel - b.fuel);
+const BuddeAdvisor = {
+  adviseContractOptions(shipId) {
+    const ship = state.ships.find((s) => s.id === shipId);
+    const contracts = openContracts();
+    if (!ship || contracts.length < 1) return;
 
-  const best = scored[0];
-  const alt = scored[1];
-  const bestLabel = `${best.contract.id} (${nodeLabel(best.contract.from)} → ${nodeLabel(best.contract.to)})`;
-  const preview = scored
-    .slice(0, 3)
-    .map((entry) => `${entry.contract.id}: ${entry.fuel} fuel`)
-    .join(" | ");
-  if (preview) buddeInform(`Contract fuel estimates: ${preview}.`);
-  if (alt) {
-    const savingsFuel = Math.max(1, alt.fuel - best.fuel);
-    const savings = Math.max(1, Math.round(((alt.fuel - best.fuel) / alt.fuel) * 100));
-    buddeInform(`Contract routing options available. My recommendation is ${bestLabel}. Estimated fuel reduction: ${savingsFuel} (${savings}%) versus your next best contract choice.`);
-  } else {
-    buddeInform(`Only one contract route available: ${bestLabel}.`);
-  }
+    const scored = contracts.map((c) => ({
+      contract: c,
+      fuel: NavigationModel.fuelCostForRoute(ship.at, c.from) + NavigationModel.fuelCostForRoute(c.from, c.to),
+    })).sort((a, b) => a.fuel - b.fuel);
 
-  const destinationApproach = nodes[best.contract.to]?.approach || 0;
-  if (destinationApproach >= 7) {
-    buddeSpeak("highVarianceApproach", "Destination approach variance is high. Treat ETA as an estimate, not a promise.");
-  }
-}
+    const best = scored[0];
+    const alt = scored[1];
+    const bestLabel = `${best.contract.id} (${nodeLabel(best.contract.from)} → ${nodeLabel(best.contract.to)})`;
+    const preview = scored.slice(0, 3).map((entry) => `${entry.contract.id}: ${entry.fuel} fuel`).join(" | ");
+    if (preview) buddeInform(`Contract fuel estimates: ${preview}.`);
+    if (alt) {
+      const savingsFuel = Math.max(1, alt.fuel - best.fuel);
+      const savings = Math.max(1, Math.round(((alt.fuel - best.fuel) / alt.fuel) * 100));
+      buddeInform(`Contract routing options available. My recommendation is ${bestLabel}. Estimated fuel reduction: ${savingsFuel} (${savings}%) versus your next best contract choice.`);
+    } else {
+      buddeInform(`Only one contract route available: ${bestLabel}.`);
+    }
 
-function adviseDestinationOptions(shipId) {
-  const ship = state.ships.find((s) => s.id === shipId);
-  if (!ship) return;
+    const destinationApproach = nodes[best.contract.to]?.approach || 0;
+    if (destinationApproach >= 7) {
+      buddeSpeak("highVarianceApproach", "Destination approach variance is high. Treat ETA as an estimate, not a promise.");
+    }
+  },
+  adviseDestinationOptions(shipId) {
+    const ship = state.ships.find((s) => s.id === shipId);
+    if (!ship) return;
+    const choices = Object.keys(nodes)
+      .filter((nodeId) => nodeId !== ship.at)
+      .map((nodeId) => ({ nodeId, fuel: NavigationModel.fuelCostForRoute(ship.at, nodeId) }))
+      .sort((a, b) => a.fuel - b.fuel);
+    if (!choices.length) return;
 
-  const choices = Object.keys(nodes)
-    .filter((nodeId) => nodeId !== ship.at)
-    .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId) }))
-    .sort((a, b) => a.fuel - b.fuel);
+    const best = choices[0];
+    const alt = choices[1];
+    const preview = choices.slice(0, 3).map((entry) => `${nodeLabel(entry.nodeId)}: ${entry.fuel} fuel`).join(" | ");
+    if (preview) buddeInform(`Destination fuel estimates: ${preview}.`);
+    if (alt) {
+      const savingsFuel = Math.max(1, alt.fuel - best.fuel);
+      const savings = Math.max(1, Math.round(((alt.fuel - best.fuel) / alt.fuel) * 100));
+      buddeInform(`Destination options available. My recommendation is ${nodeLabel(best.nodeId)}. Estimated fuel reduction: ${savingsFuel} (${savings}%) versus your other immediate option.`);
+    } else {
+      buddeInform(`Single reachable destination candidate: ${nodeLabel(best.nodeId)}.`);
+    }
 
-  if (!choices.length) return;
-  const best = choices[0];
-  const alt = choices[1];
-  const preview = choices
-    .slice(0, 3)
-    .map((entry) => `${nodeLabel(entry.nodeId)}: ${entry.fuel} fuel`)
-    .join(" | ");
-  if (preview) buddeInform(`Destination fuel estimates: ${preview}.`);
-  if (alt) {
-    const savingsFuel = Math.max(1, alt.fuel - best.fuel);
-    const savings = Math.max(1, Math.round(((alt.fuel - best.fuel) / alt.fuel) * 100));
-    buddeInform(`Destination options available. My recommendation is ${nodeLabel(best.nodeId)}. Estimated fuel reduction: ${savingsFuel} (${savings}%) versus your other immediate option.`);
-  } else {
-    buddeInform(`Single reachable destination candidate: ${nodeLabel(best.nodeId)}.`);
-  }
-
-  if ((nodes[best.nodeId]?.approach || 0) >= 7) {
-    buddeSpeak("highVarianceApproach", "Local approach spread is high at this destination. Expect variable final timing.");
-  }
-}
+    if ((nodes[best.nodeId]?.approach || 0) >= 7) {
+      buddeSpeak("highVarianceApproach", "Local approach spread is high at this destination. Expect variable final timing.");
+    }
+  },
+};
 
 function fmtTime(total) {
   const m = String(Math.floor(total / 60)).padStart(2, "0");
@@ -504,67 +550,19 @@ function maybeIntroduceBudde() {
   buddeInform(introText, "budde");
 }
 
-function routeDistance(from, to, visited = new Set()) {
-  if (from === to) return 0;
-  visited.add(from);
-  const choices = (adjacency[from] || [])
-    .filter((n) => !visited.has(n.to))
-    .map((n) => {
-      const sub = routeDistance(n.to, to, new Set(visited));
-      return sub === Infinity ? Infinity : n.cost + sub;
-    });
-  return choices.length ? Math.min(...choices) : Infinity;
-}
-
-function safeRouteDistance(from, to) {
-  const distance = routeDistance(from, to);
-  if (Number.isFinite(distance)) return Math.max(1, distance);
-  return Math.max(1, Object.keys(nodes).length * 3);
-}
-
-function shipSpeed(shipId) {
-  return Math.max(1, SHIP_SPEED_BY_ID[shipId] || 1);
-}
-
-function travelTimeForLegs(shipId, legCount = 1) {
-  const speed = shipSpeed(shipId);
-  const perLeg = Math.max(1, Math.round(12 / speed));
-  return perLeg * Math.max(1, legCount);
-}
-
-function orbitBandValue(moonId) {
-  const moon = state.mapData?.layer0?.moons?.[moonId];
-  if (!moon) return 1;
-  return state.mapData?.layer0?.orbits?.[moon.orbit] || 1;
-}
-
-function fuelCostForRoute(fromNodeId, toNodeId) {
-  const fromNode = nodes[fromNodeId];
-  const toNode = nodes[toNodeId];
-  if (!fromNode || !toNode) return 0;
-  const distance = safeRouteDistance(fromNodeId, toNodeId);
-  const fromBand = orbitBandValue(fromNode.moon);
-  const toBand = orbitBandValue(toNode.moon);
-  const bandDelta = toBand - fromBand;
-  const gravityMultiplier = bandDelta > 0 ? 2 : bandDelta < 0 ? 0.35 : 1;
-  return Math.max(10, Math.round(distance * 12 * gravityMultiplier));
-}
-
-function fuelBillingActive() {
-  return state.currentScenario >= 2;
-}
+const routeDistance = (...args) => NavigationModel.routeDistance(...args);
+const safeRouteDistance = (...args) => NavigationModel.safeRouteDistance(...args);
+const shipSpeed = (...args) => NavigationModel.shipSpeed(...args);
+const travelTimeForLegs = (...args) => NavigationModel.travelTimeForLegs(...args);
+const fuelCostForRoute = (...args) => NavigationModel.fuelCostForRoute(...args);
+const fuelBillingActive = () => NavigationModel.fuelBillingActive();
 
 function scheduleMessage(delay, textOrFactory, type = "report") {
   state.delayedMessages.push({ at: state.tick + delay, text: textOrFactory, type });
 }
 
-function oneWaySignalToNode(nodeId) {
-  return safeRouteDistance(commandNodeId(), nodeId);
-}
-
-function oneWaySignalToShip(ship) {
-  return oneWaySignalToNode(ship.lastKnownAt || ship.at);
-}
+const oneWaySignalToNode = (...args) => NavigationModel.oneWaySignalToNode(...args);
+const oneWaySignalToShip = (...args) => NavigationModel.oneWaySignalToShip(...args);
 
 function basilShipIntel(ship) {
   const knownNode = ship.lastKnownAt || ship.at;
@@ -755,7 +753,7 @@ function showContractsForSelectedShip() {
   const contracts = openContracts();
   if (!contracts.length) return logLine("No open contracts to assign.", "sys");
   logLine(`Assign ${state.selection.selectedShipId} to what contract?`, "sys");
-  adviseContractOptions(state.selection.selectedShipId);
+  BuddeAdvisor.adviseContractOptions(state.selection.selectedShipId);
   contracts.forEach((c, idx) => {
     const displayNumber = contractNumber(c.id) || (idx + 1);
     const scenario2Flavor = state.currentScenario === 2 && c.client && c.cargoType
@@ -809,7 +807,7 @@ function checkScenarioCompletion() {
 
 function showDestinationsForSelectedShip() {
   logLine(`Send ${state.selection.selectedShipId} to what destination?`, "sys");
-  adviseDestinationOptions(state.selection.selectedShipId);
+  BuddeAdvisor.adviseDestinationOptions(state.selection.selectedShipId);
   Object.keys(nodes).forEach((nodeId, idx) => {
     logLine(`${idx + 1}. ${nodeId} (${nodeLabel(nodeId)})`, "sys");
   });
