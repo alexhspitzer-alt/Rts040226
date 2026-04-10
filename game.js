@@ -1279,6 +1279,19 @@ function inputToName(input) {
   return candidates.find((n) => n.toLowerCase().includes(input.toLowerCase())) || null;
 }
 
+function finalizeContractDelivery(contractId) {
+  const contract = state.contracts.find((c) => c.id === contractId);
+  if (!contract || contract.status !== "delivered_pending_report") return;
+  contract.status = "completed";
+  const missionFuelCost = fuelBillingActive() && Number.isFinite(contract.fuelCost) ? contract.fuelCost : 0;
+  state.cash += contract.payout - missionFuelCost - (state.escort ? 60 : 0);
+  state.rep = Math.min(100, state.rep + 2);
+  state.risk = Math.max(8, state.risk - 1);
+  const countsForProgress = state.currentScenario === 1 || Boolean(contract.client);
+  if (countsForProgress) state.completedContracts += 1;
+  checkScenarioCompletion();
+}
+
 function updateSimulation() {
   state.ships.forEach((ship) => {
     if (ship.status === "tasked" && state.tick >= ship.departAt) {
@@ -1288,14 +1301,12 @@ function updateSimulation() {
       if (ship.activeContractId) {
         const contract = state.contracts.find((c) => c.id === ship.activeContractId);
         if (contract && contract.status === "assigned") {
-          contract.status = "completed";
-          const missionFuelCost = fuelBillingActive() && Number.isFinite(contract.fuelCost) ? contract.fuelCost : 0;
-          state.cash += contract.payout - missionFuelCost - (state.escort ? 60 : 0);
-          state.rep = Math.min(100, state.rep + 2);
-          state.risk = Math.max(8, state.risk - 1);
-          const countsForProgress = state.currentScenario === 1 || Boolean(contract.client);
-          if (countsForProgress) state.completedContracts += 1;
-          checkScenarioCompletion();
+          contract.status = "delivered_pending_report";
+          const returnSignal = oneWaySignalToNode(contract.to);
+          scheduleMessage(returnSignal, () => {
+            finalizeContractDelivery(contract.id);
+            return null;
+          }, "sys");
         }
       }
       ship.at = ship.destination;
