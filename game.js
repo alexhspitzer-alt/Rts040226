@@ -32,6 +32,11 @@ const SHIP_CAPTAINS = {
   "hauler-2": "Capt. Tamsin Rook",
   "courier-1": "Capt. Laleh Mercer",
 };
+const SHIP_SPEED_BY_ID = {
+  "hauler-1": 1,
+  "hauler-2": 1,
+  "courier-1": 3,
+};
 const DEFAULT_SPEAKER_STATUS = "on-station";
 const SPEAKER_PROFILES = {
   BASIL: { location: "Dispatch Core", status: "active" },
@@ -235,8 +240,8 @@ function adviseContractOptions(shipId) {
   if (!ship || contracts.length < 1) return;
 
   const scored = contracts.map((c) => {
-    const reposition = routeDistance(ship.at, c.from);
-    const delivery = routeDistance(c.from, c.to);
+    const reposition = safeRouteDistance(ship.at, c.from);
+    const delivery = safeRouteDistance(c.from, c.to);
     return { contract: c, total: reposition + delivery, reposition, delivery };
   }).sort((a, b) => a.total - b.total);
 
@@ -247,11 +252,11 @@ function adviseContractOptions(shipId) {
     .slice(0, 3)
     .map((entry) => `${entry.contract.id}: ${entry.total}s`)
     .join(" | ");
-  if (preview) buddeInform(`Contract travel-time estimates: ${preview}.`);
+  if (preview) buddeInform(`Contract route-span estimates: ${preview}.`);
   if (alt) {
     const savingsSeconds = Math.max(1, alt.total - best.total);
     const savings = Math.max(1, Math.round(((alt.total - best.total) / alt.total) * 100));
-    buddeInform(`Contract routing options available. My recommendation is ${bestLabel}. Estimated savings: ${savingsSeconds}s (${savings}%) versus your next best contract choice.`);
+    buddeInform(`Contract routing options available. My recommendation is ${bestLabel}. Estimated span reduction: ${savingsSeconds} (${savings}%) versus your next best contract choice.`);
   } else {
     buddeInform(`Only one contract route available: ${bestLabel}.`);
   }
@@ -268,7 +273,7 @@ function adviseDestinationOptions(shipId) {
 
   const choices = Object.keys(nodes)
     .filter((nodeId) => nodeId !== ship.at)
-    .map((nodeId) => ({ nodeId, distance: routeDistance(ship.at, nodeId) }))
+    .map((nodeId) => ({ nodeId, distance: safeRouteDistance(ship.at, nodeId) }))
     .sort((a, b) => a.distance - b.distance);
 
   if (!choices.length) return;
@@ -278,11 +283,11 @@ function adviseDestinationOptions(shipId) {
     .slice(0, 3)
     .map((entry) => `${nodeLabel(entry.nodeId)}: ${entry.distance}s`)
     .join(" | ");
-  if (preview) buddeInform(`Destination travel-time estimates: ${preview}.`);
+  if (preview) buddeInform(`Destination route-span estimates: ${preview}.`);
   if (alt) {
     const savingsSeconds = Math.max(1, alt.distance - best.distance);
     const savings = Math.max(1, Math.round(((alt.distance - best.distance) / alt.distance) * 100));
-    buddeInform(`Destination options available. My recommendation is ${nodeLabel(best.nodeId)}. Estimated savings: ${savingsSeconds}s (${savings}%) versus your other immediate option.`);
+    buddeInform(`Destination options available. My recommendation is ${nodeLabel(best.nodeId)}. Estimated span reduction: ${savingsSeconds} (${savings}%) versus your other immediate option.`);
   } else {
     buddeInform(`Single reachable destination candidate: ${nodeLabel(best.nodeId)}.`);
   }
@@ -512,12 +517,46 @@ function routeDistance(from, to, visited = new Set()) {
   return choices.length ? Math.min(...choices) : Infinity;
 }
 
+function safeRouteDistance(from, to) {
+  const distance = routeDistance(from, to);
+  if (Number.isFinite(distance)) return Math.max(1, distance);
+  return Math.max(1, Object.keys(nodes).length * 3);
+}
+
+function shipSpeed(shipId) {
+  return Math.max(1, SHIP_SPEED_BY_ID[shipId] || 1);
+}
+
+function travelTimeForLegs(shipId, legCount = 1) {
+  const speed = shipSpeed(shipId);
+  const perLeg = Math.max(1, Math.round(12 / speed));
+  return perLeg * Math.max(1, legCount);
+}
+
+function orbitBandValue(moonId) {
+  const moon = state.mapData?.layer0?.moons?.[moonId];
+  if (!moon) return 1;
+  return state.mapData?.layer0?.orbits?.[moon.orbit] || 1;
+}
+
+function fuelCostForRoute(fromNodeId, toNodeId) {
+  const fromNode = nodes[fromNodeId];
+  const toNode = nodes[toNodeId];
+  if (!fromNode || !toNode) return 0;
+  const distance = safeRouteDistance(fromNodeId, toNodeId);
+  const fromBand = orbitBandValue(fromNode.moon);
+  const toBand = orbitBandValue(toNode.moon);
+  const bandDelta = toBand - fromBand;
+  const gravityMultiplier = bandDelta > 0 ? 2 : bandDelta < 0 ? 0.35 : 1;
+  return Math.max(5, Math.round(distance * 6 * gravityMultiplier));
+}
+
 function scheduleMessage(delay, textOrFactory, type = "report") {
   state.delayedMessages.push({ at: state.tick + delay, text: textOrFactory, type });
 }
 
 function oneWaySignalToNode(nodeId) {
-  return Math.max(1, routeDistance(commandNodeId(), nodeId));
+  return safeRouteDistance(commandNodeId(), nodeId);
 }
 
 function oneWaySignalToShip(ship) {
@@ -836,14 +875,19 @@ function sendShip(shipId, destination) {
   if (ship.status !== "idle") return logLine(`${ship.id} is busy.`, "error");
 
   const uplink = oneWaySignalToShip(ship);
-  const distance = routeDistance(ship.at, normalizedDestination);
-  const allChoices = Object.keys(nodes).filter((n) => n !== ship.at).map((nodeId) => ({ nodeId, distance: routeDistance(ship.at, nodeId) })).sort((a, b) => a.distance - b.distance);
+  const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
+  const transitTime = travelTimeForLegs(ship.id, 1);
+  const fuelCost = fuelCostForRoute(ship.at, normalizedDestination);
+  const allChoices = Object.keys(nodes)
+    .filter((n) => n !== ship.at)
+    .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId) }))
+    .sort((a, b) => a.fuel - b.fuel);
   if (allChoices[0]) {
     const recommended = allChoices[0];
-    const savingsVsRecommendation = recommended.distance - distance;
+    const savingsVsRecommendation = recommended.fuel - fuelCost;
     if (normalizedDestination !== recommended.nodeId) {
-      buddeSpeak("objections", "Selected destination is not the shortest viable route.");
-      buddeInform(`My recommended maneuver would have decreased flight time by ${Math.abs(savingsVsRecommendation)} seconds. But I have relayed your coordinates as ordered.`);
+      buddeSpeak("objections", "Selected destination is not the most fuel-efficient route.");
+      buddeInform(`My recommended maneuver would have reduced fuel burn by ${Math.abs(savingsVsRecommendation)} units. Coordinates relayed as ordered.`);
     } else {
       buddeSpeak("wiseChoice", "Wise and efficient choice. Your selection matches my recommendation.");
     }
@@ -851,14 +895,14 @@ function sendShip(shipId, destination) {
   basilCommsLatencyLine(ship, "orders");
   ship.status = "tasked";
   ship.departAt = state.tick + uplink;
-  ship.busyUntil = ship.departAt + distance;
+  ship.busyUntil = ship.departAt + transitTime;
   ship.destination = normalizedDestination;
   ship.lastContactTick = state.tick;
 
   const effectiveRisk = state.risk + (state.escort ? -10 : 8);
   if (Math.random() * 100 < effectiveRisk * 0.3) {
     scheduleMessage(
-      uplink + distance + oneWaySignalToNode(normalizedDestination),
+      uplink + transitTime + oneWaySignalToNode(normalizedDestination),
       `${ship.id} detained briefly at ${nodeLabel(normalizedDestination)}. Cargo released after inspection.`,
       "alert"
     );
@@ -866,7 +910,7 @@ function sendShip(shipId, destination) {
     state.rep -= 1;
     const arcworksInspector = "Inspector Dey Arcos";
     scheduleMessage(
-      uplink + Math.max(1, distance - 1) + oneWaySignalToNode(normalizedDestination),
+      uplink + Math.max(1, transitTime - 1) + oneWaySignalToNode(normalizedDestination),
       `${arcworksInspector} ${speakerContext(arcworksInspector, "interdicting")}: ${
         pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."
       }`,
@@ -874,18 +918,19 @@ function sendShip(shipId, destination) {
     );
     basilSpeak("negative", `Order logged. ${ship.id} risk profile elevated.`, "basil");
   } else {
-    scheduleTransitComms(ship, normalizedDestination, distance, uplink);
+    scheduleTransitComms(ship, normalizedDestination, transitTime, uplink);
     state.rep = Math.min(100, state.rep + 1);
+    state.cash -= fuelCost;
     const captain = SHIP_CAPTAINS[ship.id];
     if (captain) {
       queueCharacterMessage(uplink * 2, captain, "acknowledgements", "Order received and executing.", "comms");
     }
   }
 
-  logLine(`Transmission sent: ${ship.id} -> ${destination}. Uplink ${uplink}s, transit ${distance}s.`, "dispatch");
+  logLine(`Transmission sent: ${ship.id} -> ${destination}. Uplink ${uplink}s, transit ${transitTime}s, route span ${routeSpan}, fuel ${fuelCost}.`, "dispatch");
   const reportLag = oneWaySignalToNode(normalizedDestination);
   basilInform(
-    `Timing estimate: uplink ${uplink}s + transit ${distance}s + return signal ${reportLag}s = ${uplink + distance + reportLag}s until arrival is confirmed here.`
+    `Timing estimate: uplink ${uplink}s + transit ${transitTime}s + return signal ${reportLag}s = ${uplink + transitTime + reportLag}s until arrival is confirmed here.`
   );
   maybeIntroduceBudde();
   return true;
@@ -900,14 +945,19 @@ function assignContract(contractId, shipId) {
   if (!ship) return logLine(`Unknown ship: ${shipId}.`, "error");
   const uplink = oneWaySignalToShip(ship);
   basilCommsLatencyLine(ship, "orders");
-  const toPickup = routeDistance(ship.at, contract.from);
-  const toDrop = routeDistance(contract.from, contract.to);
-  const total = toPickup + toDrop;
-  const contractOptions = openContracts().map((c) => ({ id: c.id, total: routeDistance(ship.at, c.from) + routeDistance(c.from, c.to) })).sort((a, b) => a.total - b.total);
+  const toPickupSpan = safeRouteDistance(ship.at, contract.from);
+  const toDropSpan = safeRouteDistance(contract.from, contract.to);
+  const legCount = (ship.at === contract.from ? 0 : 1) + 1;
+  const total = travelTimeForLegs(ship.id, legCount);
+  const fuelCost = fuelCostForRoute(ship.at, contract.from) + fuelCostForRoute(contract.from, contract.to);
+  const contractOptions = openContracts().map((c) => ({
+    id: c.id,
+    fuel: fuelCostForRoute(ship.at, c.from) + fuelCostForRoute(c.from, c.to),
+  })).sort((a, b) => a.fuel - b.fuel);
   const bestContract = contractOptions[0];
   if (bestContract && bestContract.id !== contract.id) {
     buddeSpeak("objections", "Current assignment is not top efficiency.");
-    buddeInform(`My recommendation would have reduced mission time by ${total - bestContract.total} seconds. Your selection has been relayed as ordered.`);
+    buddeInform(`My recommendation would have reduced fuel burn by ${Math.max(1, fuelCost - bestContract.fuel)} units. Your selection has been relayed as ordered.`);
   } else {
     buddeSpeak("wiseChoice", `Wise and efficient choice. Your selection aligns with my recommendation for ${contract.id}.`);
   }
@@ -918,11 +968,12 @@ function assignContract(contractId, shipId) {
   ship.destination = contract.to;
   contract.status = "assigned";
   ship.activeContractId = contract.id;
+  contract.fuelCost = fuelCost;
 
   logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s.`, "dispatch");
   const returnSignal = oneWaySignalToNode(contract.to);
   basilInform(
-    `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, reposition ${toPickup}s to pickup, contract leg ${toDrop}s, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
+    `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, transit ${total}s (speed ${shipSpeed(ship.id)}), route span ${toPickupSpan + toDropSpan}, fuel ${fuelCost}, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
   );
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
@@ -1235,7 +1286,8 @@ function updateSimulation() {
         const contract = state.contracts.find((c) => c.id === ship.activeContractId);
         if (contract && contract.status === "assigned") {
           contract.status = "completed";
-          state.cash += contract.payout - (state.escort ? 60 : 0);
+          const missionFuelCost = Number.isFinite(contract.fuelCost) ? contract.fuelCost : 0;
+          state.cash += contract.payout - missionFuelCost - (state.escort ? 60 : 0);
           state.rep = Math.min(100, state.rep + 2);
           state.risk = Math.max(8, state.risk - 1);
           const countsForProgress = state.currentScenario === 1 || Boolean(contract.client);
