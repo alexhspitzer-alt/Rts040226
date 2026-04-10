@@ -240,23 +240,22 @@ function adviseContractOptions(shipId) {
   if (!ship || contracts.length < 1) return;
 
   const scored = contracts.map((c) => {
-    const reposition = safeRouteDistance(ship.at, c.from);
-    const delivery = safeRouteDistance(c.from, c.to);
-    return { contract: c, total: reposition + delivery, reposition, delivery };
-  }).sort((a, b) => a.total - b.total);
+    const fuel = fuelCostForRoute(ship.at, c.from) + fuelCostForRoute(c.from, c.to);
+    return { contract: c, fuel };
+  }).sort((a, b) => a.fuel - b.fuel);
 
   const best = scored[0];
   const alt = scored[1];
   const bestLabel = `${best.contract.id} (${nodeLabel(best.contract.from)} → ${nodeLabel(best.contract.to)})`;
   const preview = scored
     .slice(0, 3)
-    .map((entry) => `${entry.contract.id}: ${entry.total}s`)
+    .map((entry) => `${entry.contract.id}: ${entry.fuel} fuel`)
     .join(" | ");
-  if (preview) buddeInform(`Contract route-span estimates: ${preview}.`);
+  if (preview) buddeInform(`Contract fuel estimates: ${preview}.`);
   if (alt) {
-    const savingsSeconds = Math.max(1, alt.total - best.total);
-    const savings = Math.max(1, Math.round(((alt.total - best.total) / alt.total) * 100));
-    buddeInform(`Contract routing options available. My recommendation is ${bestLabel}. Estimated span reduction: ${savingsSeconds} (${savings}%) versus your next best contract choice.`);
+    const savingsFuel = Math.max(1, alt.fuel - best.fuel);
+    const savings = Math.max(1, Math.round(((alt.fuel - best.fuel) / alt.fuel) * 100));
+    buddeInform(`Contract routing options available. My recommendation is ${bestLabel}. Estimated fuel reduction: ${savingsFuel} (${savings}%) versus your next best contract choice.`);
   } else {
     buddeInform(`Only one contract route available: ${bestLabel}.`);
   }
@@ -273,21 +272,21 @@ function adviseDestinationOptions(shipId) {
 
   const choices = Object.keys(nodes)
     .filter((nodeId) => nodeId !== ship.at)
-    .map((nodeId) => ({ nodeId, distance: safeRouteDistance(ship.at, nodeId) }))
-    .sort((a, b) => a.distance - b.distance);
+    .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId) }))
+    .sort((a, b) => a.fuel - b.fuel);
 
   if (!choices.length) return;
   const best = choices[0];
   const alt = choices[1];
   const preview = choices
     .slice(0, 3)
-    .map((entry) => `${nodeLabel(entry.nodeId)}: ${entry.distance}s`)
+    .map((entry) => `${nodeLabel(entry.nodeId)}: ${entry.fuel} fuel`)
     .join(" | ");
-  if (preview) buddeInform(`Destination route-span estimates: ${preview}.`);
+  if (preview) buddeInform(`Destination fuel estimates: ${preview}.`);
   if (alt) {
-    const savingsSeconds = Math.max(1, alt.distance - best.distance);
-    const savings = Math.max(1, Math.round(((alt.distance - best.distance) / alt.distance) * 100));
-    buddeInform(`Destination options available. My recommendation is ${nodeLabel(best.nodeId)}. Estimated span reduction: ${savingsSeconds} (${savings}%) versus your other immediate option.`);
+    const savingsFuel = Math.max(1, alt.fuel - best.fuel);
+    const savings = Math.max(1, Math.round(((alt.fuel - best.fuel) / alt.fuel) * 100));
+    buddeInform(`Destination options available. My recommendation is ${nodeLabel(best.nodeId)}. Estimated fuel reduction: ${savingsFuel} (${savings}%) versus your other immediate option.`);
   } else {
     buddeInform(`Single reachable destination candidate: ${nodeLabel(best.nodeId)}.`);
   }
