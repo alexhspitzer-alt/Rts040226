@@ -548,7 +548,11 @@ function fuelCostForRoute(fromNodeId, toNodeId) {
   const toBand = orbitBandValue(toNode.moon);
   const bandDelta = toBand - fromBand;
   const gravityMultiplier = bandDelta > 0 ? 2 : bandDelta < 0 ? 0.35 : 1;
-  return Math.max(5, Math.round(distance * 6 * gravityMultiplier));
+  return Math.max(10, Math.round(distance * 12 * gravityMultiplier));
+}
+
+function fuelBillingActive() {
+  return state.currentScenario >= 2;
 }
 
 function scheduleMessage(delay, textOrFactory, type = "report") {
@@ -884,10 +888,10 @@ function sendShip(shipId, destination) {
     .sort((a, b) => a.fuel - b.fuel);
   if (allChoices[0]) {
     const recommended = allChoices[0];
-    const savingsVsRecommendation = recommended.fuel - fuelCost;
-    if (normalizedDestination !== recommended.nodeId) {
+    const savingsVsRecommendation = Math.max(0, fuelCost - recommended.fuel);
+    if (fuelCost > recommended.fuel) {
       buddeSpeak("objections", "Selected destination is not the most fuel-efficient route.");
-      buddeInform(`My recommended maneuver would have reduced fuel burn by ${Math.abs(savingsVsRecommendation)} units. Coordinates relayed as ordered.`);
+      buddeInform(`My recommended maneuver would have reduced fuel burn by ${savingsVsRecommendation} units. Coordinates relayed as ordered.`);
     } else {
       buddeSpeak("wiseChoice", "Wise and efficient choice. Your selection matches my recommendation.");
     }
@@ -920,14 +924,15 @@ function sendShip(shipId, destination) {
   } else {
     scheduleTransitComms(ship, normalizedDestination, transitTime, uplink);
     state.rep = Math.min(100, state.rep + 1);
-    state.cash -= fuelCost;
+    if (fuelBillingActive()) state.cash -= fuelCost;
     const captain = SHIP_CAPTAINS[ship.id];
     if (captain) {
       queueCharacterMessage(uplink * 2, captain, "acknowledgements", "Order received and executing.", "comms");
     }
   }
 
-  logLine(`Transmission sent: ${ship.id} -> ${destination}. Uplink ${uplink}s, transit ${transitTime}s, route span ${routeSpan}, fuel ${fuelCost}.`, "dispatch");
+  const fuelBillingText = fuelBillingActive() ? `fuel ${fuelCost}` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1)`;
+  logLine(`Transmission sent: ${ship.id} -> ${destination}. Uplink ${uplink}s, transit ${transitTime}s, route span ${routeSpan}, ${fuelBillingText}.`, "dispatch");
   const reportLag = oneWaySignalToNode(normalizedDestination);
   basilInform(
     `Timing estimate: uplink ${uplink}s + transit ${transitTime}s + return signal ${reportLag}s = ${uplink + transitTime + reportLag}s until arrival is confirmed here.`
@@ -955,7 +960,7 @@ function assignContract(contractId, shipId) {
     fuel: fuelCostForRoute(ship.at, c.from) + fuelCostForRoute(c.from, c.to),
   })).sort((a, b) => a.fuel - b.fuel);
   const bestContract = contractOptions[0];
-  if (bestContract && bestContract.id !== contract.id) {
+  if (bestContract && fuelCost > bestContract.fuel) {
     buddeSpeak("objections", "Current assignment is not top efficiency.");
     buddeInform(`My recommendation would have reduced fuel burn by ${Math.max(1, fuelCost - bestContract.fuel)} units. Your selection has been relayed as ordered.`);
   } else {
@@ -970,7 +975,8 @@ function assignContract(contractId, shipId) {
   ship.activeContractId = contract.id;
   contract.fuelCost = fuelCost;
 
-  logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s.`, "dispatch");
+  const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
+  logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
   const returnSignal = oneWaySignalToNode(contract.to);
   basilInform(
     `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, transit ${total}s (speed ${shipSpeed(ship.id)}), route span ${toPickupSpan + toDropSpan}, fuel ${fuelCost}, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
@@ -1286,7 +1292,7 @@ function updateSimulation() {
         const contract = state.contracts.find((c) => c.id === ship.activeContractId);
         if (contract && contract.status === "assigned") {
           contract.status = "completed";
-          const missionFuelCost = Number.isFinite(contract.fuelCost) ? contract.fuelCost : 0;
+          const missionFuelCost = fuelBillingActive() && Number.isFinite(contract.fuelCost) ? contract.fuelCost : 0;
           state.cash += contract.payout - missionFuelCost - (state.escort ? 60 : 0);
           state.rep = Math.min(100, state.rep + 2);
           state.risk = Math.max(8, state.risk - 1);
