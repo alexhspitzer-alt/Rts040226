@@ -79,7 +79,104 @@
     "intro": {
       "context": "Trigger once, after the first successful contract assignment or destination send order.",
       "speaker": "BUDDE",
-      "text": "Hello. I am BUDDE, the Benchmark Unified Directions Dedicated Engine. I evaluate route efficiency, transfer timing, and orbital variance in order to move ships where they are going with as little waste as possible. If there is a simpler, safer, or more pleasant option, I will explain why my recommendation is objectively superior. "
+      "text": "Hello. I am BUDDE, the Benchmark Unified Directions Dedicated Engine. I evaluate route efficiency, transfer timing, and orbital variance in order to move ships where they are going with as little waste as possible. During Scenario 1, fuel calculations are visible for navigation training but charges are waived. If there is a simpler, safer, or more pleasant option, I will explain why my recommendation is objectively superior. "
+    }
+  },
+  "scenario2_dialogue": {
+    "metadata": {
+      "scenarioId": "scenario2",
+      "title": "Fuel, Gravity, and Actual Consequences",
+      "speakerLead": "BUDDE",
+      "objective": {
+        "primary": "Complete 3 contracts",
+        "secondary": "Avoid bankruptcy"
+      },
+      "notes": [
+        "This is still a tutorial scenario.",
+        "BUDDE is the dominant instructional voice.",
+        "Contract cargo type and client are displayed for flavor and future expansion, but have no gameplay effect in this scenario."
+      ],
+      "contractFields": {
+        "client": [
+          "UFP",
+          "civilian",
+          "station municipal"
+        ],
+        "cargoType": [
+          "deuterium",
+          "munitions",
+          "medical",
+          "rations",
+          "consumer goods",
+          "agricultural",
+          "VIP"
+        ],
+        "gameplayEffect": "none_yet"
+      }
+    },
+    "oneTimeFlags": {
+      "intro_budde_welcome": false,
+      "intro_cost_cutting": false,
+      "intro_fuel_is_real": false,
+      "intro_gravity_lesson": false,
+      "intro_rule_of_thumb": false,
+      "intro_scenario_goal": false,
+      "first_speed_assignment_explainer": false,
+      "first_downward_transfer_explainer": false,
+      "first_same_band_transfer_explainer": false,
+      "first_upward_transfer_explainer": false,
+      "tutorial_complete_scenario2": false
+    },
+    "introSequence": [
+      {
+        "id": "intro_budde_welcome",
+        "context": "Play once at the start of scenario 2, before player input.",
+        "speaker": "BUDDE",
+        "playOncePerScenario": true,
+        "text": "Hello. I am BUDDE, the Benchmark Unified Directions Dedicated Engine. I optimize routes, burns, and transfer geometry across the Indigo system, and I am responsible for identifying avoidable waste in time, fuel, and motion. When multiple viable paths exist, I will identify which one performs better and by how much."
+      },
+      {
+        "id": "intro_cost_cutting",
+        "context": "Play immediately after BUDDE's welcome line.",
+        "speaker": "BUDDE",
+        "playOncePerScenario": true,
+        "text": "Due to recent and entirely foreseeable corporate cost-control measures, bluFreight vessels will no longer move at the speed of light for instructional convenience. Ships are now constrained by their actual ability to accelerate mass, as reflected in their speed ratings. This is less magical, but considerably more honest."
+      },
+      {
+        "id": "intro_fuel_is_real",
+        "context": "Play after cost-cutting explanation.",
+        "speaker": "BUDDE",
+        "playOncePerScenario": true,
+        "text": "Fuel is also no longer free. I understand some operators had become emotionally attached to that arrangement. You are now responsible not only for getting ships to their destination, but for doing so without converting your margin into exhaust."
+      },
+      {
+        "id": "intro_gravity_lesson",
+        "context": "Play after fuel explanation.",
+        "speaker": "BUDDE",
+        "playOncePerScenario": true,
+        "text": "Distance still matters, but fuel expenditure is not determined by distance alone. Indigo is large, dense, and uncooperative. Gravity strongly affects maneuver cost. A transfer that drops a ship from a higher orbit to a lower one near the planet may require only a fraction of the fuel used for lateral movement within the same orbital band. Climbing outward is worse. You must work against the planet's gravity well, which is expensive in both propellant and morale."
+      },
+      {
+        "id": "intro_rule_of_thumb",
+        "context": "Play after gravity lesson.",
+        "speaker": "BUDDE",
+        "playOncePerScenario": true,
+        "text": "As a practical rule: moving downward toward Indigo is usually cheap, moving laterally is ordinary, and climbing upward is punitive. In many cases, a downward maneuver can cost roughly one third the fuel of a same-band transfer of similar scale, while an upward climb may cost twice as much. You are encouraged to remember this before issuing orders that look elegant on a clipboard and ruinous in motion."
+      },
+      {
+        "id": "intro_scenario_goal",
+        "context": "Final scenario intro line.",
+        "speaker": "BUDDE",
+        "playOncePerScenario": true,
+        "text": "This exercise is intended to familiarize you with ship speed, fuel expenditure, and gravity-shaped routing. Your objective is to complete three contracts and avoid bankruptcy. Clients and cargo types will now be displayed for completeness. They do not yet alter outcomes, though I remain hopeful someone will eventually care what they are transporting."
+      }
+    ],
+    "completion": {
+      "id": "tutorial_complete_scenario2",
+      "context": "Play once when the player completes three contracts and is not bankrupt.",
+      "speaker": "BUDDE",
+      "playOncePerScenario": true,
+      "text": "Scenario complete. You have now demonstrated a functional understanding of ship speed, fuel expenditure, and the regrettable persistence of gravity. You may continue to resent these constraints, but bluFreight will nonetheless bill against them."
     }
   }
 }
