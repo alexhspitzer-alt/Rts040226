@@ -744,7 +744,7 @@ function showShipsList() {
     const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
     logLine(`${idx + 1}. ${s.id} (${s.status}) @ ${s.at} | ${captain}`, "sys");
   });
-  logLine("Pick ship number or: select <ship-id>", "sys");
+  logLine("Select ship by typing its number or ID.", "sys");
 }
 
 function showShipMenu(shipId) {
@@ -1460,7 +1460,7 @@ async function init() {
   state.selection.pending = "await_ship";
   basilSpeak("greetings", "Dispatch online.", "basil");
   playScenarioIntro();
-  logLine("Tutorial online. Use ships -> number. Use lore/factions/comms for world context.", "sys");
+  logLine("Tutorial online. Select ship by typing its number or ID.", "sys");
   showShipsList();
   render();
 
