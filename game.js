@@ -85,6 +85,8 @@ const state = {
   scenarioDialogue: {},
   scenario2Dialogue: null,
   buddeIntroduced: false,
+  scenario2OnionAdvisoryPlayed: false,
+  onionSkinInspectionWaived: false,
   consoleReadyAtMs: Date.now(),
   respondingToCommand: false,
 };
@@ -746,7 +748,26 @@ function showShipsList() {
 }
 
 function showShipMenu(shipId) {
+  if (state.currentScenario === 2 && !state.scenario2OnionAdvisoryPlayed) {
+    state.scenario2OnionAdvisoryPlayed = true;
+    const advisory = "Civilian advisory: Onion Skin is contested space. Traffic is advised to get docking permission before embarking.";
+    scheduleMessage(
+      1,
+      `Port Marshal Celia Wren ${speakerContext("Port Marshal Celia Wren")}: ${advisory}`,
+      "comms"
+    );
+  }
   logLine(`${shipId} selected (submenu mode). Valid inputs: A assign, S send, R report, B back to ship list.`, "sys");
+}
+
+function isOnionSkinLocation(nodeId) {
+  return state.currentScenario === 2 && nodes[nodeId]?.moon === "onion_skin";
+}
+
+function onionSkinInspectionDelay(destinations = []) {
+  if (state.currentScenario !== 2 || state.onionSkinInspectionWaived) return 0;
+  const onionStops = destinations.filter((nodeId) => isOnionSkinLocation(nodeId)).length;
+  return onionStops * 180;
 }
 
 function showContractsForSelectedShip() {
@@ -877,7 +898,8 @@ function sendShip(shipId, destination) {
 
   const uplink = oneWaySignalToShip(ship);
   const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
-  const transitTime = travelTimeForLegs(ship.id, 1);
+  const inspectionDelay = onionSkinInspectionDelay([normalizedDestination]);
+  const transitTime = travelTimeForLegs(ship.id, 1) + inspectionDelay;
   const fuelCost = fuelCostForRoute(ship.at, normalizedDestination);
   const allChoices = Object.keys(nodes)
     .filter((n) => n !== ship.at)
@@ -892,6 +914,9 @@ function sendShip(shipId, destination) {
     } else {
       buddeSpeak("wiseChoice", "Wise and efficient choice. Your selection matches my recommendation.");
     }
+  }
+  if (inspectionDelay > 0) {
+    basilInform(`Arcworks traffic control adds mandatory inspection delay: +${inspectionDelay}s for Onion Skin arrival clearance.`);
   }
   basilCommsLatencyLine(ship, "orders");
   ship.status = "tasked";
@@ -950,7 +975,11 @@ function assignContract(contractId, shipId) {
   const toPickupSpan = safeRouteDistance(ship.at, contract.from);
   const toDropSpan = safeRouteDistance(contract.from, contract.to);
   const legCount = (ship.at === contract.from ? 0 : 1) + 1;
-  const total = travelTimeForLegs(ship.id, legCount);
+  const inspectionTargets = [];
+  if (ship.at !== contract.from) inspectionTargets.push(contract.from);
+  inspectionTargets.push(contract.to);
+  const inspectionDelay = onionSkinInspectionDelay(inspectionTargets);
+  const total = travelTimeForLegs(ship.id, legCount) + inspectionDelay;
   const fuelCost = fuelCostForRoute(ship.at, contract.from) + fuelCostForRoute(contract.from, contract.to);
   const contractOptions = openContracts().map((c) => ({
     id: c.id,
@@ -974,6 +1003,9 @@ function assignContract(contractId, shipId) {
 
   const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
   logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
+  if (inspectionDelay > 0) {
+    basilInform(`Arcworks traffic control adds mandatory inspection delay: +${inspectionDelay}s for Onion Skin stop clearance.`);
+  }
   const returnSignal = oneWaySignalToNode(contract.to);
   basilInform(
     `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, transit ${total}s (speed ${shipSpeed(ship.id)}), route span ${toPickupSpan + toDropSpan}, fuel ${fuelCost}, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
@@ -1100,9 +1132,14 @@ function handleLongForm(parts) {
   }
 
   if (command === "hail" && parts.length >= 2) {
-    const query = inputToName(parts.slice(1).join(" "));
+    const hailText = parts.slice(1).join(" ");
+    const query = inputToName(hailText);
     if (!query) return logLine("Usage: hail <character-name>", "error");
     if (!isContactPresent(query)) return logLine(`${query} is not currently present on the network.`, "error");
+    if (query === "Inspector Dey Arcos" && /\bplease\b/i.test(hailText)) {
+      state.onionSkinInspectionWaived = true;
+      basilInform("Inspector Dey Arcos has acknowledged your request. Onion Skin inspection holds are now waived for current operations.");
+    }
     const targetNode = CONTACT_PROFILES[query]?.nodeId;
     if (targetNode && nodes[targetNode]) {
       const uplink = oneWaySignalToNode(targetNode);
@@ -1284,7 +1321,8 @@ function inputToName(input) {
   if (!candidates.length) return null;
   const exact = candidates.find((n) => n.toLowerCase() === input.toLowerCase());
   if (exact) return exact;
-  return candidates.find((n) => n.toLowerCase().includes(input.toLowerCase())) || null;
+  const lowered = input.toLowerCase();
+  return candidates.find((n) => n.toLowerCase().includes(lowered) || lowered.includes(n.toLowerCase())) || null;
 }
 
 function finalizeContractDelivery(contractId) {
