@@ -11,6 +11,7 @@ let edges = [];
 const TUTORIAL_GOAL = 3;
 const BASIL_NAME = "BASIL";
 const BUDDE_NAME = "BUDDE";
+const TUG_ID = "tug-1";
 const PLAYER_NODE = "anchor_station";
 const CONSOLE_MESSAGE_GAP_MS = 750;
 const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
@@ -31,13 +32,13 @@ const SHIP_CAPTAINS = {
   "hauler-1": "Capt. Soren Nnadi",
   "hauler-2": "Capt. Tamsin Rook",
   "courier-1": "Capt. Laleh Mercer",
-  "inertial-tug-1": "Capt. Imani Voss",
+  [TUG_ID]: "Capt. Imani Voss",
 };
 const SHIP_SPEED_BY_ID = {
   "hauler-1": 1,
   "hauler-2": 1,
   "courier-1": 3,
-  "inertial-tug-1": 1,
+  [TUG_ID]: 1,
 };
 const DEFAULT_SPEAKER_STATUS = "on-station";
 const SPEAKER_PROFILES = {
@@ -89,6 +90,7 @@ const state = {
   scenarioDialogue: {},
   scenario2Dialogue: null,
   scenario3Dialogue: null,
+  tugIntroPlayed: false,
   buddeIntroduced: false,
   scenario2OnionAdvisoryPlayed: false,
   onionSkinInspectionWaived: false,
@@ -341,7 +343,7 @@ const NavigationModel = {
     if (!moon) return 1;
     return state.mapData?.layer0?.orbits?.[moon.orbit] || 1;
   },
-  fuelCostForRoute(fromNodeId, toNodeId) {
+  fuelCostForRoute(fromNodeId, toNodeId, shipId = null) {
     const fromNode = nodes[fromNodeId];
     const toNode = nodes[toNodeId];
     if (!fromNode || !toNode) return 0;
@@ -349,7 +351,8 @@ const NavigationModel = {
     const fromBand = this.orbitBandValue(fromNode.moon);
     const toBand = this.orbitBandValue(toNode.moon);
     const bandDelta = toBand - fromBand;
-    const gravityMultiplier = bandDelta > 0 ? 2 : bandDelta < 0 ? 0.35 : 1;
+    const uphillMultiplier = shipId === TUG_ID ? 1 : 2;
+    const gravityMultiplier = bandDelta > 0 ? uphillMultiplier : bandDelta < 0 ? 0.35 : 1;
     return Math.max(10, Math.round(distance * 12 * gravityMultiplier));
   },
   fuelBillingActive() {
@@ -398,7 +401,7 @@ const BuddeAdvisor = {
     const ship = state.ships.find((s) => s.id === shipId);
     if (!ship) return;
     const choices = candidateDestinationsForShip(ship.id)
-      .map((nodeId) => ({ nodeId, fuel: NavigationModel.fuelCostForRoute(ship.at, nodeId) }))
+      .map((nodeId) => ({ nodeId, fuel: NavigationModel.fuelCostForRoute(ship.at, nodeId, ship.id) }))
       .sort((a, b) => a.fuel - b.fuel);
     if (!choices.length) return;
 
@@ -663,7 +666,7 @@ function playScenario3Intro() {
 }
 
 function addScenario3Tug() {
-  const tugId = "inertial-tug-1";
+  const tugId = TUG_ID;
   if (state.ships.some((ship) => ship.id === tugId)) return;
   const spawnNode = commandNodeId();
   state.ships.push({
@@ -889,6 +892,11 @@ function showShipsList() {
 
 function showShipMenu(shipId) {
   state.selection.allowedDestinationIds = [];
+  if (shipId === TUG_ID && !state.tugIntroPlayed) {
+    state.tugIntroPlayed = true;
+    const captain = SHIP_CAPTAINS[TUG_ID];
+    logLine(`${captain} ${speakerContext(captain)}: Captain Voss here. Freighters are built to cruise efficiently, but they are poor at climbing against Indigo’s gravity with a full load. Tugs are built for that job. We carry almost no cargo, but we do not take the same uphill fuel penalty a loaded freighter does, so using a tug for the climb is much more efficient than making the freighter do it alone.`, "comms");
+  }
   if (state.currentScenario === 2 && !state.scenario2OnionAdvisoryPlayed) {
     state.scenario2OnionAdvisoryPlayed = true;
     const advisory = "Civilian advisory: Onion Skin is contested space. Traffic is advised to get docking permission before embarking.";
@@ -898,7 +906,8 @@ function showShipMenu(shipId) {
       "comms"
     );
   }
-  logLine(`${shipId} selected (submenu mode). Valid inputs: A assign, S send, R report, B back to ship list.`, "sys");
+  const menuOptions = shipId === TUG_ID ? "S send, R report, B back to ship list." : "A assign, S send, R report, B back to ship list.";
+  logLine(`${shipId} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
 }
 
 function isOnionSkinLocation(nodeId) {
@@ -1059,14 +1068,14 @@ function sendShip(shipId, destination) {
   const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
   const inspectionDelay = onionSkinInspectionDelay([normalizedDestination]);
   const transitTime = travelTimeForLegs(ship.id, 1) + inspectionDelay;
-  const fuelCost = fuelCostForRoute(ship.at, normalizedDestination);
+  const shipFuelCost = fuelCostForRoute(ship.at, normalizedDestination, ship.id);
   const allChoices = candidateDestinationsForShip(ship.id)
-    .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId) }))
+    .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId, ship.id) }))
     .sort((a, b) => a.fuel - b.fuel);
   if (state.currentScenario >= 2 && allChoices[0]) {
     const recommended = allChoices[0];
-    const savingsVsRecommendation = Math.max(0, fuelCost - recommended.fuel);
-    if (fuelCost > recommended.fuel) {
+    const savingsVsRecommendation = Math.max(0, shipFuelCost - recommended.fuel);
+    if (shipFuelCost > recommended.fuel) {
       buddeSpeak("objections", "Selected destination is not the most fuel-efficient route.");
       buddeInform(`My recommended maneuver would have reduced fuel burn by ${savingsVsRecommendation} units. Coordinates relayed as ordered.`);
     } else {
@@ -1104,14 +1113,14 @@ function sendShip(shipId, destination) {
   } else {
     scheduleTransitComms(ship, normalizedDestination, transitTime, uplink);
     state.rep = Math.min(100, state.rep + 1);
-    if (fuelBillingActive()) state.cash -= fuelCost;
+    if (fuelBillingActive()) state.cash -= shipFuelCost;
     const captain = SHIP_CAPTAINS[ship.id];
     if (captain) {
       queueCharacterMessage(uplink * 2, captain, "acknowledgements", "Order received and executing.", "comms");
     }
   }
 
-  const fuelBillingText = fuelBillingActive() ? `fuel ${fuelCost}` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1)`;
+  const fuelBillingText = fuelBillingActive() ? `fuel ${shipFuelCost}` : `fuel ${shipFuelCost} (training waiver: not charged in Scenario 1)`;
   logLine(`Transmission sent: ${ship.id} -> ${destination}. Uplink ${uplink}s, transit ${transitTime}s, route span ${routeSpan}, ${fuelBillingText}.`, "dispatch");
   const reportLag = oneWaySignalToNode(normalizedDestination);
   basilInform(
@@ -1124,6 +1133,7 @@ function sendShip(shipId, destination) {
 function assignContract(contractId, shipId) {
   const contract = state.contracts.find((c) => c.id.toLowerCase() === contractId.toLowerCase() && c.status === "open");
   if (!contract) return logLine(`Contract ${contractId} not found/open.`, "error");
+  if (shipId === TUG_ID) return logLine(`${TUG_ID} cannot be assigned to contracts. Use send instead.`, "error");
   if (!idleShip(shipId)) return logLine(`${shipId} is not idle.`, "error");
 
   const ship = state.ships.find((s) => s.id === shipId);
@@ -1234,6 +1244,10 @@ function handleShipMenuLetter(letter) {
   if (!shipId) return false;
 
   if (letter === "a") {
+    if (shipId === TUG_ID) {
+      logLine(`${TUG_ID} cannot take cargo contracts. Use S to reposition it.`, "error");
+      return true;
+    }
     state.selection.pending = "await_contract";
     showContractsForSelectedShip();
     return true;
