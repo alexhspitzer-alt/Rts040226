@@ -80,6 +80,7 @@ const state = {
     selectedShipId: null,
     pending: null,
     allowedDestinationIds: [],
+    dockableShipIds: [],
   },
   loreSummary: DEFAULT_LORE_SUMMARY,
   dialogueDb: {},
@@ -351,7 +352,8 @@ const NavigationModel = {
     const fromBand = this.orbitBandValue(fromNode.moon);
     const toBand = this.orbitBandValue(toNode.moon);
     const bandDelta = toBand - fromBand;
-    const uphillMultiplier = shipId === TUG_ID ? 1 : 2;
+    const driveShip = shipId ? state.ships.find((s) => s.id === shipId) : null;
+    const uphillMultiplier = driveShip?.utility ? 1 : 2;
     const gravityMultiplier = bandDelta > 0 ? uphillMultiplier : bandDelta < 0 ? 0.35 : 1;
     return Math.max(10, Math.round(distance * 12 * gravityMultiplier));
   },
@@ -673,6 +675,8 @@ function addScenario3Tug() {
     id: tugId,
     at: spawnNode,
     status: "idle",
+    utility: true,
+    dockedTo: null,
     busyUntil: 0,
     departAt: 0,
     lastKnownAt: spawnNode,
@@ -885,13 +889,67 @@ function render() {
 function showShipsList() {
   state.ships.forEach((s, idx) => {
     const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
-    logLine(`${idx + 1}. ${s.id} (${s.status}) @ ${s.at} | ${captain}`, "sys");
+    const dockedSuffix = s.dockedTo ? ` -> docked to ${s.dockedTo}` : s.utilityDockedBy ? ` <- utility ${s.utilityDockedBy}` : "";
+    logLine(`${idx + 1}. ${s.id} (${s.status}${dockedSuffix}) @ ${s.at} | ${captain}`, "sys");
   });
   logLine("Select ship by typing its number or ID.", "sys");
 }
 
+function dockableShipsForUtility(utilityShipId) {
+  const utility = state.ships.find((ship) => ship.id === utilityShipId);
+  if (!utility) return [];
+  return state.ships.filter((ship) => (
+    ship.id !== utilityShipId
+    && !ship.utility
+    && ship.at === utility.at
+    && !ship.utilityDockedBy
+  ));
+}
+
+function dockUtilityShip(utilityShipId, targetShipId) {
+  const utility = state.ships.find((ship) => ship.id === utilityShipId);
+  const target = state.ships.find((ship) => ship.id === targetShipId);
+  if (!utility || !utility.utility) return logLine("Selected ship cannot dock.", "error");
+  if (!target || target.utility) return logLine("Invalid dock target.", "error");
+  if (utility.at !== target.at) return logLine("Dock target must be at the same location.", "error");
+  if (utility.status !== "idle") return logLine(`${utility.id} is not ready to dock.`, "error");
+  if (utility.dockedTo || target.utilityDockedBy) return logLine("Docking unavailable: one of the ships is already docked.", "error");
+
+  utility.status = "docked";
+  utility.dockedTo = target.id;
+  target.utilityDockedBy = utility.id;
+  utility.destination = target.destination;
+  utility.busyUntil = target.busyUntil;
+  utility.departAt = target.departAt;
+  utility.lastKnownAt = target.lastKnownAt || target.at;
+  logLine(`${utility.id} docked with ${target.id}. ${target.id} now inherits utility thrust profile while docked.`, "sys");
+}
+
+function undockUtilityShip(utilityShipId) {
+  const utility = state.ships.find((ship) => ship.id === utilityShipId);
+  if (!utility || !utility.utility || !utility.dockedTo) return logLine("No active dock to release.", "error");
+  const target = state.ships.find((ship) => ship.id === utility.dockedTo);
+  if (target) delete target.utilityDockedBy;
+  utility.dockedTo = null;
+  utility.status = "idle";
+  utility.destination = undefined;
+  utility.departAt = 0;
+  utility.busyUntil = 0;
+  utility.lastKnownAt = utility.at;
+  logLine(`${utility.id} undocked and is now idle.`, "sys");
+}
+
+function effectiveDriveShipId(shipId) {
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return shipId;
+  return ship.utilityDockedBy || ship.id;
+}
+
 function showShipMenu(shipId) {
   state.selection.allowedDestinationIds = [];
+  state.selection.dockableShipIds = [];
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return;
   if (shipId === TUG_ID && !state.tugIntroPlayed) {
     state.tugIntroPlayed = true;
     const captain = SHIP_CAPTAINS[TUG_ID];
@@ -906,7 +964,12 @@ function showShipMenu(shipId) {
       "comms"
     );
   }
-  const menuOptions = shipId === TUG_ID ? "S send, R report, B back to ship list." : "A assign, S send, R report, B back to ship list.";
+  let menuOptions = "A assign, S send, R report, B back to ship list.";
+  if (ship.utility && ship.status === "docked") {
+    menuOptions = "U undock.";
+  } else if (ship.utility) {
+    menuOptions = "D dock, S send, R report, B back to ship list.";
+  }
   logLine(`${shipId} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
 }
 
@@ -1062,15 +1125,17 @@ function sendShip(shipId, destination) {
   const normalizedDestination = normalizeNodeInput(destination);
   if (!ship) return logLine(`Unknown ship: ${shipId}.`, "error");
   if (!normalizedDestination) return logLine(`Unknown destination: ${destination}.`, "error");
+  if (ship.utility && ship.status === "docked") return logLine(`${ship.id} is docked. Undock before moving independently.`, "error");
   if (ship.status !== "idle") return logLine(`${ship.id} is busy.`, "error");
 
+  const driveShipId = effectiveDriveShipId(ship.id);
   const uplink = oneWaySignalToShip(ship);
   const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
   const inspectionDelay = onionSkinInspectionDelay([normalizedDestination]);
-  const transitTime = travelTimeForLegs(ship.id, 1) + inspectionDelay;
-  const shipFuelCost = fuelCostForRoute(ship.at, normalizedDestination, ship.id);
+  const transitTime = travelTimeForLegs(driveShipId, 1) + inspectionDelay;
+  const shipFuelCost = fuelCostForRoute(ship.at, normalizedDestination, driveShipId);
   const allChoices = candidateDestinationsForShip(ship.id)
-    .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId, ship.id) }))
+    .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId, driveShipId) }))
     .sort((a, b) => a.fuel - b.fuel);
   if (state.currentScenario >= 2 && allChoices[0]) {
     const recommended = allChoices[0];
@@ -1133,11 +1198,13 @@ function sendShip(shipId, destination) {
 function assignContract(contractId, shipId) {
   const contract = state.contracts.find((c) => c.id.toLowerCase() === contractId.toLowerCase() && c.status === "open");
   if (!contract) return logLine(`Contract ${contractId} not found/open.`, "error");
-  if (shipId === TUG_ID) return logLine(`${TUG_ID} cannot be assigned to contracts. Use send instead.`, "error");
+  const requestedShip = state.ships.find((s) => s.id === shipId);
+  if (requestedShip?.utility) return logLine(`${shipId} cannot be assigned to contracts. Use send/dock instead.`, "error");
   if (!idleShip(shipId)) return logLine(`${shipId} is not idle.`, "error");
 
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return logLine(`Unknown ship: ${shipId}.`, "error");
+  const driveShipId = effectiveDriveShipId(ship.id);
   const uplink = oneWaySignalToShip(ship);
   basilCommsLatencyLine(ship, "orders");
   const toPickupSpan = safeRouteDistance(ship.at, contract.from);
@@ -1147,11 +1214,11 @@ function assignContract(contractId, shipId) {
   if (ship.at !== contract.from) inspectionTargets.push(contract.from);
   inspectionTargets.push(contract.to);
   const inspectionDelay = onionSkinInspectionDelay(inspectionTargets);
-  const total = travelTimeForLegs(ship.id, legCount) + inspectionDelay;
-  const fuelCost = fuelCostForRoute(ship.at, contract.from) + fuelCostForRoute(contract.from, contract.to);
+  const total = travelTimeForLegs(driveShipId, legCount) + inspectionDelay;
+  const fuelCost = fuelCostForRoute(ship.at, contract.from, driveShipId) + fuelCostForRoute(contract.from, contract.to, driveShipId);
   const contractOptions = openContracts().map((c) => ({
     id: c.id,
-    fuel: fuelCostForRoute(ship.at, c.from) + fuelCostForRoute(c.from, c.to),
+    fuel: fuelCostForRoute(ship.at, c.from, driveShipId) + fuelCostForRoute(c.from, c.to, driveShipId),
   })).sort((a, b) => a.fuel - b.fuel);
   const bestContract = contractOptions[0];
   if (state.currentScenario >= 2) {
@@ -1178,7 +1245,7 @@ function assignContract(contractId, shipId) {
   }
   const returnSignal = oneWaySignalToNode(contract.to);
   basilInform(
-    `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, transit ${total}s (speed ${shipSpeed(ship.id)}), route span ${toPickupSpan + toDropSpan}, fuel ${fuelCost}, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
+    `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, transit ${total}s (speed ${shipSpeed(driveShipId)}), route span ${toPickupSpan + toDropSpan}, fuel ${fuelCost}, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
   );
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
@@ -1236,16 +1303,26 @@ function tryNumericSelection(numericInput) {
     return showShipMenu(state.selection.selectedShipId);
   }
 
+  if (state.selection.pending === "await_dock_target") {
+    const targetId = state.selection.dockableShipIds[n - 1];
+    if (!targetId) return logLine("Invalid dock target number.", "error");
+    dockUtilityShip(state.selection.selectedShipId, targetId);
+    state.selection.pending = "ship_menu";
+    return showShipMenu(state.selection.selectedShipId);
+  }
+
   return false;
 }
 
 function handleShipMenuLetter(letter) {
   const shipId = state.selection.selectedShipId;
   if (!shipId) return false;
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return false;
 
   if (letter === "a") {
-    if (shipId === TUG_ID) {
-      logLine(`${TUG_ID} cannot take cargo contracts. Use S to reposition it.`, "error");
+    if (ship.utility) {
+      logLine(`${shipId} cannot take cargo contracts. Use dock/send operations instead.`, "error");
       return true;
     }
     state.selection.pending = "await_contract";
@@ -1253,8 +1330,33 @@ function handleShipMenuLetter(letter) {
     return true;
   }
   if (letter === "s") {
+    if (ship.utility && ship.status === "docked") {
+      logLine(`${shipId} is currently docked. Undock first.`, "error");
+      return true;
+    }
     state.selection.pending = "await_destination";
     showDestinationsForSelectedShip();
+    return true;
+  }
+  if (letter === "d") {
+    if (!ship.utility || ship.status === "docked") return true;
+    const dockable = dockableShipsForUtility(shipId);
+    state.selection.dockableShipIds = dockable.map((entry) => entry.id);
+    if (!state.selection.dockableShipIds.length) {
+      logLine("No dockable ship available at current location.", "sys");
+      return true;
+    }
+    state.selection.pending = "await_dock_target";
+    logLine(`Dock ${shipId} to which ship?`, "sys");
+    state.selection.dockableShipIds.forEach((targetId, idx) => {
+      logLine(`${idx + 1}. ${targetId}`, "sys");
+    });
+    return true;
+  }
+  if (letter === "u") {
+    if (!ship.utility || ship.status !== "docked") return true;
+    undockUtilityShip(shipId);
+    showShipMenu(shipId);
     return true;
   }
   if (letter === "r") {
@@ -1498,6 +1600,23 @@ function handleCommand(raw) {
     }
   }
 
+  if (state.selection.pending === "await_dock_target") {
+    const resolvedShip = resolveShipToken(lower);
+    if (resolvedShip?.shipId) {
+      const targetId = resolvedShip.shipId;
+      if (!state.selection.dockableShipIds.includes(targetId)) {
+        logLine("Selected ship is not dockable from current position.", "error");
+        state.respondingToCommand = false;
+        return;
+      }
+      dockUtilityShip(state.selection.selectedShipId, targetId);
+      state.selection.pending = "ship_menu";
+      showShipMenu(state.selection.selectedShipId);
+      state.respondingToCommand = false;
+      return;
+    }
+  }
+
   if (state.selection.pending === "await_destination") {
     const normalized = normalizeNodeInput(lower);
     if (normalized) {
@@ -1542,6 +1661,19 @@ function finalizeContractDelivery(contractId) {
 
 function updateSimulation() {
   state.ships.forEach((ship) => {
+    if (ship.utility && ship.status === "docked" && ship.dockedTo) {
+      const host = state.ships.find((entry) => entry.id === ship.dockedTo);
+      if (!host) {
+        ship.status = "idle";
+        ship.dockedTo = null;
+      } else {
+        ship.at = host.at;
+        ship.lastKnownAt = host.lastKnownAt || host.at;
+        ship.destination = host.destination;
+        ship.departAt = host.departAt;
+        ship.busyUntil = host.busyUntil;
+      }
+    }
     if (ship.status === "tasked" && state.tick >= ship.departAt) {
       ship.status = "enroute";
     }
