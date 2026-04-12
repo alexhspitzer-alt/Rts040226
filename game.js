@@ -78,6 +78,7 @@ const state = {
   selection: {
     selectedShipId: null,
     pending: null,
+    allowedDestinationIds: [],
   },
   loreSummary: DEFAULT_LORE_SUMMARY,
   dialogueDb: {},
@@ -289,16 +290,38 @@ function buddeInform(text, type = "budde") {
 }
 
 const NavigationModel = {
-  routeDistance(from, to, visited = new Set()) {
+  routeDistance(from, to) {
     if (from === to) return 0;
-    visited.add(from);
-    const choices = (adjacency[from] || [])
-      .filter((n) => !visited.has(n.to))
-      .map((n) => {
-        const sub = this.routeDistance(n.to, to, new Set(visited));
-        return Number.isFinite(sub) ? n.cost + sub : Infinity;
+    if (!adjacency[from] || !adjacency[to]) return Infinity;
+
+    const distances = {};
+    const visited = new Set();
+    Object.keys(adjacency).forEach((nodeId) => {
+      distances[nodeId] = Infinity;
+    });
+    distances[from] = 0;
+
+    while (true) {
+      let current = null;
+      let bestDistance = Infinity;
+      Object.keys(distances).forEach((nodeId) => {
+        if (!visited.has(nodeId) && distances[nodeId] < bestDistance) {
+          current = nodeId;
+          bestDistance = distances[nodeId];
+        }
       });
-    return choices.length ? Math.min(...choices) : Infinity;
+      if (!current || bestDistance === Infinity) break;
+      if (current === to) return bestDistance;
+      visited.add(current);
+
+      (adjacency[current] || []).forEach((edge) => {
+        if (visited.has(edge.to)) return;
+        const nextCost = bestDistance + edge.cost;
+        if (nextCost < distances[edge.to]) distances[edge.to] = nextCost;
+      });
+    }
+
+    return distances[to];
   },
   safeRouteDistance(from, to) {
     const distance = this.routeDistance(from, to);
@@ -374,8 +397,7 @@ const BuddeAdvisor = {
     if (state.currentScenario < 2) return;
     const ship = state.ships.find((s) => s.id === shipId);
     if (!ship) return;
-    const choices = Object.keys(nodes)
-      .filter((nodeId) => nodeId !== ship.at)
+    const choices = candidateDestinationsForShip(ship.id)
       .map((nodeId) => ({ nodeId, fuel: NavigationModel.fuelCostForRoute(ship.at, nodeId) }))
       .sort((a, b) => a.fuel - b.fuel);
     if (!choices.length) return;
@@ -397,6 +419,43 @@ const BuddeAdvisor = {
     }
   },
 };
+
+function orbitBandForNode(nodeId) {
+  const node = nodes[nodeId];
+  const moon = node ? state.mapData?.layer0?.moons?.[node.moon] : null;
+  if (!moon) return null;
+  return state.mapData?.layer0?.orbits?.[moon.orbit] || null;
+}
+
+function candidateDestinationsForShip(shipId) {
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return [];
+  const currentBand = orbitBandForNode(ship.at);
+  if (!currentBand) return Object.keys(nodes).filter((nodeId) => nodeId !== ship.at).slice(0, 7);
+
+  const entries = Object.keys(nodes).filter((nodeId) => nodeId !== ship.at).map((nodeId) => ({
+    nodeId,
+    band: orbitBandForNode(nodeId),
+  }));
+
+  const sameBand = entries
+    .filter((entry) => entry.band === currentBand)
+    .map((entry) => entry.nodeId)
+    .slice(0, 5);
+
+  const findTransferLane = (band) => entries
+    .filter((entry) => entry.band === band && /transfer_lane/i.test(entry.nodeId))
+    .map((entry) => entry.nodeId)[0];
+
+  const upperLane = findTransferLane(currentBand + 1);
+  const lowerLane = findTransferLane(currentBand - 1);
+
+  const ordered = [...sameBand];
+  if (upperLane) ordered.push(upperLane);
+  if (lowerLane) ordered.push(lowerLane);
+
+  return [...new Set(ordered)].slice(0, 7);
+}
 
 function fmtTime(total) {
   const m = String(Math.floor(total / 60)).padStart(2, "0");
@@ -829,6 +888,7 @@ function showShipsList() {
 }
 
 function showShipMenu(shipId) {
+  state.selection.allowedDestinationIds = [];
   if (state.currentScenario === 2 && !state.scenario2OnionAdvisoryPlayed) {
     state.scenario2OnionAdvisoryPlayed = true;
     const advisory = "Civilian advisory: Onion Skin is contested space. Traffic is advised to get docking permission before embarking.";
@@ -924,9 +984,11 @@ function checkScenarioCompletion() {
 }
 
 function showDestinationsForSelectedShip() {
+  const destinationOptions = candidateDestinationsForShip(state.selection.selectedShipId);
+  state.selection.allowedDestinationIds = destinationOptions;
   logLine(`Send ${state.selection.selectedShipId} to what destination?`, "sys");
   BuddeAdvisor.adviseDestinationOptions(state.selection.selectedShipId);
-  Object.keys(nodes).forEach((nodeId, idx) => {
+  destinationOptions.forEach((nodeId, idx) => {
     logLine(`${idx + 1}. ${nodeId} (${nodeLabel(nodeId)})`, "sys");
   });
   logLine("Pick number or destination ID.", "sys");
@@ -998,8 +1060,7 @@ function sendShip(shipId, destination) {
   const inspectionDelay = onionSkinInspectionDelay([normalizedDestination]);
   const transitTime = travelTimeForLegs(ship.id, 1) + inspectionDelay;
   const fuelCost = fuelCostForRoute(ship.at, normalizedDestination);
-  const allChoices = Object.keys(nodes)
-    .filter((n) => n !== ship.at)
+  const allChoices = candidateDestinationsForShip(ship.id)
     .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId) }))
     .sort((a, b) => a.fuel - b.fuel);
   if (state.currentScenario >= 2 && allChoices[0]) {
@@ -1158,7 +1219,7 @@ function tryNumericSelection(numericInput) {
   }
 
   if (state.selection.pending === "await_destination") {
-    const nodeId = Object.keys(nodes)[n - 1];
+    const nodeId = state.selection.allowedDestinationIds[n - 1];
     if (!nodeId) return logLine("Invalid destination number.", "error");
     sendShip(state.selection.selectedShipId, nodeId);
     state.selection.pending = "ship_menu";
@@ -1426,6 +1487,11 @@ function handleCommand(raw) {
   if (state.selection.pending === "await_destination") {
     const normalized = normalizeNodeInput(lower);
     if (normalized) {
+      if (!state.selection.allowedDestinationIds.includes(normalized)) {
+        logLine("Destination unavailable for current ship. Pick one from the listed options.", "error");
+        state.respondingToCommand = false;
+        return;
+      }
       sendShip(state.selection.selectedShipId, normalized);
       state.selection.pending = "ship_menu";
       showShipMenu(state.selection.selectedShipId);
