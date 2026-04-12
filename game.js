@@ -31,11 +31,13 @@ const SHIP_CAPTAINS = {
   "hauler-1": "Capt. Soren Nnadi",
   "hauler-2": "Capt. Tamsin Rook",
   "courier-1": "Capt. Laleh Mercer",
+  "inertial-tug-1": "Capt. Imani Voss",
 };
 const SHIP_SPEED_BY_ID = {
   "hauler-1": 1,
   "hauler-2": 1,
   "courier-1": 3,
+  "inertial-tug-1": 1,
 };
 const DEFAULT_SPEAKER_STATUS = "on-station";
 const SPEAKER_PROFILES = {
@@ -65,6 +67,7 @@ const state = {
   tutorialDone: false,
   currentScenario: 1,
   scenario2Activated: false,
+  scenario3Activated: false,
   ships: [
     { id: "hauler-1", at: "anchor_station", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "anchor_station", lastContactTick: 0 },
     { id: "hauler-2", at: "refinery", status: "idle", busyUntil: 0, departAt: 0, lastKnownAt: "refinery", lastContactTick: 0 },
@@ -84,9 +87,11 @@ const state = {
   buddeData: null,
   scenarioDialogue: {},
   scenario2Dialogue: null,
+  scenario3Dialogue: null,
   buddeIntroduced: false,
   scenario2OnionAdvisoryPlayed: false,
   onionSkinInspectionWaived: false,
+  lastLatencyReminderTick: -Infinity,
   consoleReadyAtMs: Date.now(),
   respondingToCommand: false,
 };
@@ -145,7 +150,23 @@ function estimateRouteCost(fromNode, toNode, layer0) {
   return Math.max(2, arcCost + orbitDelta * 2 + approachVariance);
 }
 
-function buildCanonicalScenarioMap(scenario, layer0) {
+function scaleEdgesForScenario3(edgeList) {
+  if (!Array.isArray(edgeList) || !edgeList.length) return edgeList;
+  const costs = edgeList.map((edge) => edge[2]).filter(Number.isFinite);
+  const minCost = Math.min(...costs);
+  const maxCost = Math.max(...costs);
+  if (!Number.isFinite(minCost) || !Number.isFinite(maxCost) || maxCost <= minCost) return edgeList;
+  const maxMultiplier = 5;
+  const growth = Math.log(maxMultiplier);
+  return edgeList.map(([from, to, baseCost]) => {
+    const normalized = (baseCost - minCost) / (maxCost - minCost);
+    const multiplier = Math.exp(growth * normalized);
+    const scaledCost = Math.max(1, Math.round(baseCost * multiplier));
+    return [from, to, scaledCost];
+  });
+}
+
+function buildCanonicalScenarioMap(scenario, layer0, options = {}) {
   if (!scenario || !layer0) return false;
 
   const builtNodes = {};
@@ -174,8 +195,9 @@ function buildCanonicalScenarioMap(scenario, layer0) {
     }
   }
 
+  const shouldScaleDistances = Boolean(options.scaleDistancesExponentially);
   nodes = builtNodes;
-  edges = builtEdges;
+  edges = shouldScaleDistances ? scaleEdgesForScenario3(builtEdges) : builtEdges;
   adjacency = buildGraph();
   return true;
 }
@@ -186,6 +208,12 @@ function buildCanonicalTutorialMap(mapData) {
 
 function buildScenario2Map(mapData) {
   return buildCanonicalScenarioMap(mapData?.layer2?.scenario2, mapData?.layer0);
+}
+
+function buildScenario3Map(mapData) {
+  return buildCanonicalScenarioMap(mapData?.layer3?.scenario3, mapData?.layer0, {
+    scaleDistancesExponentially: true,
+  });
 }
 
 function commandNodeId() {
@@ -290,6 +318,7 @@ const NavigationModel = {
 
 const BuddeAdvisor = {
   adviseContractOptions(shipId) {
+    if (state.currentScenario < 2) return;
     const ship = state.ships.find((s) => s.id === shipId);
     const contracts = openContracts();
     if (!ship || contracts.length < 1) return;
@@ -302,7 +331,7 @@ const BuddeAdvisor = {
     const best = scored[0];
     const alt = scored[1];
     const bestLabel = `${best.contract.id} (${nodeLabel(best.contract.from)} → ${nodeLabel(best.contract.to)})`;
-    const preview = scored.slice(0, 3).map((entry) => `${entry.contract.id}: ${entry.fuel} fuel`).join(" | ");
+    const preview = scored.slice(0, 2).map((entry) => `${entry.contract.id}: ${entry.fuel} fuel`).join(" | ");
     if (preview) buddeInform(`Contract fuel estimates: ${preview}.`);
     if (alt) {
       const savingsFuel = Math.max(1, alt.fuel - best.fuel);
@@ -318,6 +347,7 @@ const BuddeAdvisor = {
     }
   },
   adviseDestinationOptions(shipId) {
+    if (state.currentScenario < 2) return;
     const ship = state.ships.find((s) => s.id === shipId);
     if (!ship) return;
     const choices = Object.keys(nodes)
@@ -328,7 +358,7 @@ const BuddeAdvisor = {
 
     const best = choices[0];
     const alt = choices[1];
-    const preview = choices.slice(0, 3).map((entry) => `${nodeLabel(entry.nodeId)}: ${entry.fuel} fuel`).join(" | ");
+    const preview = choices.slice(0, 2).map((entry) => `${nodeLabel(entry.nodeId)}: ${entry.fuel} fuel`).join(" | ");
     if (preview) buddeInform(`Destination fuel estimates: ${preview}.`);
     if (alt) {
       const savingsFuel = Math.max(1, alt.fuel - best.fuel);
@@ -513,6 +543,7 @@ async function loadReferenceData() {
         budde_intro: scenario?.budde_scenario_dialogue?.intro?.text || null,
       };
       state.scenario2Dialogue = scenario?.scenario2_dialogue || null;
+      state.scenario3Dialogue = scenario?.scenario3_dialogue || null;
     }
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
@@ -536,6 +567,31 @@ function playScenario2Intro() {
     .map((entry) => entry?.text)
     .filter(Boolean)
     .forEach((line) => logLine(`${BUDDE_NAME} ${speakerContext(BUDDE_NAME)}: ${line}`, "budde"));
+}
+
+function playScenario3Intro() {
+  const introLines = state.scenario3Dialogue?.introSequence || [];
+  introLines.forEach((entry) => {
+    const text = entry?.text;
+    if (!text) return;
+    const speaker = entry?.speaker || BASIL_NAME;
+    logLine(`${speaker} ${speakerContext(speaker)}: ${text}`, speakerMessageType(speaker));
+  });
+}
+
+function addScenario3Tug() {
+  const tugId = "inertial-tug-1";
+  if (state.ships.some((ship) => ship.id === tugId)) return;
+  const spawnNode = commandNodeId();
+  state.ships.push({
+    id: tugId,
+    at: spawnNode,
+    status: "idle",
+    busyUntil: 0,
+    departAt: 0,
+    lastKnownAt: spawnNode,
+    lastContactTick: state.tick,
+  });
 }
 
 function pickScenarioArrayLine(key) {
@@ -576,14 +632,15 @@ function basilShipIntel(ship) {
 
 function basilCommsLatencyLine(ship, commandNoun = "orders") {
   if (!ship) return;
+  const shouldThrottleReminder = state.currentScenario >= 2;
+  if (shouldThrottleReminder && state.tick - state.lastLatencyReminderTick < 120) return;
   const captain = SHIP_CAPTAINS[ship.id] || "the assigned captain";
   const uplink = oneWaySignalToShip(ship);
   const rtt = uplink * 2;
-  basilInform(
-    pickScenarioArrayLine("order_delay_acknowledgements")
-      || `Contacting ${captain}. They will receive these ${commandNoun} in ${uplink} seconds. We can expect an acknowledgement in ${rtt} seconds... unless something has happened to their squishy and unreliable human body.`,
-    "basil"
-  );
+  const scenarioOneLine = pickScenarioArrayLine("order_delay_acknowledgements");
+  const conciseLine = `Comms window: ${captain} receives ${commandNoun} in ${uplink}s (RTT ${rtt}s).`;
+  basilInform(state.currentScenario === 1 ? (scenarioOneLine || conciseLine) : conciseLine, "basil");
+  state.lastLatencyReminderTick = state.tick;
   if (!state.tutorialDone) state.latencyBriefed = true;
 }
 
@@ -823,6 +880,22 @@ function checkScenarioCompletion() {
         state.scenario2Dialogue.oneTimeFlags.tutorial_complete_scenario2 = true;
       }
     }
+    if (!state.scenario3Activated) {
+      state.scenario3Activated = true;
+      state.currentScenario = 3;
+      state.completedContracts = 0;
+      const switchedToScenario3Map = buildScenario3Map(state.mapData);
+      if (!switchedToScenario3Map) {
+        logLine("Scenario 3 map warning: layer3 scenario data unavailable. Continuing with current routing layer.", "error");
+      } else {
+        syncShipLocationsToActiveMap();
+      }
+      addScenario3Tug();
+      state.contracts = state.contracts.filter((contract) => contract.status !== "open");
+      while (openContracts().length < 4) generateContract();
+      logLine("Scenario 3 unlocked: Calibration Debt and Corrected Distances.", "sys");
+      playScenario3Intro();
+    }
   }
 }
 
@@ -905,7 +978,7 @@ function sendShip(shipId, destination) {
     .filter((n) => n !== ship.at)
     .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId) }))
     .sort((a, b) => a.fuel - b.fuel);
-  if (allChoices[0]) {
+  if (state.currentScenario >= 2 && allChoices[0]) {
     const recommended = allChoices[0];
     const savingsVsRecommendation = Math.max(0, fuelCost - recommended.fuel);
     if (fuelCost > recommended.fuel) {
@@ -986,11 +1059,13 @@ function assignContract(contractId, shipId) {
     fuel: fuelCostForRoute(ship.at, c.from) + fuelCostForRoute(c.from, c.to),
   })).sort((a, b) => a.fuel - b.fuel);
   const bestContract = contractOptions[0];
-  if (bestContract && fuelCost > bestContract.fuel) {
-    buddeSpeak("objections", "Current assignment is not top efficiency.");
-    buddeInform(`My recommendation would have reduced fuel burn by ${Math.max(1, fuelCost - bestContract.fuel)} units. Your selection has been relayed as ordered.`);
-  } else {
-    buddeSpeak("wiseChoice", `Wise and efficient choice. Your selection aligns with my recommendation for ${contract.id}.`);
+  if (state.currentScenario >= 2) {
+    if (bestContract && fuelCost > bestContract.fuel) {
+      buddeSpeak("objections", "Current assignment is not top efficiency.");
+      buddeInform(`My recommendation would have reduced fuel burn by ${Math.max(1, fuelCost - bestContract.fuel)} units. Your selection has been relayed as ordered.`);
+    } else {
+      buddeSpeak("wiseChoice", `Wise and efficient choice. Your selection aligns with my recommendation for ${contract.id}.`);
+    }
   }
 
   ship.status = "tasked";
@@ -1096,6 +1171,24 @@ function handleShipMenuLetter(letter) {
   }
 
   return false;
+}
+
+function forceCompleteCurrentScenario() {
+  if (isPlayerBankrupt()) {
+    state.cash = Math.max(state.cash, 0);
+    state.rep = Math.max(state.rep, 1);
+    logLine("Cheat override: insolvency gate temporarily cleared for scenario completion testing.", "sys");
+  }
+
+  const scenarioBefore = state.currentScenario;
+  state.completedContracts = TUTORIAL_GOAL;
+  checkScenarioCompletion();
+
+  if (scenarioBefore === state.currentScenario) {
+    logLine(`Cheat applied: Scenario ${scenarioBefore} marked complete.`, "sys");
+  } else {
+    logLine(`Cheat applied: Scenario ${scenarioBefore} completed. Advanced to Scenario ${state.currentScenario}.`, "sys");
+  }
 }
 
 function handleLongForm(parts) {
@@ -1258,6 +1351,11 @@ function handleLongForm(parts) {
   if (command === "pause") {
     state.running = !state.running;
     logLine(state.running ? "Simulation resumed." : "Simulation paused.", "sys");
+    return true;
+  }
+
+  if (command === "cheat") {
+    forceCompleteCurrentScenario();
     return true;
   }
 
