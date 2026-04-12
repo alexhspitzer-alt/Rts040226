@@ -134,7 +134,15 @@ function angleDelta(a, b) {
   return Math.min(raw, 360 - raw);
 }
 
-function estimateRouteCost(fromNode, toNode, layer0) {
+function orbitRadiusForScenario(orbitId, layer0, options = {}) {
+  const baseRadius = layer0?.orbits?.[orbitId] || 1;
+  if (!options.exponentialOrbitStretch) return baseRadius;
+  const orbitIndex = Math.max(1, baseRadius);
+  const stretch = Math.exp((orbitIndex - 1) * 0.45);
+  return baseRadius * stretch;
+}
+
+function estimateRouteCost(fromNode, toNode, layer0, options = {}) {
   if (fromNode.id === toNode.id) return 0;
   if (fromNode.moon === toNode.moon) {
     return Math.max(1, 2 + Math.round((fromNode.approach + toNode.approach) / 3));
@@ -145,33 +153,37 @@ function estimateRouteCost(fromNode, toNode, layer0) {
   const orbitBands = layer0.orbits;
   const orbitDelta = Math.abs((orbitBands[moonA.orbit] || 1) - (orbitBands[moonB.orbit] || 1));
   const arc = angleDelta(moonA.angle, moonB.angle);
-  const arcCost = Math.max(1, Math.round(arc / 30));
+  const arcRadians = (arc * Math.PI) / 180;
+  const radiusA = orbitRadiusForScenario(moonA.orbit, layer0, options);
+  const radiusB = orbitRadiusForScenario(moonB.orbit, layer0, options);
+  const averageRadius = (radiusA + radiusB) / 2;
+  const arcCost = Math.max(1, Math.round(arcRadians * averageRadius * 3.5));
   const approachVariance = Math.round((fromNode.approach + toNode.approach) / 4);
   return Math.max(2, arcCost + orbitDelta * 2 + approachVariance);
 }
 
-function scaleEdgesForScenario3(edgeList) {
-  if (!Array.isArray(edgeList) || !edgeList.length) return edgeList;
-  const costs = edgeList.map((edge) => edge[2]).filter(Number.isFinite);
-  const minCost = Math.min(...costs);
-  const maxCost = Math.max(...costs);
-  if (!Number.isFinite(minCost) || !Number.isFinite(maxCost) || maxCost <= minCost) return edgeList;
-  const maxMultiplier = 5;
-  const growth = Math.log(maxMultiplier);
-  return edgeList.map(([from, to, baseCost]) => {
-    const normalized = (baseCost - minCost) / (maxCost - minCost);
-    const multiplier = Math.exp(growth * normalized);
-    const scaledCost = Math.max(1, Math.round(baseCost * multiplier));
-    return [from, to, scaledCost];
+function mergeScenarioLayers(scenarios = []) {
+  const mergedMoons = {};
+  scenarios.forEach((scenario) => {
+    if (!scenario?.activeMoons) return;
+    Object.entries(scenario.activeMoons).forEach(([moonId, moon]) => {
+      if (!mergedMoons[moonId]) {
+        mergedMoons[moonId] = { name: moon?.name || moonId, locations: {} };
+      }
+      if (moon?.name) mergedMoons[moonId].name = moon.name;
+      Object.assign(mergedMoons[moonId].locations, moon?.locations || {});
+    });
   });
+  return mergedMoons;
 }
 
-function buildCanonicalScenarioMap(scenario, layer0, options = {}) {
-  if (!scenario || !layer0) return false;
+function buildCanonicalScenarioMap(scenarios, layer0, options = {}) {
+  if (!Array.isArray(scenarios) || !scenarios.length || !layer0) return false;
 
   const builtNodes = {};
   const locationEntries = [];
-  Object.entries(scenario.activeMoons || {}).forEach(([moonId, moon]) => {
+  const mergedMoons = mergeScenarioLayers(scenarios);
+  Object.entries(mergedMoons).forEach(([moonId, moon]) => {
     Object.entries(moon.locations || {}).forEach(([locId, location]) => {
       builtNodes[locId] = {
         label: location.name,
@@ -190,30 +202,34 @@ function buildCanonicalScenarioMap(scenario, layer0, options = {}) {
     for (let j = i + 1; j < locationEntries.length; j += 1) {
       const a = locationEntries[i];
       const b = locationEntries[j];
-      const cost = estimateRouteCost(a, b, layer0);
+      const cost = estimateRouteCost(a, b, layer0, options);
       builtEdges.push([a.id, b.id, cost]);
     }
   }
 
-  const shouldScaleDistances = Boolean(options.scaleDistancesExponentially);
   nodes = builtNodes;
-  edges = shouldScaleDistances ? scaleEdgesForScenario3(builtEdges) : builtEdges;
+  edges = builtEdges;
   adjacency = buildGraph();
   return true;
 }
 
 function buildCanonicalTutorialMap(mapData) {
-  return buildCanonicalScenarioMap(mapData?.layer1?.tutorialScenario, mapData?.layer0);
+  return buildCanonicalScenarioMap([mapData?.layer1?.tutorialScenario], mapData?.layer0);
 }
 
 function buildScenario2Map(mapData) {
-  return buildCanonicalScenarioMap(mapData?.layer2?.scenario2, mapData?.layer0);
+  return buildCanonicalScenarioMap(
+    [mapData?.layer1?.tutorialScenario, mapData?.layer2?.scenario2],
+    mapData?.layer0
+  );
 }
 
 function buildScenario3Map(mapData) {
-  return buildCanonicalScenarioMap(mapData?.layer3?.scenario3, mapData?.layer0, {
-    scaleDistancesExponentially: true,
-  });
+  return buildCanonicalScenarioMap(
+    [mapData?.layer1?.tutorialScenario, mapData?.layer2?.scenario2, mapData?.layer3?.scenario3],
+    mapData?.layer0,
+    { exponentialOrbitStretch: true }
+  );
 }
 
 function commandNodeId() {

@@ -191,7 +191,7 @@
         "context": "Play once at the start of scenario 3, before player input.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
-        "text": "I have identified and corrected a bug in our navigation software. Route distances were being compressed logarithmically, making distant routes appear deceptively close. That error is now removed. Close destinations remain close, but long-distance routes now reflect their true scale, with the farthest routes reading approximately five times farther than before."
+        "text": "I have identified and corrected a navigation calibration bug. Distances are now being corrected exponentially, which means near routes remain manageable while farther routes now reflect their true travel burden."
       },
       {
         "id": "intro_management_apology_and_tug",
