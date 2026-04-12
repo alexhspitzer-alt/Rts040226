@@ -9,17 +9,19 @@
 <body>
   <main class="layout">
     <header>
-      <h1>bluFreight // Indigo Dispatch Console</h1>
-      <p>Tutorial Level: Complete 3 contracts. No contract deadlines. No level timer.</p>
+      <h1>INDIGO</h1>
+      <p>bluFreight Logistics operations console</p>
     </header>
 
     <section class="stats" aria-label="Game statistics">
       <div><strong>Clock:</strong> <span id="clock">00:00</span></div>
       <div><strong>Cash:</strong> $<span id="cash">0</span></div>
-      <div class="hidden-ui-stat"><strong>Reputation:</strong> <span id="rep">0</span></div>
-      <div class="hidden-ui-stat"><strong>Insurance Risk:</strong> <span id="risk">0</span></div>
-      <div class="hidden-ui-stat"><strong>Escorts:</strong> <span id="escort">Off</span></div>
     </section>
+    <div class="sr-only" aria-hidden="true">
+      <span id="rep">0</span>
+      <span id="risk">0</span>
+      <span id="escort">Off</span>
+    </div>
 
     <section class="grid">
       <article class="panel">
