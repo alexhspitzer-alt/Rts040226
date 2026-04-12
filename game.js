@@ -844,6 +844,7 @@ function onionSkinInspectionDelay(destinations = []) {
 }
 
 function showContractsForSelectedShip() {
+  ensureScenarioMapState();
   const contracts = openContracts();
   if (!contracts.length) return logLine("No open contracts to assign.", "sys");
   logLine(`Assign ${state.selection.selectedShipId} to what contract?`, "sys");
@@ -856,6 +857,19 @@ function showContractsForSelectedShip() {
     logLine(`${displayNumber}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)}${scenario2Flavor} (+$${c.payout})`, "sys");
   });
   logLine("Pick number or contract ID.", "sys");
+}
+
+function ensureScenarioMapState() {
+  if (!state.mapData) return;
+  if (state.currentScenario === 2) {
+    const rebuilt = buildScenario2Map(state.mapData);
+    if (rebuilt) syncShipLocationsToActiveMap();
+    return;
+  }
+  if (state.currentScenario >= 3) {
+    const rebuilt = buildScenario3Map(state.mapData);
+    if (rebuilt) syncShipLocationsToActiveMap();
+  }
 }
 
 function checkScenarioCompletion() {
@@ -916,6 +930,7 @@ function checkScenarioCompletion() {
 }
 
 function showDestinationsForSelectedShip() {
+  ensureScenarioMapState();
   logLine(`Send ${state.selection.selectedShipId} to what destination?`, "sys");
   BuddeAdvisor.adviseDestinationOptions(state.selection.selectedShipId);
   Object.keys(nodes).forEach((nodeId, idx) => {
