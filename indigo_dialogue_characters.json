@@ -247,6 +247,37 @@
       ]
     }
   },
+  "Capt. Imani Voss": {
+    "name": "Capt. Imani Voss",
+    "faction": "bluFreight",
+    "dialogue": {
+      "acknowledgements": [
+        "Aye. Tug copy.",
+        "Received. I'll put my shoulder into it.",
+        "Understood. We'll give them the push they need."
+      ],
+      "greetings": [
+        "Voss here, tug command. Who needs help climbing?",
+        "Arcworks tug on standby. Kidding. bluFreight tug, unfortunately.",
+        "Tug online. Point me at something heavier than me."
+      ],
+      "positive": [
+        "There. That's how you move real mass.",
+        "Good. Nice clean shove.",
+        "Much better. She'll climb now."
+      ],
+      "negative": [
+        "That's ugly. Somebody asked the wrong hull to do the wrong job.",
+        "No good. Gravity's collecting its fee.",
+        "That turned expensive in a hurry."
+      ],
+      "neutral": [
+        "Freighters carry cargo. I carry freighters.",
+        "Going downhill is easy. Going uphill is why I exist.",
+        "A tug is just applied regret with an engine block."
+      ]
+    }
+  },
   "Capt. Pavel Ortez": {
     "name": "Capt. Pavel Ortez",
     "faction": "UFP",

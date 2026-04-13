@@ -119,6 +119,21 @@
       ]
     }
   },
+  "Capt. Imani Voss": {
+    "player_request": {
+      "positive": [
+        "Sure. I can do that shove cleanly.",
+        "Aye. That request makes actual mechanical sense."
+      ],
+      "negative": [
+        "No. Wrong hull, wrong angle, wrong day.",
+        "I'd rather not. That's asking a tug to solve a management problem."
+      ],
+      "rude": [
+        "Absolutely not. I'm here to move mass, not perform miracles for idiots."
+      ]
+    }
+  },
   "Capt. Pavel Ortez": {
     "player_request": {
       "positive": [
