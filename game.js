@@ -479,8 +479,8 @@ function stylizeConsoleText(text) {
   const escaped = escapeHtml(text);
   return escaped
     .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|\s)([ASRBasrb]\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|\s)(A|S|R|B|a|s|r|b)(?=\s|$)/g, '$1<span class="choice">$2</span>');
+    .replace(/(^|\s)([ASRBDUasrbdu]\.)/g, '$1<span class="choice">$2</span>')
+    .replace(/\b([ASRBDUasrbdu])(?=\s+(assign|send|report|back|dock|undock)\b)/g, '<span class="choice">$1</span>');
 }
 
 const { logLine } = createConsoleLogger({
@@ -953,7 +953,7 @@ function showShipMenu(shipId) {
   if (shipId === TUG_ID && !state.tugIntroPlayed) {
     state.tugIntroPlayed = true;
     const captain = SHIP_CAPTAINS[TUG_ID];
-    logLine(`${captain} ${speakerContext(captain)}: Captain Voss here. Freighters are built to cruise efficiently, but they are poor at climbing against Indigo’s gravity with a full load. Tugs are built for that job. We carry almost no cargo, but we do not take the same uphill fuel penalty a loaded freighter does, so using a tug for the climb is much more efficient than making the freighter do it alone.`, "comms");
+    logLine(`${captain} ${speakerContext(captain)}: Captain Voss here. Freighters are built to cruise efficiently, but they are poor at climbing against Indigo’s gravity with a full load. Tugs are built for that job. We carry almost no cargo, but we do not take the same uphill fuel penalty a loaded freighter does, so using a tug for the climb is much more efficient than making the freighter do it alone.`, speakerMessageType(captain));
   }
   if (state.currentScenario === 2 && !state.scenario2OnionAdvisoryPlayed) {
     state.scenario2OnionAdvisoryPlayed = true;
