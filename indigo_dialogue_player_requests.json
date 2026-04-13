@@ -1,0 +1,287 @@
+{
+  "BASIL": {
+    "player_request": {
+      "positive": [
+        "Request acknowledged. That is admissible under current operating constraints.",
+        "Very well. I can route that without creating a fresh disaster."
+      ],
+      "negative": [
+        "Request received. Current conditions do not favor approval.",
+        "Unwise timing. I recommend a different ask or a smaller ambition."
+      ],
+      "rude": [
+        "Denied. Please stop submitting bad ideas in complete sentences."
+      ]
+    }
+  },
+  "Capt. Mara Ibarra": {
+    "player_request": {
+      "positive": [
+        "Aye, that can be done. We'll put a line on it.",
+        "Fair request. I'll see what I can pull with what we've got."
+      ],
+      "negative": [
+        "I'd rather not promise that from this position.",
+        "No good. Tide's wrong and the job smells worse."
+      ],
+      "rude": [
+        "No. Ask again when you've learned the difference between brave and stupid."
+      ]
+    }
+  },
+  "Capt. Jonas Vale": {
+    "player_request": {
+      "positive": [
+        "Reasonable request. We'll accommodate it.",
+        "Yes, that can be managed without insulting physics too badly."
+      ],
+      "negative": [
+        "I'd decline that, on cost if nothing else.",
+        "No. That request is heavier than it looks."
+      ],
+      "rude": [
+        "Absolutely not. I'm not turning my tanker into a punchline."
+      ]
+    }
+  },
+  "Capt. Laleh Mercer": {
+    "player_request": {
+      "positive": [
+        "Accepted. I'll make it fit the window.",
+        "Yes. Tight, but possible."
+      ],
+      "negative": [
+        "Negative. That burns too much time for too little gain.",
+        "Can't do it cleanly from here."
+      ],
+      "rude": [
+        "No. I'm fast, not magical."
+      ]
+    }
+  },
+  "Capt. Soren Nnadi": {
+    "player_request": {
+      "positive": [
+        "Sure. I can work with that.",
+        "That's a fair ask. We'll handle it."
+      ],
+      "negative": [
+        "I'd rather not. That sort of favor grows teeth.",
+        "No good. That request will make the dock ugly."
+      ],
+      "rude": [
+        "Pass. I already manage enough other people's bad planning."
+      ]
+    }
+  },
+  "Capt. Tamsin Rook": {
+    "player_request": {
+      "positive": [
+        "Fine. We'll do it.",
+        "Accepted. Keep the rest simple."
+      ],
+      "negative": [
+        "No. Doesn't fit the route.",
+        "Request denied. Wrong timing."
+      ],
+      "rude": [
+        "No. Trim the nonsense and ask again."
+      ]
+    }
+  },
+  "Cmdr. Elias Thorne": {
+    "player_request": {
+      "positive": [
+        "Request accepted within current rules of engagement.",
+        "Very well. We can authorize that action."
+      ],
+      "negative": [
+        "Denied. That exceeds present authority.",
+        "Negative. Current patrol priorities do not permit it."
+      ],
+      "rude": [
+        "No. This channel is for coordination, not indulgence."
+      ]
+    }
+  },
+  "Capt. Imani Sato": {
+    "player_request": {
+      "positive": [
+        "Approved. We'll shift the escort pattern.",
+        "Yes. That is a workable request."
+      ],
+      "negative": [
+        "No. That opens too much risk across the lane.",
+        "Denied. We don't have the margin for it."
+      ],
+      "rude": [
+        "Absolutely not. I am not weakening my screen because you got nervous."
+      ]
+    }
+  },
+  "Capt. Pavel Ortez": {
+    "player_request": {
+      "positive": [
+        "Certainly. I'll see it arranged.",
+        "Yes, with enough paperwork anything can become briefly possible."
+      ],
+      "negative": [
+        "I would advise against that request.",
+        "No. That becomes politically expensive very quickly."
+      ],
+      "rude": [
+        "Denied. I prefer my scandals scheduled in advance."
+      ]
+    }
+  },
+  "Capt. Serafina Holt": {
+    "player_request": {
+      "positive": [
+        "Approved.",
+        "That request is acceptable."
+      ],
+      "negative": [
+        "Denied.",
+        "No. It weakens our position."
+      ],
+      "rude": [
+        "No. Do not mistake access for influence."
+      ]
+    }
+  },
+  "Capt. Hadrik Venn": {
+    "player_request": {
+      "positive": [
+        "Ah, yes. A tasteful request. Granted.",
+        "Very well. That arrangement suits me."
+      ],
+      "negative": [
+        "No. The terms lack charm.",
+        "Declined. I see more downside than profit in it."
+      ],
+      "rude": [
+        "Certainly not. Try returning with better leverage and better manners."
+      ]
+    }
+  },
+  "Capt. Ysra Coil": {
+    "player_request": {
+      "positive": [
+        "Yeah, I can do that.",
+        "Sure. That sounds entertaining enough."
+      ],
+      "negative": [
+        "Mm, no. Bad angle.",
+        "Not happening. Too many ways that goes sour."
+      ],
+      "rude": [
+        "Nope. Go pitch that dumb idea at somebody slower."
+      ]
+    }
+  },
+  "Capt. Oren Kest": {
+    "player_request": {
+      "positive": [
+        "It may be done.",
+        "Accepted. The request remains within reason."
+      ],
+      "negative": [
+        "No. That would unbalance the agreement.",
+        "Denied. The matter does not favor us."
+      ],
+      "rude": [
+        "No. I will not bend order to flatter your impulse."
+      ]
+    }
+  },
+  "Capt. Mel Tavar": {
+    "player_request": {
+      "positive": [
+        "Oh, absolutely. I love a negotiable problem.",
+        "Yes. That can be arranged, assuming nobody explodes."
+      ],
+      "negative": [
+        "Ah, no. Bad odds on that one.",
+        "I'd rather not. Feels expensive in the fatal sense."
+      ],
+      "rude": [
+        "No chance. I enjoy money more than whatever that was."
+      ]
+    }
+  },
+  "Port Marshal Celia Wren": {
+    "player_request": {
+      "positive": [
+        "Fine. I can make room for it.",
+        "Accepted. Don't waste the favor."
+      ],
+      "negative": [
+        "No. Berths don't appear because you asked loudly.",
+        "Denied. My docks are already choking."
+      ],
+      "rude": [
+        "Absolutely not. Queue like everyone else."
+      ]
+    }
+  },
+  "Dockmaster Hiram Sol": {
+    "player_request": {
+      "positive": [
+        "Sure. We'll work it in.",
+        "Fair enough. I can bend around that."
+      ],
+      "negative": [
+        "No, not with the deck this tight.",
+        "Can't do it. Wrong day for extra promises."
+      ],
+      "rude": [
+        "Nope. This dock runs on sequence, not your optimism."
+      ]
+    }
+  },
+  "Traffic Officer Juno Pell": {
+    "player_request": {
+      "positive": [
+        "Accepted. I can amend the record accordingly.",
+        "Yes. That request is consistent enough to process."
+      ],
+      "negative": [
+        "Denied. That would create a filing discrepancy.",
+        "No. Clearance does not support that change."
+      ],
+      "rude": [
+        "Denied. I am not falsifying transit control because you dislike procedure."
+      ]
+    }
+  },
+  "Inspector Dey Arcos": {
+    "player_request": {
+      "positive": [
+        "Very well. We will permit it for now.",
+        "Accepted, provisionally."
+      ],
+      "negative": [
+        "No. That remains outside local claim tolerance.",
+        "Denied. Your request does not survive inspection."
+      ],
+      "rude": [
+        "Absolutely not. Trespass does not improve when phrased politely."
+      ]
+    }
+  },
+  "Berth Clerk Nessa Quill": {
+    "player_request": {
+      "positive": [
+        "Okay, yeah, I can move that around.",
+        "Sure. Give me a second and I'll shuffle the board."
+      ],
+      "negative": [
+        "Nope. That breaks three other things.",
+        "Can't do it. Schedule's already held together with chewing wire."
+      ],
+      "rude": [
+        "No. I'm not detonating the whole board for your special little emergency."
+      ]
+    }
+  }
+}
