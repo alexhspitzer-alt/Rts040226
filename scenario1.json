@@ -178,5 +178,28 @@
       "playOncePerScenario": true,
       "text": "Scenario complete. You have now demonstrated a functional understanding of ship speed, fuel expenditure, and the regrettable persistence of gravity. You may continue to resent these constraints, but bluFreight will nonetheless bill against them."
     }
+  },
+  "scenario3_dialogue": {
+    "metadata": {
+      "scenarioId": "scenario3",
+      "title": "Calibration Debt and Corrected Distances",
+      "speakerLead": "BUDDE"
+    },
+    "introSequence": [
+      {
+        "id": "intro_navigation_bug_discovery",
+        "context": "Play once at the start of scenario 3, before player input.",
+        "speaker": "BUDDE",
+        "playOncePerScenario": true,
+        "text": "I have identified and corrected a navigation calibration bug. Distances are now being corrected exponentially, which means near routes remain manageable while farther routes now reflect their true travel burden."
+      },
+      {
+        "id": "intro_management_apology_and_tug",
+        "context": "Play immediately after BUDDE's scenario 3 correction briefing.",
+        "speaker": "BASIL",
+        "playOncePerScenario": true,
+        "text": "On behalf of bluFreight management, I apologize for any inconvenience this calibration oversight may have caused your planning, expectations, or blood pressure. To offset the impact, you have been afforded an additional ship: tug-1, now added to your operational fleet to help keep this operation profitable."
+      }
+    ]
   }
 }

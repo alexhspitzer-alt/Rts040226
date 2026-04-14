@@ -1,0 +1,57 @@
+{
+  "default": {
+    "request": [
+      "Acknowledged. State your request clearly and I will evaluate options."
+    ],
+    "threaten": [
+      "Threats logged. I recommend a less combustible tone."
+    ],
+    "thank_you": [
+      "Understood. You are welcome."
+    ],
+    "negotiate": [
+      "Negotiation channel open. Present terms."
+    ],
+    "insult": [
+      "Insult received. I will pretend that was strategic."
+    ],
+    "goodbye": [
+      "Channel closed. Safe routing."
+    ]
+  },
+  "byFaction": {
+    "blufreight": {
+      "request": [
+        "Copy that, ops. We'll see what can be done."
+      ],
+      "thank_you": [
+        "Anytime. Keep the cargo moving."
+      ]
+    },
+    "ufp": {
+      "threaten": [
+        "Stand down. Further escalation will be documented."
+      ]
+    },
+    "blister": {
+      "negotiate": [
+        "Talk terms fast. Drift windows do not wait."
+      ]
+    },
+    "arcworks": {
+      "request": [
+        "Request received. Compliance review is pending."
+      ]
+    }
+  },
+  "byCharacter": {
+    "Capt. Imani Voss": {
+      "request": [
+        "Understood. If this is an uphill haul, dock me and let me pull."
+      ],
+      "negotiate": [
+        "Happy to negotiate, but physics keeps final authority."
+      ]
+    }
+  }
+}
