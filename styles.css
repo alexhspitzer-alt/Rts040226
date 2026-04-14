@@ -106,6 +106,10 @@ h1 {
   color: #95c9ff;
 }
 
+.line.type-comms .body {
+  color: #8fcfc3;
+}
+
 .line.type-comms-ufp .body {
   color: #ffd86a;
 }
