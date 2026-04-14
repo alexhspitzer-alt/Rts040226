@@ -619,7 +619,20 @@ const PlayerHailFlow = {
     const byCharacter = dialogue?.byCharacter?.[targetName]?.[action];
     const byFaction = dialogue?.byFaction?.[String(state.dialogueDb?.[targetName]?.faction || "").toLowerCase()]?.[action];
     const fallback = dialogue?.default?.[action];
-    const pool = byCharacter || byFaction || fallback || [];
+    const modernPool = byCharacter || byFaction || fallback || [];
+    const actionToneMap = {
+      request: "positive",
+      negotiate: "positive",
+      thank_you: "positive",
+      threaten: "rude",
+      insult: "rude",
+      goodbye: "negative",
+    };
+    const legacyTone = actionToneMap[action] || "negative";
+    const legacyPool = dialogue?.[targetName]?.player_request?.[legacyTone]
+      || dialogue?.default?.player_request?.[legacyTone]
+      || [];
+    const pool = modernPool.length ? modernPool : legacyPool;
     if (Array.isArray(pool) && pool.length) {
       return pool[Math.floor(Math.random() * pool.length)];
     }
