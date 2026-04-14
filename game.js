@@ -95,6 +95,7 @@ const state = {
   scenario3Dialogue: null,
   playerRequestDialogue: null,
   tugIntroPlayed: false,
+  scenario2VennDetainmentTriggered: false,
   buddeIntroduced: false,
   scenario2OnionAdvisoryPlayed: false,
   onionSkinInspectionWaived: false,
@@ -1132,6 +1133,29 @@ function checkScenarioCompletion() {
   }
 }
 
+function maybeTriggerScenario2VennDetainment() {
+  if (state.currentScenario !== 2) return;
+  if (state.scenario2VennDetainmentTriggered) return;
+  if (state.completedContracts < 2) return;
+
+  const detainedShip = state.ships.find((ship) => ship.status === "idle" && nodes[ship.at]?.moon === "oxblood");
+  if (!detainedShip) return;
+
+  state.scenario2VennDetainmentTriggered = true;
+  detainedShip.status = "detained";
+  detainedShip.destination = undefined;
+  detainedShip.departAt = 0;
+  detainedShip.busyUntil = 0;
+  detainedShip.lastContactTick = state.tick;
+
+  const venn = "Capt. Hadrik Venn";
+  logLine(
+    `${venn} ${speakerContext(venn)}: Nice hull you left at Oxblood. I'm impounding ${detainedShip.id} under local claim. Consider it unavailable.`,
+    speakerMessageType(venn)
+  );
+  basilInform(`${formatShipId(detainedShip.id)} has been detained at Oxblood and is unavailable for dispatch.`);
+}
+
 function showDestinationsForSelectedShip() {
   const destinationOptions = candidateDestinationsForShip(state.selection.selectedShipId);
   state.selection.allowedDestinationIds = destinationOptions;
@@ -1738,6 +1762,7 @@ function finalizeContractDelivery(contractId) {
   state.risk = Math.max(8, state.risk - 1);
   const countsForProgress = state.currentScenario === 1 || Boolean(contract.client);
   if (countsForProgress) state.completedContracts += 1;
+  maybeTriggerScenario2VennDetainment();
   checkScenarioCompletion();
 }
 
