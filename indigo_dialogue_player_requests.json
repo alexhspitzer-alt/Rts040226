@@ -269,21 +269,6 @@
       ]
     }
   },
-  "Inspector Dey Arcos": {
-    "player_request": {
-      "positive": [
-        "Very well. We will permit it for now.",
-        "Accepted, provisionally."
-      ],
-      "negative": [
-        "No. That remains outside local claim tolerance.",
-        "Denied. Your request does not survive inspection."
-      ],
-      "rude": [
-        "Absolutely not. Trespass does not improve when phrased politely."
-      ]
-    }
-  },
   "Berth Clerk Nessa Quill": {
     "player_request": {
       "positive": [
@@ -351,6 +336,21 @@
       ],
       "negotiate": [
         "Happy to negotiate, but physics keeps final authority."
+      ]
+    }
+  },
+  "Arcworks Chief Executive Lewin": {
+    "player_request": {
+      "positive": [
+        "Very well. We will permit it for now.",
+        "Accepted, provisionally."
+      ],
+      "negative": [
+        "No. That remains outside local claim tolerance.",
+        "Denied. Your request does not survive inspection."
+      ],
+      "rude": [
+        "Absolutely not. Trespass does not improve when phrased politely."
       ]
     }
   }

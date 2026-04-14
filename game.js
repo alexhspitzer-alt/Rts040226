@@ -12,6 +12,7 @@ const TUTORIAL_GOAL = 3;
 const BASIL_NAME = "BASIL";
 const BUDDE_NAME = "BUDDE";
 const TUG_ID = "tug-1";
+const ARCWORKS_EXEC_NAME = "Arcworks Chief Executive Lewin";
 const PLAYER_NODE = "anchor_station";
 const CONSOLE_MESSAGE_GAP_MS = 750;
 const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
@@ -48,13 +49,13 @@ const SPEAKER_PROFILES = {
   "Cmdr. Elias Thorne": { location: "UFP Patrol Group", status: DEFAULT_SPEAKER_STATUS },
   "Capt. Hadrik Venn": { location: "Blister Trade Lane", status: DEFAULT_SPEAKER_STATUS },
   "Port Marshal Celia Wren": { location: "Anchor Station Docks", status: DEFAULT_SPEAKER_STATUS },
-  "Inspector Dey Arcos": { location: "Arcworks Transit Authority", status: DEFAULT_SPEAKER_STATUS },
+  [ARCWORKS_EXEC_NAME]: { location: "Arcworks Transit Authority", status: DEFAULT_SPEAKER_STATUS },
 };
 const CONTACT_PROFILES = {
   "Cmdr. Elias Thorne": { nodeId: "ufp_outpost_delta", shipTag: "UFP Kestrel-1", present: true },
   "Capt. Hadrik Venn": { nodeId: "yard", shipTag: "Blister Dragoon-1", present: true },
   "Port Marshal Celia Wren": { nodeId: "anchor_station", present: true },
-  "Inspector Dey Arcos": { nodeId: "indigo_station", present: true },
+  [ARCWORKS_EXEC_NAME]: { nodeId: "indigo_station", present: true },
 };
 
 const state = {
@@ -642,6 +643,10 @@ const PlayerHailFlow = {
     if (!this.isAwaitingChoice()) return false;
     const normalized = this.options.includes(action) ? action : this.options[0];
     const targetName = this.activeTarget;
+    if (targetName === ARCWORKS_EXEC_NAME && state.currentScenario >= 2 && (normalized === "request" || normalized === "negotiate")) {
+      state.onionSkinInspectionWaived = true;
+      basilInform(`${ARCWORKS_EXEC_NAME} has approved your request. Onion Skin inspection holds are now waived for current operations.`);
+    }
     logLine(`> ${normalized.replace("_", " ")}`, "cmd");
     const responseText = this.pickResponse(targetName, normalized);
     logLine(`${targetName} ${speakerContext(targetName)}: ${responseText}`, speakerMessageType(targetName));
@@ -1238,7 +1243,7 @@ function sendShip(shipId, destination) {
     );
     state.cash -= 70;
     state.rep -= 1;
-    const arcworksInspector = "Inspector Dey Arcos";
+    const arcworksInspector = ARCWORKS_EXEC_NAME;
     scheduleMessage(
       uplink + Math.max(1, transitTime - 1) + oneWaySignalToNode(normalizedDestination),
       `${arcworksInspector} ${speakerContext(arcworksInspector, "interdicting")}: ${
@@ -1334,7 +1339,11 @@ function assignContract(contractId, shipId) {
     "report"
   );
   if (captain) {
-    queueCharacterMessage(uplink + total + oneWaySignalToNode(contract.to), captain, "positive", "Delivery complete.");
+    const completionTone = inspectionDelay >= 180 ? "negative" : "positive";
+    const completionFallback = inspectionDelay >= 180
+      ? "Delivery complete, but inspection delays burned the schedule."
+      : "Delivery complete.";
+    queueCharacterMessage(uplink + total + oneWaySignalToNode(contract.to), captain, completionTone, completionFallback);
   }
 
   maybeIntroduceBudde();
@@ -1502,10 +1511,6 @@ function handleLongForm(parts) {
     const query = inputToName(hailText);
     if (!query) return logLine("Usage: hail <character-name>", "error");
     if (!isContactPresent(query)) return logLine(`${query} is not currently present on the network.`, "error");
-    if (query === "Inspector Dey Arcos" && /\bplease\b/i.test(hailText)) {
-      state.onionSkinInspectionWaived = true;
-      basilInform("Inspector Dey Arcos has acknowledged your request. Onion Skin inspection holds are now waived for current operations.");
-    }
     const targetNode = CONTACT_PROFILES[query]?.nodeId;
     if (targetNode && nodes[targetNode]) {
       const uplink = oneWaySignalToNode(targetNode);
