@@ -13,6 +13,8 @@ const BASIL_NAME = "BASIL";
 const BUDDE_NAME = "BUDDE";
 const TUG_ID = "tug-1";
 const ARCWORKS_EXEC_NAME = "Arcworks Chief Executive Lewin";
+const THORNE_NAME = "Cmdr. Elias Thorne";
+const VENN_NAME = "Capt. Hadrik Venn";
 const PLAYER_NODE = "anchor_station";
 const CONSOLE_MESSAGE_GAP_MS = 750;
 const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
@@ -46,14 +48,14 @@ const DEFAULT_SPEAKER_STATUS = "on-station";
 const SPEAKER_PROFILES = {
   BASIL: { location: "Dispatch Core", status: "active" },
   BUDDE: { location: "Navigation Layer", status: "active" },
-  "Cmdr. Elias Thorne": { location: "UFP Patrol Group", status: DEFAULT_SPEAKER_STATUS },
-  "Capt. Hadrik Venn": { location: "Blister Trade Lane", status: DEFAULT_SPEAKER_STATUS },
+  [THORNE_NAME]: { location: "UFP Patrol Group", status: DEFAULT_SPEAKER_STATUS },
+  [VENN_NAME]: { location: "Blister Trade Lane", status: DEFAULT_SPEAKER_STATUS },
   "Port Marshal Celia Wren": { location: "Anchor Station Docks", status: DEFAULT_SPEAKER_STATUS },
   [ARCWORKS_EXEC_NAME]: { location: "Arcworks Transit Authority", status: DEFAULT_SPEAKER_STATUS },
 };
 const CONTACT_PROFILES = {
-  "Cmdr. Elias Thorne": { nodeId: "ufp_outpost_delta", shipTag: "UFP Kestrel-1", present: true },
-  "Capt. Hadrik Venn": { nodeId: "yard", shipTag: "Blister Dragoon-1", present: true },
+  [THORNE_NAME]: { nodeId: "ufp_outpost_delta", shipTag: "UFP Kestrel-1", present: true },
+  [VENN_NAME]: { nodeId: "yard", shipTag: "Blister Dragoon-1", present: true },
   "Port Marshal Celia Wren": { nodeId: "anchor_station", present: true },
   [ARCWORKS_EXEC_NAME]: { nodeId: "indigo_station", present: true },
 };
@@ -96,6 +98,9 @@ const state = {
   playerRequestDialogue: null,
   tugIntroPlayed: false,
   scenario2VennDetainmentTriggered: false,
+  scenario2DetainedShipId: null,
+  scenario2DetainmentResolved: false,
+  scenario2VennRelocating: false,
   buddeIntroduced: false,
   scenario2OnionAdvisoryPlayed: false,
   onionSkinInspectionWaived: false,
@@ -648,6 +653,7 @@ const PlayerHailFlow = {
       state.onionSkinInspectionWaived = true;
       basilInform(`${ARCWORKS_EXEC_NAME} has approved your request. Onion Skin inspection holds are now waived for current operations.`);
     }
+    handleScenario2DetainmentHailResolution(targetName, normalized);
     logLine(`> ${normalized.replace("_", " ")}`, "cmd");
     const responseText = this.pickResponse(targetName, normalized);
     logLine(`${targetName} ${speakerContext(targetName)}: ${responseText}`, speakerMessageType(targetName));
@@ -1142,18 +1148,85 @@ function maybeTriggerScenario2VennDetainment() {
   if (!detainedShip) return;
 
   state.scenario2VennDetainmentTriggered = true;
+  state.scenario2DetainedShipId = detainedShip.id;
   detainedShip.status = "detained";
   detainedShip.destination = undefined;
   detainedShip.departAt = 0;
   detainedShip.busyUntil = 0;
   detainedShip.lastContactTick = state.tick;
 
-  const venn = "Capt. Hadrik Venn";
+  const venn = VENN_NAME;
   logLine(
     `${venn} ${speakerContext(venn)}: Nice hull you left at Oxblood. I'm impounding ${detainedShip.id} under local claim. Consider it unavailable.`,
     speakerMessageType(venn)
   );
   basilInform(`${formatShipId(detainedShip.id)} has been detained at Oxblood and is unavailable for dispatch.`);
+}
+
+function releaseScenario2DetainedShip(reasonText = null) {
+  if (state.scenario2DetainmentResolved) return;
+  const ship = state.ships.find((entry) => entry.id === state.scenario2DetainedShipId && entry.status === "detained");
+  if (!ship) return;
+  ship.status = "idle";
+  ship.departAt = 0;
+  ship.busyUntil = 0;
+  ship.destination = undefined;
+  ship.lastContactTick = state.tick;
+  state.scenario2DetainmentResolved = true;
+  if (reasonText) logLine(reasonText, speakerMessageType(VENN_NAME));
+  basilInform(`${formatShipId(ship.id)} has been released and is available for dispatch.`);
+  beginVennMoveToEndOfDay();
+}
+
+function beginVennMoveToEndOfDay() {
+  if (state.scenario2VennRelocating) return;
+  if (state.currentScenario !== 2) return;
+  const destinationNode = Object.keys(nodes).find((nodeId) => nodes[nodeId]?.moon === "end_of_day");
+  const currentNode = CONTACT_PROFILES[VENN_NAME]?.nodeId;
+  if (!destinationNode || !currentNode) return;
+  state.scenario2VennRelocating = true;
+  const transit = Math.max(2, safeRouteDistance(currentNode, destinationNode));
+  logLine(`${VENN_NAME} ${speakerContext(VENN_NAME)}: Payment received. We are departing for End-of-Day.`, speakerMessageType(VENN_NAME));
+  scheduleMessage(
+    transit,
+    () => {
+      CONTACT_PROFILES[VENN_NAME].nodeId = destinationNode;
+      return `${VENN_NAME} ${speakerContext(VENN_NAME)}: End-of-Day reached.`;
+    },
+    speakerMessageType(VENN_NAME)
+  );
+}
+
+function handleScenario2DetainmentHailResolution(targetName, action) {
+  if (state.currentScenario !== 2) return false;
+  if (!state.scenario2DetainedShipId || state.scenario2DetainmentResolved) return false;
+
+  if (targetName === THORNE_NAME && action === "request") {
+    const oxbloodNode = Object.keys(nodes).find((nodeId) => nodes[nodeId]?.moon === "oxblood");
+    const currentNode = CONTACT_PROFILES[THORNE_NAME]?.nodeId;
+    if (oxbloodNode && currentNode) {
+      const transit = Math.max(2, Math.round(safeRouteDistance(currentNode, oxbloodNode) / 2));
+      logLine(`${THORNE_NAME} ${speakerContext(THORNE_NAME)}: Request accepted. Kestrel is burning for Oxblood now.`, speakerMessageType(THORNE_NAME));
+      scheduleMessage(
+        transit,
+        () => {
+          CONTACT_PROFILES[THORNE_NAME].nodeId = oxbloodNode;
+          releaseScenario2DetainedShip(`${VENN_NAME} ${speakerContext(VENN_NAME)}: UFP pressure noted. Your ship is released.`);
+          return `${THORNE_NAME} ${speakerContext(THORNE_NAME)}: Arrived Oxblood. Detainment dispute resolved.`;
+        },
+        speakerMessageType(THORNE_NAME)
+      );
+      return true;
+    }
+  }
+
+  if (targetName === VENN_NAME && action === "negotiate") {
+    state.cash -= 1000;
+    releaseScenario2DetainedShip(`${VENN_NAME} ${speakerContext(VENN_NAME)}: Duties, licensing, and necessary restitution collected: $1000. Your ship is released.`);
+    return true;
+  }
+
+  return false;
 }
 
 function showDestinationsForSelectedShip() {
