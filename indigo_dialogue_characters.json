@@ -526,37 +526,6 @@
       ]
     }
   },
-  "Inspector Dey Arcos": {
-    "name": "Inspector Dey Arcos",
-    "faction": "Arcworks",
-    "dialogue": {
-      "acknowledgements": [
-        "Noted.",
-        "Received. We will observe the matter.",
-        "Acknowledged, though not conceded."
-      ],
-      "greetings": [
-        "Inspector Arcos, Arcworks transit authority.",
-        "Arcworks inspection channel open.",
-        "You are speaking to transit enforcement. Proceed carefully."
-      ],
-      "positive": [
-        "That is at least more rational.",
-        "A preferable development.",
-        "Good. We may avoid further inconvenience."
-      ],
-      "negative": [
-        "As expected, this worsens matters.",
-        "That remains unacceptable under local claim.",
-        "An unfortunate and preventable escalation."
-      ],
-      "neutral": [
-        "Territory does not become empty because paperwork changes hands.",
-        "Extraction built this system long before politicians named it.",
-        "Compliance is often just trespass with cleaner language."
-      ]
-    }
-  },
   "Berth Clerk Nessa Quill": {
     "name": "Berth Clerk Nessa Quill",
     "faction": "civilian",
@@ -585,6 +554,37 @@
         "Schedules are gossip with timestamps.",
         "Every berth tells a story and most of them are excuses.",
         "Order is mostly colored boxes and mutual suspicion."
+      ]
+    }
+  },
+  "Arcworks Chief Executive Lewin": {
+    "name": "Arcworks Chief Executive Lewin",
+    "faction": "Arcworks",
+    "dialogue": {
+      "acknowledgements": [
+        "Noted.",
+        "Received. We will observe the matter.",
+        "Acknowledged, though not conceded."
+      ],
+      "greetings": [
+        "Chief Executive Lewin, Arcworks transit authority.",
+        "Arcworks inspection channel open.",
+        "You are speaking to transit enforcement. Proceed carefully."
+      ],
+      "positive": [
+        "That is at least more rational.",
+        "A preferable development.",
+        "Good. We may avoid further inconvenience."
+      ],
+      "negative": [
+        "As expected, this worsens matters.",
+        "That remains unacceptable under local claim.",
+        "An unfortunate and preventable escalation."
+      ],
+      "neutral": [
+        "Territory does not become empty because paperwork changes hands.",
+        "Extraction built this system long before politicians named it.",
+        "Compliance is often just trespass with cleaner language."
       ]
     }
   }
