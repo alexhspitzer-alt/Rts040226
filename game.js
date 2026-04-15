@@ -344,10 +344,10 @@ const NavigationModel = {
   shipSpeed(shipId) {
     return Math.max(1, SHIP_SPEED_BY_ID[shipId] || 1);
   },
-  travelTimeForLegs(shipId, legCount = 1) {
+  travelTimeForRoute(shipId, routeSpan = 1) {
     const speed = this.shipSpeed(shipId);
-    const perLeg = Math.max(1, Math.round(12 / speed));
-    return perLeg * Math.max(1, legCount);
+    const normalizedSpan = Math.max(1, routeSpan);
+    return Math.max(1, Math.round((normalizedSpan * 12) / speed));
   },
   orbitBandValue(moonId) {
     const moon = state.mapData?.layer0?.moons?.[moonId];
@@ -785,7 +785,7 @@ function maybeIntroduceBudde() {
 const routeDistance = (...args) => NavigationModel.routeDistance(...args);
 const safeRouteDistance = (...args) => NavigationModel.safeRouteDistance(...args);
 const shipSpeed = (...args) => NavigationModel.shipSpeed(...args);
-const travelTimeForLegs = (...args) => NavigationModel.travelTimeForLegs(...args);
+const travelTimeForRoute = (...args) => NavigationModel.travelTimeForRoute(...args);
 const fuelCostForRoute = (...args) => NavigationModel.fuelCostForRoute(...args);
 const fuelBillingActive = () => NavigationModel.fuelBillingActive();
 
@@ -1192,7 +1192,8 @@ function beginVennMoveToEndOfDay() {
   const currentNode = CONTACT_PROFILES[VENN_NAME]?.nodeId;
   if (!destinationNode || !currentNode) return;
   state.scenario2VennRelocating = true;
-  const transit = Math.max(2, safeRouteDistance(currentNode, destinationNode));
+  const routeSpan = safeRouteDistance(currentNode, destinationNode);
+  const transit = travelTimeForRoute(VENN_NAME, routeSpan);
   logLine(`${VENN_NAME} ${speakerContext(VENN_NAME)}: Payment received. We are departing for End-of-Day.`, speakerMessageType(VENN_NAME));
   scheduleMessage(
     transit,
@@ -1212,7 +1213,8 @@ function handleScenario2DetainmentHailResolution(targetName, action) {
     const oxbloodNode = Object.keys(nodes).find((nodeId) => nodes[nodeId]?.moon === "oxblood");
     const currentNode = CONTACT_PROFILES[THORNE_NAME]?.nodeId;
     if (oxbloodNode && currentNode) {
-      const transit = Math.max(2, Math.round(safeRouteDistance(currentNode, oxbloodNode) / 2));
+      const routeSpan = safeRouteDistance(currentNode, oxbloodNode);
+      const transit = travelTimeForRoute(THORNE_NAME, routeSpan);
       logLine(`${THORNE_NAME} ${speakerContext(THORNE_NAME)}: Request accepted. We'll lean on these Blister thugs until they let your ship go. Kestrel is burning for Oxblood now.`, speakerMessageType(THORNE_NAME));
       scheduleMessage(
         transit,
@@ -1313,7 +1315,7 @@ function sendShip(shipId, destination) {
   const uplink = oneWaySignalToShip(ship);
   const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
   const inspectionDelay = onionSkinInspectionDelay([normalizedDestination]);
-  const transitTime = travelTimeForLegs(driveShipId, 1) + inspectionDelay;
+  const transitTime = travelTimeForRoute(driveShipId, routeSpan) + inspectionDelay;
   const shipFuelCost = fuelCostForRoute(ship.at, normalizedDestination, driveShipId);
   const allChoices = candidateDestinationsForShip(ship.id)
     .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId, driveShipId) }))
@@ -1400,12 +1402,12 @@ function assignContract(contractId, shipId) {
   basilCommsLatencyLine(ship, "orders");
   const toPickupSpan = safeRouteDistance(ship.at, contract.from);
   const toDropSpan = safeRouteDistance(contract.from, contract.to);
-  const legCount = (ship.at === contract.from ? 0 : 1) + 1;
   const inspectionTargets = [];
   if (ship.at !== contract.from) inspectionTargets.push(contract.from);
   inspectionTargets.push(contract.to);
   const inspectionDelay = onionSkinInspectionDelay(inspectionTargets);
-  const total = travelTimeForLegs(driveShipId, legCount) + inspectionDelay;
+  const totalRouteSpan = toPickupSpan + toDropSpan;
+  const total = travelTimeForRoute(driveShipId, totalRouteSpan) + inspectionDelay;
   const fuelCost = fuelCostForRoute(ship.at, contract.from, driveShipId) + fuelCostForRoute(contract.from, contract.to, driveShipId);
   const contractOptions = openContracts().map((c) => ({
     id: c.id,
