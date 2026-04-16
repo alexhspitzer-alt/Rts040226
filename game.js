@@ -515,6 +515,12 @@ function playScenario3Intro() {
     const speaker = entry?.speaker || BASIL_NAME;
     logLine(`${speaker} ${speakerContext(speaker)}: ${text}`, speakerMessageType(speaker));
   });
+  if (!state.scenario3CapacityBriefed) {
+    state.scenario3CapacityBriefed = true;
+    basilInform(
+      "Scenario 3 routing now includes explicit cargo tonnage. Contract cargo is shown as T units (for example, 6T). Ship capability is shown as XT cap (for example, 3T cap). Yes, this is also where I confirm the Courier still cannot carry extra munitions in the lavatory, despite management's recurring optimism."
+    );
+  }
 }
 
 function addScenario3Tug() {
