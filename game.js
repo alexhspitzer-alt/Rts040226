@@ -4,6 +4,21 @@ import {
   normalizeContractIdToken,
   normalizeShipIdToken,
 } from "./console.js";
+import {
+  buildGraph,
+  buildCanonicalTutorialMap as buildTutorialMapModel,
+  buildScenario2Map as buildScenario2MapModel,
+  buildScenario3Map as buildScenario3MapModel,
+  commandNodeId as resolveCommandNodeId,
+  syncShipLocationsToActiveMap as syncShipsToMap,
+  nodeLabel as formatNodeLabel,
+  normalizeNodeInput as resolveNodeInput,
+  candidateDestinationsForShip as findCandidateDestinations,
+  isTransferLaneNode as isTransferLaneMapNode,
+} from "./game_map.js";
+import { createNavigationModel, createBuddeAdvisor } from "./game_navigation.js";
+import { createContractTools } from "./game_contracts.js";
+import { createPlayerHailFlow, pickHailResponse } from "./game_hail.js";
 
 let nodes = {};
 let edges = [];
@@ -228,159 +243,40 @@ const ui = {
 
 let adjacency = {};
 
-function buildGraph() {
-  const graph = {};
-  Object.keys(nodes).forEach((k) => {
-    graph[k] = [];
-  });
-  edges.forEach(([a, b, w]) => {
-    graph[a].push({ to: b, cost: w });
-    graph[b].push({ to: a, cost: w });
-  });
-  return graph;
-}
-
-
-function angleDelta(a, b) {
-  const raw = Math.abs(a - b) % 360;
-  return Math.min(raw, 360 - raw);
-}
-
-function orbitRadiusForScenario(orbitId, layer0, options = {}) {
-  const baseRadius = layer0?.orbits?.[orbitId] || 1;
-  if (!options.exponentialOrbitStretch) return baseRadius;
-  const orbitIndex = Math.max(1, baseRadius);
-  const stretch = Math.exp((orbitIndex - 1) * 0.45);
-  return baseRadius * stretch;
-}
-
-function estimateRouteCost(fromNode, toNode, layer0, options = {}) {
-  if (fromNode.id === toNode.id) return 0;
-  if (fromNode.moon === toNode.moon) {
-    return Math.max(1, 2 + Math.round((fromNode.approach + toNode.approach) / 3));
-  }
-
-  const moonA = layer0.moons[fromNode.moon];
-  const moonB = layer0.moons[toNode.moon];
-  const orbitBands = layer0.orbits;
-  const orbitDelta = Math.abs((orbitBands[moonA.orbit] || 1) - (orbitBands[moonB.orbit] || 1));
-  const arc = angleDelta(moonA.angle, moonB.angle);
-  const arcRadians = (arc * Math.PI) / 180;
-  const radiusA = orbitRadiusForScenario(moonA.orbit, layer0, options);
-  const radiusB = orbitRadiusForScenario(moonB.orbit, layer0, options);
-  const averageRadius = (radiusA + radiusB) / 2;
-  const arcCost = Math.max(1, Math.round(arcRadians * averageRadius * 3.5));
-  const approachVariance = Math.round((fromNode.approach + toNode.approach) / 4);
-  return Math.max(2, arcCost + orbitDelta * 2 + approachVariance);
-}
-
-function mergeScenarioLayers(scenarios = []) {
-  const mergedMoons = {};
-  scenarios.forEach((scenario) => {
-    if (!scenario?.activeMoons) return;
-    Object.entries(scenario.activeMoons).forEach(([moonId, moon]) => {
-      if (!mergedMoons[moonId]) {
-        mergedMoons[moonId] = { name: moon?.name || moonId, locations: {} };
-      }
-      if (moon?.name) mergedMoons[moonId].name = moon.name;
-      Object.assign(mergedMoons[moonId].locations, moon?.locations || {});
-    });
-  });
-  return mergedMoons;
-}
-
-function summedScenarioFromLayers(mapData, layerKeys = []) {
-  const scenarioByLayer = {
-    layer1: mapData?.layer1?.tutorialScenario,
-    layer2: mapData?.layer2?.scenario2,
-    layer3: mapData?.layer3?.scenario3,
-  };
-  const scenarios = layerKeys.map((key) => scenarioByLayer[key]).filter(Boolean);
-  return {
-    activeMoons: mergeScenarioLayers(scenarios),
-  };
-}
-
-function buildCanonicalScenarioMap(scenarios, layer0, options = {}) {
-  if (!Array.isArray(scenarios) || !scenarios.length || !layer0) return false;
-
-  const builtNodes = {};
-  const locationEntries = [];
-  const mergedMoons = mergeScenarioLayers(scenarios);
-  Object.entries(mergedMoons).forEach(([moonId, moon]) => {
-    Object.entries(moon.locations || {}).forEach(([locId, location]) => {
-      builtNodes[locId] = {
-        label: location.name,
-        moon: moonId,
-        moonName: moon.name,
-        approach: location.approach,
-      };
-      locationEntries.push({ id: locId, moon: moonId, approach: location.approach });
-    });
-  });
-
-  if (!Object.keys(builtNodes).length) return false;
-
-  const builtEdges = [];
-  for (let i = 0; i < locationEntries.length; i += 1) {
-    for (let j = i + 1; j < locationEntries.length; j += 1) {
-      const a = locationEntries[i];
-      const b = locationEntries[j];
-      const cost = estimateRouteCost(a, b, layer0, options);
-      builtEdges.push([a.id, b.id, cost]);
-    }
-  }
-
-  nodes = builtNodes;
-  edges = builtEdges;
-  adjacency = buildGraph();
+function applyMapModel(mapModel) {
+  if (!mapModel) return false;
+  nodes = mapModel.nodes;
+  edges = mapModel.edges;
+  adjacency = mapModel.adjacency;
   return true;
 }
 
 function buildCanonicalTutorialMap(mapData) {
-  const scenario1Summed = summedScenarioFromLayers(mapData, ["layer1"]);
-  return buildCanonicalScenarioMap([scenario1Summed], mapData?.layer0);
+  return applyMapModel(buildTutorialMapModel(mapData));
 }
 
 function buildScenario2Map(mapData) {
-  const scenario2Summed = summedScenarioFromLayers(mapData, ["layer1", "layer2"]);
-  return buildCanonicalScenarioMap([scenario2Summed], mapData?.layer0);
+  return applyMapModel(buildScenario2MapModel(mapData));
 }
 
 function buildScenario3Map(mapData) {
-  const scenario3Summed = summedScenarioFromLayers(mapData, ["layer1", "layer2", "layer3"]);
-  return buildCanonicalScenarioMap([scenario3Summed], mapData?.layer0, { exponentialOrbitStretch: true });
+  return applyMapModel(buildScenario3MapModel(mapData));
 }
 
 function commandNodeId() {
-  if (nodes[PLAYER_NODE]) return PLAYER_NODE;
-  const [firstNode] = Object.keys(nodes);
-  return firstNode || PLAYER_NODE;
+  return resolveCommandNodeId(nodes, PLAYER_NODE);
 }
 
 function syncShipLocationsToActiveMap() {
-  const fallbackNode = commandNodeId();
-  state.ships.forEach((ship) => {
-    if (!nodes[ship.at]) ship.at = fallbackNode;
-    if (!nodes[ship.lastKnownAt]) ship.lastKnownAt = ship.at;
-    if (ship.destination && !nodes[ship.destination] && ship.status === "idle") {
-      ship.destination = undefined;
-    }
-  });
+  syncShipsToMap(state, nodes, PLAYER_NODE);
 }
 
 function nodeLabel(nodeId) {
-  const node = nodes[nodeId];
-  if (!node) return nodeId;
-  return `${node.label}${node.moonName ? ` (${node.moonName})` : ""}`;
+  return formatNodeLabel(nodes, nodeId);
 }
 
 function normalizeNodeInput(rawNodeId) {
-  if (!rawNodeId) return null;
-  if (nodes[rawNodeId]) return rawNodeId;
-  const alias = LEGACY_NODE_ALIASES[rawNodeId];
-  if (alias && nodes[alias]) return alias;
-  return null;
+  return resolveNodeInput(rawNodeId, nodes, LEGACY_NODE_ALIASES);
 }
 
 function pickBuddeLine(bucket) {
@@ -400,175 +296,13 @@ function buddeInform(text, type = "budde") {
   logLine(`${BUDDE_NAME} ${context}: ${text}`, type);
 }
 
-const NavigationModel = {
-  routeDistance(from, to) {
-    if (from === to) return 0;
-    if (!adjacency[from] || !adjacency[to]) return Infinity;
-
-    const distances = {};
-    const visited = new Set();
-    Object.keys(adjacency).forEach((nodeId) => {
-      distances[nodeId] = Infinity;
-    });
-    distances[from] = 0;
-
-    while (true) {
-      let current = null;
-      let bestDistance = Infinity;
-      Object.keys(distances).forEach((nodeId) => {
-        if (!visited.has(nodeId) && distances[nodeId] < bestDistance) {
-          current = nodeId;
-          bestDistance = distances[nodeId];
-        }
-      });
-      if (!current || bestDistance === Infinity) break;
-      if (current === to) return bestDistance;
-      visited.add(current);
-
-      (adjacency[current] || []).forEach((edge) => {
-        if (visited.has(edge.to)) return;
-        const nextCost = bestDistance + edge.cost;
-        if (nextCost < distances[edge.to]) distances[edge.to] = nextCost;
-      });
-    }
-
-    return distances[to];
-  },
-  safeRouteDistance(from, to) {
-    const distance = this.routeDistance(from, to);
-    if (Number.isFinite(distance)) return Math.max(1, distance);
-    return Math.max(1, Object.keys(nodes).length * 3);
-  },
-  shipSpeed(shipId) {
-    return Math.max(1, SHIP_SPEED_BY_ID[shipId] || 1);
-  },
-  travelTimeForRoute(shipId, routeSpan = 1) {
-    const speed = this.shipSpeed(shipId);
-    const normalizedSpan = Math.max(1, routeSpan);
-    return Math.max(1, Math.round((normalizedSpan * 12) / speed));
-  },
-  orbitBandValue(moonId) {
-    const moon = state.mapData?.layer0?.moons?.[moonId];
-    if (!moon) return 1;
-    return state.mapData?.layer0?.orbits?.[moon.orbit] || 1;
-  },
-  fuelCostForRoute(fromNodeId, toNodeId, shipId = null) {
-    const fromNode = nodes[fromNodeId];
-    const toNode = nodes[toNodeId];
-    if (!fromNode || !toNode) return 0;
-    const distance = this.safeRouteDistance(fromNodeId, toNodeId);
-    const fromBand = this.orbitBandValue(fromNode.moon);
-    const toBand = this.orbitBandValue(toNode.moon);
-    const bandDelta = toBand - fromBand;
-    const driveShip = shipId ? state.ships.find((s) => s.id === shipId) : null;
-    const uphillMultiplier = driveShip?.utility ? 1 : 2;
-    const gravityMultiplier = bandDelta > 0 ? uphillMultiplier : bandDelta < 0 ? 0.35 : 1;
-    return Math.max(10, Math.round(distance * 12 * gravityMultiplier));
-  },
-  fuelBillingActive() {
-    return state.currentScenario >= 2;
-  },
-  oneWaySignalToNode(nodeId) {
-    return this.safeRouteDistance(commandNodeId(), nodeId);
-  },
-  oneWaySignalToShip(ship) {
-    return this.oneWaySignalToNode(ship.lastKnownAt || ship.at);
-  },
-};
-
-const BuddeAdvisor = {
-  adviseContractOptions(shipId) {
-    if (state.currentScenario < 2) return;
-    const ship = state.ships.find((s) => s.id === shipId);
-    const contracts = openContracts();
-    if (!ship || contracts.length < 1) return;
-
-    const scored = contracts.map((c) => ({
-      contract: c,
-      fuel: NavigationModel.fuelCostForRoute(ship.at, c.from) + NavigationModel.fuelCostForRoute(c.from, c.to),
-    })).sort((a, b) => a.fuel - b.fuel);
-
-    const best = scored[0];
-    const alt = scored[1];
-    const bestLabel = `${best.contract.id} (${nodeLabel(best.contract.from)} → ${nodeLabel(best.contract.to)})`;
-    const preview = scored.slice(0, 2).map((entry) => `${entry.contract.id}: ${entry.fuel} fuel`).join(" | ");
-    if (preview) buddeInform(`Contract fuel estimates: ${preview}.`);
-    if (alt) {
-      const savingsFuel = Math.max(1, alt.fuel - best.fuel);
-      const savings = Math.max(1, Math.round(((alt.fuel - best.fuel) / alt.fuel) * 100));
-      buddeInform(`Contract routing options available. My recommendation is ${bestLabel}. Estimated fuel reduction: ${savingsFuel} (${savings}%) versus your next best contract choice.`);
-    } else {
-      buddeInform(`Only one contract route available: ${bestLabel}.`);
-    }
-
-    const destinationApproach = nodes[best.contract.to]?.approach || 0;
-    if (destinationApproach >= 7) {
-      buddeSpeak("highVarianceApproach", "Destination approach variance is high. Treat ETA as an estimate, not a promise.");
-    }
-  },
-  adviseDestinationOptions(shipId) {
-    if (state.currentScenario < 2) return;
-    const ship = state.ships.find((s) => s.id === shipId);
-    if (!ship) return;
-    const choices = candidateDestinationsForShip(ship.id)
-      .map((nodeId) => ({ nodeId, fuel: NavigationModel.fuelCostForRoute(ship.at, nodeId, ship.id) }))
-      .sort((a, b) => a.fuel - b.fuel);
-    if (!choices.length) return;
-
-    const best = choices[0];
-    const alt = choices[1];
-    const preview = choices.slice(0, 2).map((entry) => `${nodeLabel(entry.nodeId)}: ${entry.fuel} fuel`).join(" | ");
-    if (preview) buddeInform(`Destination fuel estimates: ${preview}.`);
-    if (alt) {
-      const savingsFuel = Math.max(1, alt.fuel - best.fuel);
-      const savings = Math.max(1, Math.round(((alt.fuel - best.fuel) / alt.fuel) * 100));
-      buddeInform(`Destination options available. My recommendation is ${nodeLabel(best.nodeId)}. Estimated fuel reduction: ${savingsFuel} (${savings}%) versus your other immediate option.`);
-    } else {
-      buddeInform(`Single reachable destination candidate: ${nodeLabel(best.nodeId)}.`);
-    }
-
-    if ((nodes[best.nodeId]?.approach || 0) >= 7) {
-      buddeSpeak("highVarianceApproach", "Local approach spread is high at this destination. Expect variable final timing.");
-    }
-  },
-};
-
-function orbitBandForNode(nodeId) {
-  const node = nodes[nodeId];
-  const moon = node ? state.mapData?.layer0?.moons?.[node.moon] : null;
-  if (!moon) return null;
-  return state.mapData?.layer0?.orbits?.[moon.orbit] || null;
-}
-
-function candidateDestinationsForShip(shipId) {
-  const ship = state.ships.find((s) => s.id === shipId);
-  if (!ship) return [];
-  const currentBand = orbitBandForNode(ship.at);
-  if (!currentBand) return Object.keys(nodes).filter((nodeId) => nodeId !== ship.at).slice(0, 7);
-
-  const entries = Object.keys(nodes).filter((nodeId) => nodeId !== ship.at).map((nodeId) => ({
-    nodeId,
-    band: orbitBandForNode(nodeId),
-  }));
-
-  const sameBand = entries
-    .filter((entry) => entry.band === currentBand)
-    .map((entry) => entry.nodeId)
-    .slice(0, 5);
-
-  const findTransferLane = (band) => entries
-    .filter((entry) => entry.band === band && /transfer_lane/i.test(entry.nodeId))
-    .map((entry) => entry.nodeId)[0];
-
-  const upperLane = findTransferLane(currentBand + 1);
-  const lowerLane = findTransferLane(currentBand - 1);
-
-  const ordered = [...sameBand];
-  if (upperLane) ordered.push(upperLane);
-  if (lowerLane) ordered.push(lowerLane);
-
-  return [...new Set(ordered)].slice(0, 7);
-}
+const NavigationModel = createNavigationModel({
+  state,
+  getNodes: () => nodes,
+  getAdjacency: () => adjacency,
+  shipSpeedById: SHIP_SPEED_BY_ID,
+  commandNodeId,
+});
 
 function fmtTime(total) {
   const m = String(Math.floor(total / 60)).padStart(2, "0");
@@ -691,74 +425,7 @@ function queueCharacterMessage(delay, characterName, bucket, fallback, type = "c
   }, type === "comms" ? speakerMessageType(characterName) : type);
 }
 
-const PlayerHailFlow = {
-  activeTarget: null,
-  awaitingPlayerChoice: false,
-  options: ["request", "threaten", "thank_you", "negotiate", "insult", "goodbye"],
-  enable(targetName) {
-    this.activeTarget = targetName;
-    this.awaitingPlayerChoice = true;
-    if (!ui.hailAction) return;
-    ui.cmdInput.hidden = true;
-    ui.cmdInput.disabled = true;
-    ui.hailAction.hidden = false;
-    ui.hailAction.disabled = false;
-    ui.hailAction.value = this.options[0];
-    ui.hailAction.focus();
-  },
-  disable() {
-    this.activeTarget = null;
-    this.awaitingPlayerChoice = false;
-    if (!ui.hailAction) return;
-    ui.hailAction.hidden = true;
-    ui.hailAction.disabled = true;
-    ui.cmdInput.hidden = false;
-    ui.cmdInput.disabled = false;
-    ui.cmdInput.focus();
-  },
-  isAwaitingChoice() {
-    return this.awaitingPlayerChoice && Boolean(this.activeTarget);
-  },
-  pickResponse(targetName, action) {
-    const dialogue = state.playerRequestDialogue || {};
-    const byCharacter = dialogue?.byCharacter?.[targetName]?.[action];
-    const byFaction = dialogue?.byFaction?.[String(state.dialogueDb?.[targetName]?.faction || "").toLowerCase()]?.[action];
-    const fallback = dialogue?.default?.[action];
-    const modernPool = byCharacter || byFaction || fallback || [];
-    const actionToneMap = {
-      request: "positive",
-      negotiate: "positive",
-      thank_you: "positive",
-      threaten: "rude",
-      insult: "rude",
-      goodbye: "negative",
-    };
-    const legacyTone = actionToneMap[action] || "negative";
-    const legacyPool = dialogue?.[targetName]?.player_request?.[legacyTone]
-      || dialogue?.default?.player_request?.[legacyTone]
-      || [];
-    const pool = modernPool.length ? modernPool : legacyPool;
-    if (Array.isArray(pool) && pool.length) {
-      return pool[Math.floor(Math.random() * pool.length)];
-    }
-    return `${targetName} acknowledged your ${action.replace("_", " ")}.`;
-  },
-  submitSelection(action) {
-    if (!this.isAwaitingChoice()) return false;
-    const normalized = this.options.includes(action) ? action : this.options[0];
-    const targetName = this.activeTarget;
-    if (targetName === ARCWORKS_EXEC_NAME && state.currentScenario >= 2 && (normalized === "request" || normalized === "negotiate")) {
-      state.onionSkinInspectionWaived = true;
-      basilInform(`${ARCWORKS_EXEC_NAME} has approved your request. Onion Skin inspection holds are now waived for current operations.`);
-    }
-    handleScenario2DetainmentHailResolution(targetName, normalized);
-    logLine(`> ${normalized.replace("_", " ")}`, "cmd");
-    const responseText = this.pickResponse(targetName, normalized);
-    logLine(`${targetName} ${speakerContext(targetName)}: ${responseText}`, speakerMessageType(targetName));
-    this.disable();
-    return true;
-  },
-};
+let PlayerHailFlow;
 
 async function loadReferenceData() {
   try {
@@ -881,12 +548,27 @@ function maybeIntroduceBudde() {
   buddeInform(introText, "budde");
 }
 
+function candidateDestinationsForShip(shipId) {
+  return findCandidateDestinations(shipId, state, nodes, state.mapData);
+}
+
 const routeDistance = (...args) => NavigationModel.routeDistance(...args);
 const safeRouteDistance = (...args) => NavigationModel.safeRouteDistance(...args);
 const shipSpeed = (...args) => NavigationModel.shipSpeed(...args);
 const travelTimeForRoute = (...args) => NavigationModel.travelTimeForRoute(...args);
 const fuelCostForRoute = (...args) => NavigationModel.fuelCostForRoute(...args);
 const fuelBillingActive = () => NavigationModel.fuelBillingActive();
+
+const BuddeAdvisor = createBuddeAdvisor({
+  state,
+  getNodes: () => nodes,
+  openContracts,
+  fuelCostForRoute,
+  nodeLabel,
+  candidateDestinationsForShip,
+  buddeInform,
+  buddeSpeak,
+});
 
 function scheduleMessage(delay, textOrFactory, type = "report") {
   state.delayedMessages.push({ at: state.tick + delay, text: textOrFactory, type });
@@ -917,151 +599,15 @@ function basilCommsLatencyLine(ship, commandNoun = "orders") {
   if (!state.tutorialDone) state.latencyBriefed = true;
 }
 
-function randomInt(min, max) {
-  const low = Math.ceil(min);
-  const high = Math.floor(max);
-  return Math.floor(Math.random() * (high - low + 1)) + low;
-}
+const contractTools = createContractTools({
+  state,
+  getNodes: () => nodes,
+  shipCapacityById: SHIP_CAPACITY_BY_ID,
+  cargoGenerationRules: CARGO_GENERATION_RULES,
+  isTransferLaneNode: (nodeId) => isTransferLaneMapNode(nodeId, nodes),
+});
 
-function randomFrom(pool) {
-  if (!Array.isArray(pool) || !pool.length) return null;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function isTransferLaneNode(nodeId) {
-  return /transfer lane/i.test(nodes[nodeId]?.label || "");
-}
-
-function idsForLocationNames(names = [], labelToId = {}) {
-  return names.map((name) => labelToId[name]).filter(Boolean);
-}
-
-function cargoRequirementForType(cargoType) {
-  const sizeRules = CARGO_GENERATION_RULES.cargoSizeRules || {};
-  const globalRule = sizeRules.global || { min: 1, max: 10 };
-  const byType = sizeRules.byCargoType?.[cargoType] || {};
-  if (Number.isInteger(byType.exact)) return byType.exact;
-  const min = Number.isInteger(byType.min) ? byType.min : globalRule.min;
-  const max = Number.isInteger(byType.max) ? byType.max : globalRule.max;
-  const nonVip = sizeRules.nonVIP || { min: 2, max: 10 };
-  const finalMin = cargoType === "VIP" ? min : Math.max(min, nonVip.min);
-  const finalMax = cargoType === "VIP" ? max : Math.min(max, nonVip.max);
-  return randomInt(finalMin, finalMax);
-}
-
-function generateCargoContractData() {
-  const labelToId = Object.fromEntries(Object.entries(nodes).map(([nodeId, node]) => [node.label, nodeId]));
-  const allNodeIds = Object.keys(nodes);
-  if (allNodeIds.length < 2) return null;
-
-  const cargoType = randomFrom(Object.keys(CARGO_GENERATION_RULES.cargoClients));
-  const client = randomFrom(CARGO_GENERATION_RULES.cargoClients[cargoType] || []);
-  if (!cargoType || !client) return null;
-
-  const cargoRequirement = cargoRequirementForType(cargoType);
-  const maxNonUtilityCapacity = Math.max(
-    0,
-    ...state.ships.filter((ship) => !ship.utility).map((ship) => ship.cargoCapacity || SHIP_CAPACITY_BY_ID[ship.id] || 0)
-  );
-  if (cargoRequirement > maxNonUtilityCapacity) return null;
-
-  const { locationSets, cargoOriginRules, globalOriginOverrides, clientDestinationRules, globalRules } = CARGO_GENERATION_RULES;
-  const transferLaneNodeIds = new Set(idsForLocationNames(locationSets.transfer_lanes, labelToId));
-  const stationNodeIds = idsForLocationNames(locationSets.stations, labelToId);
-  const outpostNodeIds = idsForLocationNames(locationSets.ufp_outposts, labelToId);
-
-  const originRule = cargoOriginRules[cargoType];
-  let originPool = [];
-  if (Array.isArray(originRule)) {
-    originPool = idsForLocationNames(originRule, labelToId);
-  } else if (originRule === "stations") {
-    originPool = [...stationNodeIds];
-  } else if (originRule === "any_non_transfer_lane") {
-    originPool = allNodeIds.filter((nodeId) => !transferLaneNodeIds.has(nodeId) && !isTransferLaneNode(nodeId));
-  }
-  originPool.push(...idsForLocationNames(globalOriginOverrides, labelToId));
-  originPool = [...new Set(originPool)];
-  if (globalRules.no_origin_from_transfer_lanes) {
-    originPool = originPool.filter((nodeId) => !transferLaneNodeIds.has(nodeId) && !isTransferLaneNode(nodeId));
-  }
-  if (!originPool.length) return null;
-
-  const destinationRule = clientDestinationRules[client];
-  let destinationPool = [];
-  if (destinationRule === "ufp_outposts") {
-    destinationPool = [...outpostNodeIds];
-  } else if (destinationRule === "stations") {
-    destinationPool = [...stationNodeIds];
-  } else if (destinationRule === "any_valid_destination") {
-    destinationPool = [...allNodeIds];
-  }
-
-  const transferAllowedCargo = globalRules.transfer_lane_destinations?.allowed_cargo || [];
-  if (!transferAllowedCargo.includes(cargoType)) {
-    destinationPool = destinationPool.filter((nodeId) => !transferLaneNodeIds.has(nodeId) && !isTransferLaneNode(nodeId));
-  }
-  destinationPool = [...new Set(destinationPool)];
-  if (!destinationPool.length) return null;
-
-  const eligibleShips = state.ships.filter(
-    (ship) => !ship.utility && (ship.cargoCapacity || SHIP_CAPACITY_BY_ID[ship.id] || 0) >= cargoRequirement
-  );
-  if (!eligibleShips.length) return null;
-
-  const origin = randomFrom(originPool);
-  const destinationCandidates = destinationPool.filter((nodeId) => !globalRules.origin_cannot_equal_destination || nodeId !== origin);
-  if (!origin || !destinationCandidates.length) return null;
-  const destination = randomFrom(destinationCandidates);
-
-  return {
-    from: origin,
-    to: destination,
-    client: client.replace(/_/g, " "),
-    cargoType: cargoType.replace(/_/g, " "),
-    cargoRequirement,
-  };
-}
-
-function generateContract() {
-  const origins = Object.keys(nodes);
-  if (origins.length < 2) return;
-  let from = origins[Math.floor(Math.random() * origins.length)];
-  let to = from;
-  let client = null;
-  let cargoType = null;
-  let cargoRequirement = null;
-
-  if (state.currentScenario >= 2) {
-    const generated = generateCargoContractData();
-    if (generated) {
-      from = generated.from;
-      to = generated.to;
-      client = generated.client;
-      cargoType = generated.cargoType;
-      cargoRequirement = generated.cargoRequirement;
-    } else {
-      while (to === from) to = origins[Math.floor(Math.random() * origins.length)];
-      const scenario2Fields = state.scenario2Dialogue?.metadata?.contractFields || {};
-      const clients = Array.isArray(scenario2Fields.client) ? scenario2Fields.client : [];
-      const cargoTypes = Array.isArray(scenario2Fields.cargoType) ? scenario2Fields.cargoType : [];
-      client = clients.length ? clients[Math.floor(Math.random() * clients.length)] : null;
-      cargoType = cargoTypes.length ? cargoTypes[Math.floor(Math.random() * cargoTypes.length)] : null;
-    }
-  } else {
-    while (to === from) to = origins[Math.floor(Math.random() * origins.length)];
-  }
-
-  state.contracts.push({
-    id: `C-${state.nextContract++}`,
-    from,
-    to,
-    payout: 300 + Math.floor(Math.random() * 160),
-    status: "open",
-    client,
-    cargoType,
-    cargoRequirement,
-  });
-}
+const generateContract = (...args) => contractTools.generateContract(...args);
 
 function openContracts() {
   return state.contracts.filter((c) => c.status === "open");
@@ -1476,6 +1022,18 @@ function handleScenario2DetainmentHailResolution(targetName, action) {
 
   return false;
 }
+
+PlayerHailFlow = createPlayerHailFlow({
+  state,
+  ui,
+  arcworksExecName: ARCWORKS_EXEC_NAME,
+  handleScenario2DetainmentHailResolution,
+  basilInform,
+  logLine,
+  speakerContext,
+  speakerMessageType,
+  pickResponse: (targetName, action) => pickHailResponse(state, targetName, action),
+});
 
 function showDestinationsForSelectedShip() {
   const destinationOptions = candidateDestinationsForShip(state.selection.selectedShipId);
@@ -2245,7 +1803,7 @@ async function init() {
       indigo_station: { label: "Indigo Station", moonName: "Sulphide", approach: 4 },
     };
     edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
-    adjacency = buildGraph();
+    adjacency = buildGraph(nodes, edges);
   }
   generateContract();
   generateContract();
