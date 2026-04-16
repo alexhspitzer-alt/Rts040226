@@ -66,7 +66,20 @@
       </article>
     </section>
   </main>
+  <footer class="build-meta-wrap" aria-label="Build metadata">
+    <small id="build-meta" class="build-meta" data-branch="work">branch: work | last updated: loading…</small>
+  </footer>
 
+  <script>
+    const buildMetaElement = document.getElementById("build-meta");
+    if (buildMetaElement) {
+      const branch = buildMetaElement.dataset.branch || "unknown";
+      const sourceDate = document.lastModified ? new Date(document.lastModified) : new Date();
+      const utcDate = Number.isNaN(sourceDate.getTime()) ? new Date() : sourceDate;
+      const formattedUtc = utcDate.toISOString().replace("T", " ").slice(0, 16);
+      buildMetaElement.textContent = `branch: ${branch} | last updated: ${formattedUtc} UTC`;
+    }
+  </script>
   <script type="module" src="game.js"></script>
 </body>
 </html>
