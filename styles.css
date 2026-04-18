@@ -179,6 +179,17 @@ button:hover {
   clip-path: inset(50%);
 }
 
+.build-meta-wrap {
+  text-align: center;
+  margin: 0.2rem 0 0.6rem;
+}
+
+.build-meta {
+  font-size: 0.62rem;
+  color: #8aa3bf;
+  letter-spacing: 0.02em;
+}
+
 @media (max-width: 800px) {
   .terminal {
     grid-column: span 1;
