@@ -354,7 +354,7 @@ export function createCommandRuntime({
           ? ` | ${c.client} | ${c.cargoType}`
           : "";
         const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
-          ? ` | cargo ${c.cargoRequirement}T | ${c.cargoRequirement}T cap`
+          ? ` | cargo ${c.cargoRequirement}T`
           : "";
         logLine(`${displayNumber}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)}${scenarioFlavor}${cargoRequirementLabel}, $${c.payout}`, "sys");
       });

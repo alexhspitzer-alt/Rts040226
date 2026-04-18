@@ -642,7 +642,7 @@ function render() {
     const li = document.createElement("li");
     const displayNumber = contractNumber(c.id) || (idx + 1);
     const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
-      ? ` | cargo ${c.cargoRequirement}T | ${c.cargoRequirement}T cap`
+      ? ` | cargo ${c.cargoRequirement}T`
       : "";
     const scenarioFlavor = state.currentScenario >= 2 && c.client && c.cargoType
       ? ` | ${c.client} | ${c.cargoType}${cargoRequirementLabel}`
@@ -782,7 +782,7 @@ function showContractsForSelectedShip() {
       ? ` | ${c.client} | ${c.cargoType}`
       : "";
     const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
-      ? ` | cargo ${c.cargoRequirement}T | ${c.cargoRequirement}T cap`
+      ? ` | cargo ${c.cargoRequirement}T`
       : "";
     logLine(`${displayNumber}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)}${scenarioFlavor}${cargoRequirementLabel} (+$${c.payout})`, "sys");
   });
