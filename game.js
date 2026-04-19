@@ -47,6 +47,8 @@ const LEGACY_NODE_ALIASES = {
 };
 const DEFAULT_LORE_SUMMARY =
   "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks inspections, Blister deals, and insurance-driven risk management.";
+const SCENARIO3_CAPACITY_BRIEFING =
+  "Scenario 3 routing now includes explicit cargo tonnage. Contract cargo is shown as T units (for example, 6T). Ship capability is shown as XT cap (for example, 3T cap). Yes, this is also where I confirm the Courier still cannot carry extra munitions in the lavatory, despite management's recurring optimism.";
 
 const SHIP_CAPTAINS = {
   "hauler-1": "Capt. Soren Nnadi",
@@ -517,9 +519,7 @@ function playScenario3Intro() {
   });
   if (!state.scenario3CapacityBriefed) {
     state.scenario3CapacityBriefed = true;
-    basilInform(
-      "Scenario 3 routing now includes explicit cargo tonnage. Contract cargo is shown as T units (for example, 6T). Ship capability is shown as XT cap (for example, 3T cap). Yes, this is also where I confirm the Courier still cannot carry extra munitions in the lavatory, despite management's recurring optimism."
-    );
+    basilInform(SCENARIO3_CAPACITY_BRIEFING);
   }
 }
 
@@ -757,7 +757,7 @@ function showShipMenu(shipId) {
   }
   if (state.currentScenario >= 3 && !state.scenario3CapacityBriefed) {
     state.scenario3CapacityBriefed = true;
-    basilInform("Although management believes the Courier could hold more goods than currently spec'd, the mariners union keeps objecting to packing munitions or grain into the lavatory.");
+    basilInform(SCENARIO3_CAPACITY_BRIEFING);
   }
   let menuOptions = "A assign, S send, R report, B back to ship list.";
   if (ship.utility && ship.status === "docked") {
