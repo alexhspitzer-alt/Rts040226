@@ -40,7 +40,10 @@
         "Copy that. I'll take her out.",
         "Acknowledged. Taking a prograde line, counterclockwise around Indigo.",
         "Copy. Going retrograde, clockwise; we'll report if we cross 180° dark side.",
-        "Very good. Prograde departure, and if we cross 0° we'll call star side."
+        "Very good. Prograde departure, and if we cross 0° we'll call star side.",
+        "Aye, dispatch. Climbing one orbit band before we settle into prograde.",
+        "Copy that—dropping to a lower orbit for the handoff window.",
+        "Understood. We are climbing two orbit bands; that is a hard climb, but we'll make it."
       ],
       "greetings": [
         "Morning, dispatch. Sea's black and calm enough.",
@@ -105,7 +108,10 @@
         "Understood. Executing.",
         "Acknowledged. Departing prograde around Indigo, counterclockwise.",
         "Copy. Running retrograde around Indigo, clockwise from current mark.",
-        "Order received. Prograde track set; crossing 0° onto the star side."
+        "Order received. Prograde track set; crossing 0° onto the star side.",
+        "Received. Dropping one orbit lower, then burning prograde.",
+        "Copy. Climbing one orbit band now; timing stays tight.",
+        "Understood. Climbing two orbit bands—big climb, big burn, still on schedule."
       ],
       "greetings": [
         "Mercer here. Ready for tasking.",
@@ -139,7 +145,10 @@
         "Received. I'll smooth it over on arrival.",
         "Acknowledged. We are going prograde, counterclockwise around Indigo.",
         "Copy. Going retrograde, clockwise; we'll cross 180° to the dark side.",
-        "Understood. Prograde departure; if we hit 0°, we'll call star side."
+        "Understood. Prograde departure; if we hit 0°, we'll call star side.",
+        "Copy that. Dropping to a lower orbit to save fuel before transfer.",
+        "Received. Climbing one orbit band for clearance and traffic separation.",
+        "Understood. Climbing two orbit bands—steep climb, loud engines, no complaints."
       ],
       "greetings": [
         "Nnadi here. Hope everyone's pretending to be organized.",
@@ -173,7 +182,10 @@
         "Copy. Moving.",
         "Acknowledged. Retrograde route, clockwise around Indigo.",
         "Received. Prograde burn complete; we're tracking counterclockwise.",
-        "Understood. Retrograde transit and crossing 180° into dark side lanes."
+        "Understood. Retrograde transit and crossing 180° into dark side lanes.",
+        "Received. Dropping one orbit lower; route remains clean.",
+        "Copy. Climbing one orbit band, then resuming retrograde track.",
+        "Understood. We are dropping two orbit bands fast—deep descent, sharp correction, still controlled."
       ],
       "greetings": [
         "Rook here. Ready.",
