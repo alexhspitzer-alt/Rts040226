@@ -42,8 +42,9 @@ h1 {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: minmax(260px, 320px) 1fr;
   gap: 1rem;
+  align-items: start;
 }
 
 .list {
@@ -62,8 +63,39 @@ h1 {
 }
 
 .terminal {
-  grid-column: span 2;
+  grid-column: 2;
   font-size: 1rem;
+}
+
+.metrics-panel {
+  grid-column: 1;
+}
+
+.tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+}
+
+.tab-btn {
+  font-size: 0.72rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid #3f5f83;
+  background: #102236;
+  color: #b9d6f2;
+}
+
+.tab-btn.is-active {
+  background: #2f5f8e;
+  color: #e5f5ff;
+}
+
+.tab-panel h3 {
+  margin: 0.2rem 0 0.45rem;
+  font-size: 0.9rem;
+  color: #c7def5;
 }
 
 .feed {
@@ -191,8 +223,13 @@ button:hover {
 }
 
 @media (max-width: 800px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-panel,
   .terminal {
-    grid-column: span 1;
+    grid-column: 1;
   }
 
   .feed {
