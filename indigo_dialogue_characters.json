@@ -37,7 +37,10 @@
       "acknowledgements": [
         "Aye, dispatch. We're underway.",
         "Very good. Proceeding as ordered.",
-        "Copy that. I'll take her out."
+        "Copy that. I'll take her out.",
+        "Acknowledged. Taking a prograde line, counterclockwise around Indigo.",
+        "Copy. Going retrograde, clockwise; we'll report if we cross 180° dark side.",
+        "Very good. Prograde departure, and if we cross 0° we'll call star side."
       ],
       "greetings": [
         "Morning, dispatch. Sea's black and calm enough.",
@@ -99,7 +102,10 @@
       "acknowledgements": [
         "Received. Moving now.",
         "Copy. I'll make the window.",
-        "Understood. Executing."
+        "Understood. Executing.",
+        "Acknowledged. Departing prograde around Indigo, counterclockwise.",
+        "Copy. Running retrograde around Indigo, clockwise from current mark.",
+        "Order received. Prograde track set; crossing 0° onto the star side."
       ],
       "greetings": [
         "Mercer here. Ready for tasking.",
@@ -130,7 +136,10 @@
       "acknowledgements": [
         "Copy that. We'll handle it.",
         "Understood, dispatch. Proceeding now.",
-        "Received. I'll smooth it over on arrival."
+        "Received. I'll smooth it over on arrival.",
+        "Acknowledged. We are going prograde, counterclockwise around Indigo.",
+        "Copy. Going retrograde, clockwise; we'll cross 180° to the dark side.",
+        "Understood. Prograde departure; if we hit 0°, we'll call star side."
       ],
       "greetings": [
         "Nnadi here. Hope everyone's pretending to be organized.",
@@ -161,7 +170,10 @@
       "acknowledgements": [
         "Received.",
         "Understood. We're on it.",
-        "Copy. Moving."
+        "Copy. Moving.",
+        "Acknowledged. Retrograde route, clockwise around Indigo.",
+        "Received. Prograde burn complete; we're tracking counterclockwise.",
+        "Understood. Retrograde transit and crossing 180° into dark side lanes."
       ],
       "greetings": [
         "Rook here. Ready.",
