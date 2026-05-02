@@ -7,13 +7,17 @@ body {
   margin: 0;
   background: radial-gradient(circle at top, #1a2230 0%, #0a0e14 62%);
   color: #d9ecff;
+  min-height: 100vh;
 }
 
 .layout {
-  max-width: 1150px;
+  max-width: min(1700px, 100%);
   margin: 0 auto;
   padding: 1rem;
   font-size: 0.84rem;
+  min-height: calc(100vh - 2.5rem);
+  display: flex;
+  flex-direction: column;
 }
 
 h1 {
@@ -42,9 +46,11 @@ h1 {
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) 1fr;
+  grid-template-columns: 1fr minmax(260px, 320px);
+  grid-template-areas: "terminal metrics";
   gap: 1rem;
   align-items: start;
+  flex: 1;
 }
 
 .list {
@@ -63,12 +69,12 @@ h1 {
 }
 
 .terminal {
-  grid-column: 2;
+  grid-area: terminal;
   font-size: 1rem;
 }
 
 .metrics-panel {
-  grid-column: 1;
+  grid-area: metrics;
 }
 
 .tab-row {
@@ -99,7 +105,7 @@ h1 {
 }
 
 .feed {
-  height: 620px;
+  height: min(72vh, 900px);
   overflow: auto;
   background: #0a111a;
   border: 1px solid #3a5578;
@@ -225,14 +231,12 @@ button:hover {
 @media (max-width: 800px) {
   .grid {
     grid-template-columns: 1fr;
-  }
-
-  .metrics-panel,
-  .terminal {
-    grid-column: 1;
+    grid-template-areas:
+      "terminal"
+      "metrics";
   }
 
   .feed {
-    height: 340px;
+    height: 50vh;
   }
 }
