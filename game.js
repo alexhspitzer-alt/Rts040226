@@ -658,12 +658,42 @@ function minimumFuelForPlayerFleet(fromNodeId, toNodeId) {
 function buildBuddeRouteBrief(fromNodeId, toNodeId) {
   const distance = safeRouteDistance(fromNodeId, toNodeId);
   const minFuel = minimumFuelForPlayerFleet(fromNodeId, toNodeId);
-  const geometry = buildDeterministicDepartureCallout(fromNodeId, toNodeId);
   const fromLabel = nodeLabel(fromNodeId);
   const toLabel = nodeLabel(toNodeId);
   const distanceText = Number.isFinite(distance) ? `${distance}s route span` : "route span unavailable";
   const fuelText = Number.isFinite(minFuel) ? `${minFuel} minimum fuel` : "minimum fuel unavailable";
-  return `Route ${fromLabel} -> ${toLabel}: ${geometry} Final approach follows local traffic around ${toLabel}. Estimated ${distanceText}, ${fuelText}.`;
+
+  const fromAngle = angleForNode(fromNodeId);
+  const toAngle = angleForNode(toNodeId);
+  const fromBand = orbitBandValueForNode(fromNodeId);
+  const toBand = orbitBandValueForNode(toNodeId);
+  const steps = [];
+
+  if (Number.isFinite(fromAngle) && Number.isFinite(toAngle)) {
+    const ccwDelta = (toAngle - fromAngle + 360) % 360;
+    const cwDelta = (fromAngle - toAngle + 360) % 360;
+    const prograde = ccwDelta <= cwDelta;
+    steps.push(prograde
+      ? "Begin with a prograde burn (counterclockwise). Yes, the shorter way is usually better."
+      : "Begin with a retrograde burn (clockwise). Even now, this is still the efficient option.");
+    const isDark = (angle) => angle > 90 && angle < 270;
+    const fromDark = isDark(fromAngle);
+    const toDark = isDark(toAngle);
+    if (!fromDark && toDark) steps.push("Expect entry into Indigo's shadow en route.");
+    else if (fromDark && !toDark) steps.push("You will cross the horizon and regain star-side visibility.");
+    else if (toDark) steps.push("Most of this segment remains on Indigo's dark side.");
+    else steps.push("This route stays on the near side with line-of-sight navigation.");
+  }
+
+  if (Number.isFinite(fromBand) && Number.isFinite(toBand)) {
+    const delta = toBand - fromBand;
+    if (delta > 0) steps.push(delta >= 2 ? `Climb window: +${delta} orbit bands. Budget for an expensive uphill burn.` : "Climb window: +1 orbit band.");
+    else if (delta < 0) steps.push(`Descent window: ${delta} orbit band${Math.abs(delta) > 1 ? "s" : ""}. Use the gravity assist and try not to waste it.`);
+    else steps.push("No orbit-band change required; remain on current band.");
+  }
+
+  steps.push(`Final approach: transition onto ${toLabel} local traffic corridor and hold station.`);
+  return `Route ${fromLabel} -> ${toLabel}. ${steps.join(" ")} Estimated ${distanceText}, ${fuelText}.`;
 }
 
 function basilShipIntel(ship) {
