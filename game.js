@@ -647,6 +647,25 @@ function buildDeterministicDepartureCallout(fromNodeId, toNodeId) {
   return parts.join(" ");
 }
 
+function minimumFuelForPlayerFleet(fromNodeId, toNodeId) {
+  const candidates = state.ships
+    .map((ship) => fuelCostForRoute(fromNodeId, toNodeId, effectiveDriveShipId(ship.id)))
+    .filter((value) => Number.isFinite(value));
+  if (!candidates.length) return null;
+  return Math.min(...candidates);
+}
+
+function buildBuddeRouteBrief(fromNodeId, toNodeId) {
+  const distance = safeRouteDistance(fromNodeId, toNodeId);
+  const minFuel = minimumFuelForPlayerFleet(fromNodeId, toNodeId);
+  const geometry = buildDeterministicDepartureCallout(fromNodeId, toNodeId);
+  const fromLabel = nodeLabel(fromNodeId);
+  const toLabel = nodeLabel(toNodeId);
+  const distanceText = Number.isFinite(distance) ? `${distance}s route span` : "route span unavailable";
+  const fuelText = Number.isFinite(minFuel) ? `${minFuel} minimum fuel` : "minimum fuel unavailable";
+  return `Route ${fromLabel} -> ${toLabel}: ${geometry} Final approach follows local traffic around ${toLabel}. Estimated ${distanceText}, ${fuelText}.`;
+}
+
 function basilShipIntel(ship) {
   const knownNode = ship.lastKnownAt || ship.at;
   const knownLabel = nodeLabel(knownNode);
@@ -1460,6 +1479,8 @@ commandRuntime = createCommandRuntime({
   pickLine,
   speakerMessageType,
   characterSpeak,
+  buddeInform,
+  buildBuddeRouteBrief,
   playerHailFlow: PlayerHailFlow,
   tutorialGoal: TUTORIAL_GOAL,
 });

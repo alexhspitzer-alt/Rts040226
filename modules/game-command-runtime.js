@@ -33,6 +33,8 @@ export function createCommandRuntime({
   pickLine,
   speakerMessageType,
   characterSpeak,
+  buddeInform,
+  buildBuddeRouteBrief,
   playerHailFlow,
   tutorialGoal,
 }) {
@@ -170,6 +172,32 @@ export function createCommandRuntime({
       dockUtilityShip(state.selection.selectedShipId, targetId);
       state.selection.pending = "ship_menu";
       return showShipMenu(state.selection.selectedShipId);
+    }
+
+    if (state.selection.pending === "await_route_from") {
+      const fromNodeId = state.selection.routeSelectableNodeIds?.[n - 1];
+      if (!fromNodeId) return logLine("Invalid origin number.", "error");
+      state.selection.routeFromNodeId = fromNodeId;
+      state.selection.pending = "await_route_to";
+      buddeInform(`Origin set: ${nodeLabel(fromNodeId)}. Select destination by number.`);
+      (state.selection.routeSelectableNodeIds || [])
+        .filter((nodeId) => nodeId !== fromNodeId)
+        .forEach((nodeId, idx) => {
+          const node = getNodes()[nodeId];
+          logLine(`${idx + 1}. ${nodeLabel(nodeId)} | approach ${node?.approach ?? "n/a"}`, "sys");
+        });
+      return true;
+    }
+
+    if (state.selection.pending === "await_route_to") {
+      const options = (state.selection.routeSelectableNodeIds || []).filter((nodeId) => nodeId !== state.selection.routeFromNodeId);
+      const toNodeId = options[n - 1];
+      if (!toNodeId) return logLine("Invalid destination number.", "error");
+      const fromNodeId = state.selection.routeFromNodeId;
+      buddeInform(buildBuddeRouteBrief(fromNodeId, toNodeId));
+      state.selection.pending = null;
+      state.selection.routeFromNodeId = null;
+      return true;
     }
 
     return false;
@@ -312,20 +340,21 @@ export function createCommandRuntime({
       return true;
     }
 
-    if (command === "map") {
+    if (command === "map" || command === "routes") {
       const mapSubPrompt = (parts[1] || "").toLowerCase();
-      if (mapSubPrompt === "routes") {
-        const routeSummary = getEdges().map((e) => `${e[0]}<->${e[1]}:${e[2]}s`).join(" | ");
-        logLine("Known route distances using last known approach vectors:", "sys");
-        logLine(routeSummary || "No routes available.", "sys");
+      if (command === "routes" || mapSubPrompt === "routes" || mapSubPrompt === "") {
+        const nodeIds = Object.keys(getNodes());
+        state.selection.pending = "await_route_from";
+        state.selection.routeSelectableNodeIds = nodeIds;
+        state.selection.routeFromNodeId = null;
+        buddeInform("Route planner online. Select origin by number. Approach indicates local distance from the parent moon.");
+        nodeIds.forEach((id, idx) => {
+          const node = getNodes()[id];
+          logLine(`${idx + 1}. ${nodeLabel(id)} | approach ${node.approach ?? "n/a"}`, "sys");
+        });
         return true;
       }
-      logLine(`Layer ${state.currentScenario} locations visible to player:`, "sys");
-      logLine("Approach variability describes that satellite's orbital variance from its parent moon.", "sys");
-      Object.entries(getNodes()).forEach(([id, node]) => {
-        logLine(`- ${id}: ${nodeLabel(id)} | approach ${node.approach ?? "n/a"}`, "sys");
-      });
-      logLine('Use "map routes" to inspect route distances.', "sys");
+      buddeInform("Use map or routes to start route planning.");
       return true;
     }
 
