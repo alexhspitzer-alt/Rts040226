@@ -591,6 +591,62 @@ function scheduleMessage(delay, textOrFactory, type = "report") {
 const oneWaySignalToNode = (...args) => NavigationModel.oneWaySignalToNode(...args);
 const oneWaySignalToShip = (...args) => NavigationModel.oneWaySignalToShip(...args);
 
+function moonForNode(nodeId) {
+  const node = nodes[nodeId];
+  if (!node?.moon) return null;
+  return state.mapData?.layer0?.moons?.[node.moon] || null;
+}
+
+function orbitBandValueForNode(nodeId) {
+  const moon = moonForNode(nodeId);
+  if (!moon) return null;
+  return state.mapData?.layer0?.orbits?.[moon.orbit] || null;
+}
+
+function angleForNode(nodeId) {
+  const moon = moonForNode(nodeId);
+  return Number.isFinite(moon?.angle) ? moon.angle : null;
+}
+
+function buildDeterministicDepartureCallout(fromNodeId, toNodeId) {
+  const fromAngle = angleForNode(fromNodeId);
+  const toAngle = angleForNode(toNodeId);
+  const fromBand = orbitBandValueForNode(fromNodeId);
+  const toBand = orbitBandValueForNode(toNodeId);
+  const parts = [];
+
+  if (Number.isFinite(fromAngle) && Number.isFinite(toAngle)) {
+    const ccwDelta = (toAngle - fromAngle + 360) % 360;
+    const cwDelta = (fromAngle - toAngle + 360) % 360;
+    const prograde = ccwDelta <= cwDelta;
+    parts.push(prograde ? "Prograde, counterclockwise around Indigo." : "Retrograde, clockwise around Indigo.");
+  }
+
+  if (Number.isFinite(fromBand) && Number.isFinite(toBand)) {
+    const delta = toBand - fromBand;
+    if (delta > 0) {
+      parts.push(delta >= 2 ? `Climbing ${delta} orbit bands; hard climb.` : "Climbing one orbit band.");
+    } else if (delta < 0) {
+      const drop = Math.abs(delta);
+      parts.push(drop >= 2 ? `Dropping ${drop} orbit bands; fast descent.` : "Dropping one orbit band.");
+    } else {
+      parts.push("Holding current orbit band.");
+    }
+  }
+
+  if (Number.isFinite(fromAngle) && Number.isFinite(toAngle)) {
+    const isDark = (angle) => angle > 90 && angle < 270;
+    const fromDark = isDark(fromAngle);
+    const toDark = isDark(toAngle);
+    if (!fromDark && toDark) parts.push("We're coming into Indigo's shadow now.");
+    else if (fromDark && !toDark) parts.push("Crossing the horizon, nice to be able to see again.");
+    else if (toDark) parts.push("Crossing the dark side of the planet now.");
+    else parts.push("We're on the near side now, switching back to line-of-sight navigation.");
+  }
+
+  return parts.join(" ");
+}
+
 function basilShipIntel(ship) {
   const knownNode = ship.lastKnownAt || ship.at;
   const knownLabel = nodeLabel(knownNode);
@@ -1125,7 +1181,13 @@ function sendShip(shipId, destination) {
     if (fuelBillingActive()) state.cash -= shipFuelCost;
     const captain = SHIP_CAPTAINS[ship.id];
     if (captain) {
-      queueCharacterMessage(uplink * 2, captain, "acknowledgements", "Order received and executing.", "comms");
+      queueCharacterMessage(
+        uplink * 2,
+        captain,
+        "__deterministic_departure__",
+        buildDeterministicDepartureCallout(ship.at, normalizedDestination) || "Order received and executing.",
+        "comms"
+      );
     }
   }
 
@@ -1202,7 +1264,14 @@ function assignContract(contractId, shipId) {
   );
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
-    queueCharacterMessage(uplink * 2, captain, "acknowledgements", "Proceeding as ordered.", "comms");
+    const firstLegDestination = ship.at === contract.from ? contract.to : contract.from;
+    queueCharacterMessage(
+      uplink * 2,
+      captain,
+      "__deterministic_departure__",
+      buildDeterministicDepartureCallout(ship.at, firstLegDestination) || "Proceeding as ordered.",
+      "comms"
+    );
   }
   scheduleMessage(
     uplink + Math.max(1, Math.floor(total / 2)) + oneWaySignalToNode(contract.to),
