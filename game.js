@@ -535,7 +535,7 @@ function renderAlmanac() {
 function addAlmanacItems(parentNode, groupName, entries) {
   if (!Array.isArray(entries) || !entries.length) return;
   const groupNode = document.createElement("details");
-  groupNode.className = "almanac-items";
+  groupNode.className = "almanac-group";
 
   const groupSummary = document.createElement("summary");
   groupSummary.textContent = groupName;
@@ -543,7 +543,7 @@ function addAlmanacItems(parentNode, groupName, entries) {
 
   entries.forEach((entry) => {
     const itemNode = document.createElement("details");
-    itemNode.className = "almanac-items";
+    itemNode.className = "almanac-entry";
 
     const itemSummary = document.createElement("summary");
     itemSummary.textContent = entry?.name || "Unnamed entry";
