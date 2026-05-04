@@ -104,6 +104,46 @@ h1 {
   color: #c7def5;
 }
 
+.almanac-root {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.almanac-category {
+  border: 1px solid #35516f;
+  border-radius: 7px;
+  background: #0d1724;
+}
+
+.almanac-category > summary,
+.almanac-items > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.almanac-category > summary {
+  padding: 0.45rem 0.55rem;
+  color: #b6d8fb;
+  font-weight: 700;
+}
+
+.almanac-items {
+  border-top: 1px solid #22364d;
+}
+
+.almanac-items > summary {
+  padding: 0.4rem 0.55rem;
+  color: #d8ebff;
+}
+
+.almanac-entry-description {
+  margin: 0;
+  padding: 0.2rem 0.55rem 0.55rem;
+  color: #b8cadf;
+  line-height: 1.35;
+  border-top: 1px dashed #28415b;
+}
+
 .feed {
   height: min(72vh, 900px);
   overflow: auto;
