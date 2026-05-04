@@ -512,7 +512,8 @@ function renderAlmanac() {
     return;
   }
 
-  Object.entries(entries).forEach(([categoryName, categoryPayload]) => {
+  const normalizedEntries = buildAlmanacViewModel(entries);
+  Object.entries(normalizedEntries).forEach(([categoryName, categoryPayload]) => {
     const categoryNode = document.createElement("details");
     categoryNode.className = "almanac-category";
     categoryNode.open = true;
@@ -530,6 +531,46 @@ function renderAlmanac() {
     }
     ui.almanacRoot.appendChild(categoryNode);
   });
+}
+
+function buildAlmanacViewModel(entries) {
+  const locations = entries?.locations || {};
+  const organizations = entries?.organizations || {};
+  const indigoSystemEntries = Array.isArray(locations?.["Indigo System"]) ? locations["Indigo System"] : [];
+  const transferLaneEntries = Array.isArray(locations?.["Transfer Lanes"]) ? locations["Transfer Lanes"] : [];
+  const moonEntries = Array.isArray(locations?.Moons) ? locations.Moons : [];
+  const stationEntries = Array.isArray(locations?.["Stations, Outposts, and Facilities"])
+    ? locations["Stations, Outposts, and Facilities"]
+    : [];
+  const factions = Array.isArray(organizations?.["Factions and Institutions"])
+    ? organizations["Factions and Institutions"]
+    : [];
+  const clients = Array.isArray(organizations?.Clients) ? organizations.Clients : [];
+
+  const orbitBandsEntry = indigoSystemEntries.find((entry) => entry?.name === "Orbit Bands");
+  const orbitBandChildren = indigoSystemEntries.filter((entry) => (
+    ["Low Orbit", "Ring Orbit", "High Orbit", "Outer Orbit"].includes(entry?.name)
+  ));
+  const indigoSystemCoreEntries = indigoSystemEntries.filter((entry) => (
+    !["Low Orbit", "Ring Orbit", "High Orbit", "Outer Orbit", "Orbit Bands"].includes(entry?.name)
+  ));
+  const orbitBandsGroup = [];
+  if (orbitBandsEntry) orbitBandsGroup.push(orbitBandsEntry);
+  orbitBandsGroup.push(...orbitBandChildren);
+
+  return {
+    "Indigo System": {
+      Overview: indigoSystemCoreEntries,
+      "Orbit Bands": orbitBandsGroup,
+      Moons: moonEntries,
+      "Stations, Outposts, and Facilities": stationEntries,
+      "Transfer Lanes": transferLaneEntries,
+    },
+    Organizations: {
+      "Factions, Institutions, and Clients": [...factions, ...clients],
+    },
+    "Ships and Classes": Array.isArray(entries?.ships_and_classes) ? entries.ships_and_classes : [],
+  };
 }
 
 function addAlmanacItems(parentNode, groupName, entries) {
