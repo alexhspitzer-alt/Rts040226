@@ -7,14 +7,14 @@ export function createConsoleLogger({
   dotsDelayMs,
   revealDelayMs,
 }) {
-  function appendLine(text, type = "sys") {
+  function appendLine(text, type = "sys", stampedTick = state.tick) {
     const div = document.createElement("div");
     const safeType = String(type || "sys").toLowerCase().replace(/[^a-z0-9_-]/g, "-");
     div.className = `line type-${safeType}`;
 
     const stamp = document.createElement("span");
     stamp.className = "stamp";
-    stamp.textContent = `[${fmtTime(state.tick)}][${type.toUpperCase()}]`;
+    stamp.textContent = `[${fmtTime(stampedTick)}][${type.toUpperCase()}]`;
 
     const body = document.createElement("span");
     body.className = "body";
@@ -36,11 +36,12 @@ export function createConsoleLogger({
   }
 
   function logLine(text, type = "sys") {
+    const queuedTick = state.tick;
     if (state.respondingToCommand && type !== "cmd") {
       const inputAt = Date.now();
       let bodyNode = null;
       const placeholderAt = queueConsoleTask(() => {
-        bodyNode = appendLine(". . .", type);
+        bodyNode = appendLine(". . .", type, queuedTick);
       }, inputAt + dotsDelayMs);
       const revealAt = Math.max(inputAt + revealDelayMs, placeholderAt + messageGapMs);
       setTimeout(() => {
@@ -51,7 +52,7 @@ export function createConsoleLogger({
     }
 
     queueConsoleTask(() => {
-      appendLine(text, type);
+      appendLine(text, type, queuedTick);
     });
   }
 

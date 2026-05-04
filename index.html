@@ -9,53 +9,101 @@
 <body>
   <main class="layout">
     <header>
-      <h1>bluFreight // Indigo Dispatch Console</h1>
-      <p>Tutorial Level: Complete 3 contracts. No contract deadlines. No level timer.</p>
+      <h1>INDIGO</h1>
+      <p>bluFreight Logistics operations console</p>
     </header>
 
     <section class="stats" aria-label="Game statistics">
       <div><strong>Clock:</strong> <span id="clock">00:00</span></div>
       <div><strong>Cash:</strong> $<span id="cash">0</span></div>
-      <div><strong>Reputation:</strong> <span id="rep">0</span></div>
-      <div><strong>Insurance Risk:</strong> <span id="risk">0</span></div>
-      <div><strong>Escorts:</strong> <span id="escort">Off</span></div>
     </section>
+    <div class="sr-only" aria-hidden="true">
+      <span id="rep">0</span>
+      <span id="risk">0</span>
+      <span id="escort">Off</span>
+    </div>
 
     <section class="grid">
-      <article class="panel">
-        <h2>Tutorial Contracts</h2>
-        <ul id="contracts" class="list"></ul>
-      </article>
-
-      <article class="panel">
-        <h2>Fleet</h2>
-        <ul id="fleet" class="list"></ul>
+      <article class="panel metrics-panel">
+        <div class="tab-row" role="tablist" aria-label="Grid tabs">
+          <button type="button" class="tab-btn is-active" role="tab" aria-selected="true" aria-controls="metrics-contracts" id="tab-contracts" data-tab="contracts">Contracts</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-fleet" id="tab-fleet" data-tab="fleet">Fleet</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-news" id="tab-news" data-tab="news">News</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-almanac" id="tab-almanac" data-tab="almanac">Almanac</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-inbox" id="tab-inbox" data-tab="inbox">Inbox(<span id="inbox-unread">0</span>)</button>
+        </div>
+        <section id="metrics-contracts" class="tab-panel is-active" role="tabpanel" aria-labelledby="tab-contracts">
+          <h3>Contracts</h3>
+          <ul id="contracts" class="list"></ul>
+        </section>
+        <section id="metrics-fleet" class="tab-panel" role="tabpanel" aria-labelledby="tab-fleet" hidden>
+          <h3>Fleet</h3>
+          <ul id="fleet" class="list"></ul>
+        </section>
+        <section id="metrics-news" class="tab-panel" role="tabpanel" aria-labelledby="tab-news" hidden>
+          <h3>News</h3>
+        </section>
+        <section id="metrics-almanac" class="tab-panel" role="tabpanel" aria-labelledby="tab-almanac" hidden>
+          <h3>Almanac</h3>
+        </section>
+        <section id="metrics-inbox" class="tab-panel" role="tabpanel" aria-labelledby="tab-inbox" hidden>
+          <h3>Inbox</h3>
+        </section>
       </article>
 
       <article class="panel terminal">
-        <h2>Dispatch Terminal</h2>
+        <h2>Dispatch Console</h2>
         <button id="copy-console" type="button" class="copy-btn">Copy Console Log</button>
         <div id="feed" class="feed" aria-live="polite"></div>
         <form id="cmd-form" class="cmd-form">
           <label for="cmd" class="sr-only">Command</label>
           <input id="cmd" autocomplete="off" placeholder="Type: help" />
+          <label for="hail-action" class="sr-only">Hail action</label>
+          <select id="hail-action" hidden>
+            <option value="request">request</option>
+            <option value="threaten">threaten</option>
+            <option value="thank_you">thank you</option>
+            <option value="negotiate">negotiate</option>
+            <option value="insult">insult</option>
+            <option value="goodbye">goodbye</option>
+          </select>
           <button type="submit">Send</button>
         </form>
-        <p class="hint">Try: <code>ships</code> → <code>1</code> → <code>A</code> → <code>1</code></p>
-      </article>
-
-      <article class="panel">
-        <h2>Tutorial Goals</h2>
-        <ol>
-          <li>Use <code>contracts</code> to inspect available jobs.</li>
-          <li>Assign ships with <code>assign &lt;contract&gt; &lt;ship&gt;</code>.</li>
-          <li>Watch delayed ship reports in the terminal feed.</li>
-          <li>Complete 3 contracts to finish tutorial mode.</li>
-        </ol>
+        <p class="hint">Try: <code>ships</code>, then select ship by typing its number or ID.</p>
       </article>
     </section>
   </main>
+  <footer class="build-meta-wrap" aria-label="Build metadata">
+    <small id="build-meta" class="build-meta" data-branch="refactor-game.js-into-smaller-files-mzpg10">branch: refactor-game.js-into-smaller-files-mzpg10 | last updated: loading…</small>
+  </footer>
 
+  <script>
+    const buildMetaElement = document.getElementById("build-meta");
+    if (buildMetaElement) {
+      const branch = buildMetaElement.dataset.branch || "unknown";
+      const sourceDate = document.lastModified ? new Date(document.lastModified) : new Date();
+      const utcDate = Number.isNaN(sourceDate.getTime()) ? new Date() : sourceDate;
+      const formattedUtc = utcDate.toISOString().replace("T", " ").slice(0, 16);
+      buildMetaElement.textContent = `branch: ${branch} | last updated: ${formattedUtc} UTC`;
+    }
+    const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
+    const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+    const setTab = (targetTab) => {
+      tabButtons.forEach((button) => {
+        const isActive = button.dataset.tab === targetTab;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-selected", String(isActive));
+      });
+      tabPanels.forEach((panel) => {
+        const isActive = panel.id === `metrics-${targetTab}`;
+        panel.classList.toggle("is-active", isActive);
+        panel.hidden = !isActive;
+      });
+    };
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => setTab(button.dataset.tab));
+    });
+  </script>
   <script type="module" src="game.js"></script>
 </body>
 </html>
