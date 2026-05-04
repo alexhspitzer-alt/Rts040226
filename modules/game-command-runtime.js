@@ -116,8 +116,6 @@ export function createCommandRuntime({
       h: "help",
       c: "contracts",
       m: "map",
-      l: "lore",
-      f: "factions",
       p: "pause",
     };
     return aliases[lower] || lower;
@@ -286,7 +284,7 @@ export function createCommandRuntime({
     if (parts[0] === "h" && parts.length >= 2) command = "hail";
 
     if (command === "help") {
-      logLine("help | status | lore | factions | comms | hail <name> | map [routes] | ships | select <ship|number> | assign <contract> <ship> (either order; IDs or numbers) | send <ship> <destination> | escort on/off | pause", "sys");
+      logLine("help | status | comms | hail <name> | map [routes] | ships | select <ship|number> | assign <contract> <ship> (either order; IDs or numbers) | send <ship> <destination> | pause", "sys");
       logLine("Aliases: contract/contracts, ship/ships, sel/select, C1/C-1, hauler1/hauler-1. Extra spaces and case are ignored.", "sys");
       return true;
     }
@@ -294,16 +292,6 @@ export function createCommandRuntime({
     if (command === "status") {
       logLine(`Cash $${state.cash} | Rep ${state.rep} | Risk ${state.risk} | Scenario ${state.currentScenario}: ${state.completedContracts}/${tutorialGoal}`, "sys");
       basilSpeak("neutral", "Status mirrors manageable instability.", "basil");
-      return true;
-    }
-
-    if (command === "lore") {
-      logLine(state.loreSummary, "sys");
-      return true;
-    }
-
-    if (command === "factions") {
-      logLine("Factions: bluFreight, UFP, Arcworks, Blister, civilian authorities.", "sys");
       return true;
     }
 
@@ -431,18 +419,6 @@ export function createCommandRuntime({
       if (!resolvedShip) return logLine(`Could not resolve ship "${parts[1]}". Try ship ID or visible ship number.`, "error");
       if (resolvedShip.interpretation) logLine(resolvedShip.interpretation, "sys");
       sendShip(resolvedShip.shipId, parts[2]);
-      return true;
-    }
-
-    if (command === "escort" && parts[1] === "on") {
-      state.escort = true;
-      logLine("Escort posture enabled.", "sys");
-      return true;
-    }
-
-    if (command === "escort" && parts[1] === "off") {
-      state.escort = false;
-      logLine("Escort posture disabled.", "sys");
       return true;
     }
 
