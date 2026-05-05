@@ -746,13 +746,30 @@ function buildDeterministicDepartureCallout(fromNodeId, toNodeId) {
     const isDark = (angle) => angle > 90 && angle < 270;
     const fromDark = isDark(fromAngle);
     const toDark = isDark(toAngle);
-    if (!fromDark && toDark) parts.push("We're coming into Indigo's shadow now.");
-    else if (fromDark && !toDark) parts.push("Crossing the horizon, nice to be able to see again.");
-    else if (toDark) parts.push("Crossing the dark side of the planet now.");
-    else parts.push("We're on the near side now, switching back to line-of-sight navigation.");
+    if (!fromDark && toDark) parts.push("We will enter Indigo's shadow on this leg.");
+    else if (fromDark && !toDark) parts.push("We will cross the horizon and regain line-of-sight visibility.");
+    else if (toDark) parts.push("We will remain on Indigo's dark side through this segment.");
+    else parts.push("We will stay on the near side with line-of-sight navigation.");
   }
 
   return parts.join(" ");
+}
+
+function buildDepartureComms(ship, mission) {
+  const captain = SHIP_CAPTAINS[ship.id];
+  if (!captain) return null;
+  const destinationLabel = nodeLabel(mission.destinationNodeId);
+  const greeting = pickLine(captain, "acknowledgements") || "Acknowledged.";
+  const actionByType = {
+    pickup: `I will proceed to ${destinationLabel} for cargo pickup.`,
+    delivery: `I will proceed to ${destinationLabel} for delivery.`,
+    reposition: `I will reposition to ${destinationLabel}.`,
+  };
+  const actionLine = actionByType[mission.actionType] || actionByType.reposition;
+  const firstMessage = `${greeting} Destination confirmed: ${destinationLabel}. ${actionLine}`;
+  const routeLine = buildDeterministicDepartureCallout(mission.fromNodeId, mission.destinationNodeId)
+    || "I will follow the plotted route and report on arrival.";
+  return { captain, firstMessage, routeMessage: routeLine };
 }
 
 function minimumFuelForPlayerFleet(fromNodeId, toNodeId) {
@@ -1336,13 +1353,22 @@ function sendShip(shipId, destination) {
     scheduleTransitComms(ship, normalizedDestination, transitTime, uplink);
     state.rep = Math.min(100, state.rep + 1);
     if (fuelBillingActive()) state.cash -= shipFuelCost;
-    const captain = SHIP_CAPTAINS[ship.id];
-    if (captain) {
+    const departureComms = buildDepartureComms(ship, {
+      fromNodeId: ship.at,
+      destinationNodeId: normalizedDestination,
+      actionType: "reposition",
+    });
+    if (departureComms) {
       queueCharacterMessage(
         uplink * 2,
-        captain,
+        departureComms.captain,
         "__deterministic_departure__",
-        buildDeterministicDepartureCallout(ship.at, normalizedDestination) || "Order received and executing.",
+        departureComms.firstMessage,
+        "comms"
+      );
+      scheduleMessage(
+        (uplink * 2) + 1,
+        `${departureComms.captain} ${speakerContext(departureComms.captain, "departing")}: ${departureComms.routeMessage}`,
         "comms"
       );
     }
@@ -1420,13 +1446,24 @@ function assignContract(contractId, shipId) {
     `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, transit ${total}s (speed ${shipSpeed(driveShipId)}), route span ${toPickupSpan + toDropSpan}, fuel ${fuelCost}, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
   );
   const captain = SHIP_CAPTAINS[ship.id];
-  if (captain) {
-    const firstLegDestination = ship.at === contract.from ? contract.to : contract.from;
+  const firstLegDestination = ship.at === contract.from ? contract.to : contract.from;
+  const actionType = ship.at === contract.from ? "delivery" : "pickup";
+  const departureComms = buildDepartureComms(ship, {
+    fromNodeId: ship.at,
+    destinationNodeId: firstLegDestination,
+    actionType,
+  });
+  if (departureComms) {
     queueCharacterMessage(
       uplink * 2,
-      captain,
+      departureComms.captain,
       "__deterministic_departure__",
-      buildDeterministicDepartureCallout(ship.at, firstLegDestination) || "Proceeding as ordered.",
+      departureComms.firstMessage,
+      "comms"
+    );
+    scheduleMessage(
+      (uplink * 2) + 1,
+      `${departureComms.captain} ${speakerContext(departureComms.captain, "departing")}: ${departureComms.routeMessage}`,
       "comms"
     );
   }
