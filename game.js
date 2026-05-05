@@ -437,15 +437,14 @@ let PlayerHailFlow;
 
 async function loadReferenceData() {
   try {
-    const noCache = { cache: "no-store" };
     const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, playerRequestsResponse, almanacResponse] = await Promise.all([
-      fetch("./bluFreight%20text%20RTS.txt", noCache),
-      fetch("./indigo_dialogue_characters.json", noCache),
-      fetch("./map.json", noCache),
-      fetch("./budde.json", noCache),
-      fetch(SCENARIO_PATH, noCache),
-      fetch(PLAYER_REQUESTS_PATH, noCache),
-      fetch(ALMANAC_PATH, noCache),
+      fetch("./bluFreight%20text%20RTS.txt"),
+      fetch("./indigo_dialogue_characters.json"),
+      fetch("./map.json"),
+      fetch("./budde.json"),
+      fetch(SCENARIO_PATH),
+      fetch(PLAYER_REQUESTS_PATH),
+      fetch(ALMANAC_PATH),
     ]);
 
     if (loreResponse.ok) {
