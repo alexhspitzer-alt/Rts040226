@@ -37,6 +37,7 @@ const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
 const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
 const SCENARIO_PATH = "./scenario1.json";
 const PLAYER_REQUESTS_PATH = "./indigo_dialogue_player_requests.json";
+const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
 const LEGACY_NODE_ALIASES = {
   anchor: "anchor_station",
   cinder_hub: "refinery",
@@ -212,6 +213,7 @@ const state = {
   scenario2Dialogue: null,
   scenario3Dialogue: null,
   playerRequestDialogue: null,
+  almanacEntries: null,
   tugIntroPlayed: false,
   scenario2VennDetainmentTriggered: false,
   scenario2DetainedShipId: null,
@@ -244,6 +246,7 @@ const ui = {
   cmdForm: document.getElementById("cmd-form"),
   cmdInput: document.getElementById("cmd"),
   hailAction: document.getElementById("hail-action"),
+  almanacRoot: document.getElementById("almanac-root"),
 };
 
 let adjacency = {};
@@ -434,13 +437,15 @@ let PlayerHailFlow;
 
 async function loadReferenceData() {
   try {
-    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, playerRequestsResponse] = await Promise.all([
-      fetch("./bluFreight%20text%20RTS.txt"),
-      fetch("./indigo_dialogue_characters.json"),
-      fetch("./map.json"),
-      fetch("./budde.json"),
-      fetch(SCENARIO_PATH),
-      fetch(PLAYER_REQUESTS_PATH),
+    const noCache = { cache: "no-store" };
+    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, playerRequestsResponse, almanacResponse] = await Promise.all([
+      fetch("./bluFreight%20text%20RTS.txt", noCache),
+      fetch("./indigo_dialogue_characters.json", noCache),
+      fetch("./map.json", noCache),
+      fetch("./budde.json", noCache),
+      fetch(SCENARIO_PATH, noCache),
+      fetch(PLAYER_REQUESTS_PATH, noCache),
+      fetch(ALMANAC_PATH, noCache),
     ]);
 
     if (loreResponse.ok) {
@@ -487,9 +492,113 @@ async function loadReferenceData() {
     if (playerRequestsResponse.ok) {
       state.playerRequestDialogue = await playerRequestsResponse.json();
     }
+
+    if (almanacResponse.ok) {
+      const parsedAlmanac = await almanacResponse.json();
+      state.almanacEntries = parsedAlmanac?.almanac_entries || null;
+    }
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
   }
+}
+
+function renderAlmanac() {
+  if (!ui.almanacRoot) return;
+  ui.almanacRoot.innerHTML = "";
+  const entries = state.almanacEntries;
+  if (!entries || typeof entries !== "object") {
+    const empty = document.createElement("p");
+    empty.textContent = "Almanac data unavailable.";
+    ui.almanacRoot.appendChild(empty);
+    return;
+  }
+
+  const normalizedEntries = buildAlmanacViewModel(entries);
+  Object.entries(normalizedEntries).forEach(([categoryName, categoryPayload]) => {
+    const categoryNode = document.createElement("details");
+    categoryNode.className = "almanac-category";
+    categoryNode.open = true;
+
+    const categorySummary = document.createElement("summary");
+    categorySummary.textContent = categoryName.replaceAll("_", " ");
+    categoryNode.appendChild(categorySummary);
+
+    if (Array.isArray(categoryPayload)) {
+      addAlmanacItems(categoryNode, "Entries", categoryPayload);
+    } else if (categoryPayload && typeof categoryPayload === "object") {
+      Object.entries(categoryPayload).forEach(([groupName, groupEntries]) => {
+        addAlmanacItems(categoryNode, groupName, groupEntries);
+      });
+    }
+    ui.almanacRoot.appendChild(categoryNode);
+  });
+}
+
+function buildAlmanacViewModel(entries) {
+  const locations = entries?.locations || {};
+  const organizations = entries?.organizations || {};
+  const indigoSystemEntries = Array.isArray(locations?.["Indigo System"]) ? locations["Indigo System"] : [];
+  const transferLaneEntries = Array.isArray(locations?.["Transfer Lanes"]) ? locations["Transfer Lanes"] : [];
+  const moonEntries = Array.isArray(locations?.Moons) ? locations.Moons : [];
+  const stationEntries = Array.isArray(locations?.["Stations, Outposts, and Facilities"])
+    ? locations["Stations, Outposts, and Facilities"]
+    : [];
+  const factions = Array.isArray(organizations?.["Factions and Institutions"])
+    ? organizations["Factions and Institutions"]
+    : [];
+  const clients = Array.isArray(organizations?.Clients) ? organizations.Clients : [];
+
+  const orbitBandsEntry = indigoSystemEntries.find((entry) => entry?.name === "Orbit Bands");
+  const orbitBandChildren = indigoSystemEntries.filter((entry) => (
+    ["Low Orbit", "Ring Orbit", "High Orbit", "Outer Orbit"].includes(entry?.name)
+  ));
+  const indigoSystemCoreEntries = indigoSystemEntries.filter((entry) => (
+    !["Low Orbit", "Ring Orbit", "High Orbit", "Outer Orbit", "Orbit Bands"].includes(entry?.name)
+  ));
+  const orbitBandsGroup = [];
+  if (orbitBandsEntry) orbitBandsGroup.push(orbitBandsEntry);
+  orbitBandsGroup.push(...orbitBandChildren);
+
+  return {
+    "Indigo System": {
+      Overview: indigoSystemCoreEntries,
+      "Orbit Bands": orbitBandsGroup,
+      Moons: moonEntries,
+      "Stations, Outposts, and Facilities": stationEntries,
+      "Transfer Lanes": transferLaneEntries,
+    },
+    Organizations: {
+      "Factions, Institutions, and Clients": [...factions, ...clients],
+    },
+    "Ships and Classes": Array.isArray(entries?.ships_and_classes) ? entries.ships_and_classes : [],
+  };
+}
+
+function addAlmanacItems(parentNode, groupName, entries) {
+  if (!Array.isArray(entries) || !entries.length) return;
+  const groupNode = document.createElement("details");
+  groupNode.className = "almanac-group";
+
+  const groupSummary = document.createElement("summary");
+  groupSummary.textContent = groupName;
+  groupNode.appendChild(groupSummary);
+
+  entries.forEach((entry) => {
+    const itemNode = document.createElement("details");
+    itemNode.className = "almanac-entry";
+
+    const itemSummary = document.createElement("summary");
+    itemSummary.textContent = entry?.name || "Unnamed entry";
+    itemNode.appendChild(itemSummary);
+
+    const description = document.createElement("p");
+    description.className = "almanac-entry-description";
+    description.textContent = entry?.description || "No description available.";
+    itemNode.appendChild(description);
+    groupNode.appendChild(itemNode);
+  });
+
+  parentNode.appendChild(groupNode);
 }
 
 function playScenarioIntro() {
@@ -638,13 +747,30 @@ function buildDeterministicDepartureCallout(fromNodeId, toNodeId) {
     const isDark = (angle) => angle > 90 && angle < 270;
     const fromDark = isDark(fromAngle);
     const toDark = isDark(toAngle);
-    if (!fromDark && toDark) parts.push("We're coming into Indigo's shadow now.");
-    else if (fromDark && !toDark) parts.push("Crossing the horizon, nice to be able to see again.");
-    else if (toDark) parts.push("Crossing the dark side of the planet now.");
-    else parts.push("We're on the near side now, switching back to line-of-sight navigation.");
+    if (!fromDark && toDark) parts.push("We will enter Indigo's shadow on this leg.");
+    else if (fromDark && !toDark) parts.push("We will cross the horizon and regain line-of-sight visibility.");
+    else if (toDark) parts.push("We will remain on Indigo's dark side through this segment.");
+    else parts.push("We will stay on the near side with line-of-sight navigation.");
   }
 
   return parts.join(" ");
+}
+
+function buildDepartureComms(ship, mission) {
+  const captain = SHIP_CAPTAINS[ship.id];
+  if (!captain) return null;
+  const destinationLabel = nodeLabel(mission.destinationNodeId);
+  const greeting = "Acknowledged, Dispatch.";
+  const actionByType = {
+    pickup: `I will proceed to ${destinationLabel} for cargo pickup.`,
+    delivery: `I will proceed to ${destinationLabel} for delivery.`,
+    reposition: `I will reposition to ${destinationLabel}.`,
+  };
+  const actionLine = actionByType[mission.actionType] || actionByType.reposition;
+  const firstMessage = `${greeting} Destination confirmed: ${destinationLabel}. ${actionLine}`;
+  const routeLine = buildDeterministicDepartureCallout(mission.fromNodeId, mission.destinationNodeId)
+    || "I will follow the plotted route and report on arrival.";
+  return { captain, firstMessage, routeMessage: routeLine };
 }
 
 function minimumFuelForPlayerFleet(fromNodeId, toNodeId) {
@@ -1228,13 +1354,20 @@ function sendShip(shipId, destination) {
     scheduleTransitComms(ship, normalizedDestination, transitTime, uplink);
     state.rep = Math.min(100, state.rep + 1);
     if (fuelBillingActive()) state.cash -= shipFuelCost;
-    const captain = SHIP_CAPTAINS[ship.id];
-    if (captain) {
-      queueCharacterMessage(
+    const departureComms = buildDepartureComms(ship, {
+      fromNodeId: ship.at,
+      destinationNodeId: normalizedDestination,
+      actionType: "reposition",
+    });
+    if (departureComms) {
+      scheduleMessage(
         uplink * 2,
-        captain,
-        "__deterministic_departure__",
-        buildDeterministicDepartureCallout(ship.at, normalizedDestination) || "Order received and executing.",
+        `${departureComms.captain} ${speakerContext(departureComms.captain, "departing")}: ${departureComms.firstMessage}`,
+        "comms"
+      );
+      scheduleMessage(
+        (uplink * 2) + 1,
+        `${departureComms.captain} ${speakerContext(departureComms.captain, "departing")}: ${departureComms.routeMessage}`,
         "comms"
       );
     }
@@ -1312,13 +1445,22 @@ function assignContract(contractId, shipId) {
     `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, transit ${total}s (speed ${shipSpeed(driveShipId)}), route span ${toPickupSpan + toDropSpan}, fuel ${fuelCost}, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
   );
   const captain = SHIP_CAPTAINS[ship.id];
-  if (captain) {
-    const firstLegDestination = ship.at === contract.from ? contract.to : contract.from;
-    queueCharacterMessage(
+  const firstLegDestination = ship.at === contract.from ? contract.to : contract.from;
+  const actionType = ship.at === contract.from ? "delivery" : "pickup";
+  const departureComms = buildDepartureComms(ship, {
+    fromNodeId: ship.at,
+    destinationNodeId: firstLegDestination,
+    actionType,
+  });
+  if (departureComms) {
+    scheduleMessage(
       uplink * 2,
-      captain,
-      "__deterministic_departure__",
-      buildDeterministicDepartureCallout(ship.at, firstLegDestination) || "Proceeding as ordered.",
+      `${departureComms.captain} ${speakerContext(departureComms.captain, "departing")}: ${departureComms.firstMessage}`,
+      "comms"
+    );
+    scheduleMessage(
+      (uplink * 2) + 1,
+      `${departureComms.captain} ${speakerContext(departureComms.captain, "departing")}: ${departureComms.routeMessage}`,
       "comms"
     );
   }
@@ -1532,6 +1674,7 @@ ui.copyConsole?.addEventListener("click", () => {
 
 async function init() {
   await loadReferenceData();
+  renderAlmanac();
   PlayerHailFlow.disable();
   if (!Object.keys(nodes).length) {
     nodes = {

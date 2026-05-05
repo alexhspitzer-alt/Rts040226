@@ -54,3 +54,15 @@ You can use either **short interactive input** (recommended) or **long-form comm
 ## GitHub Pages deployment
 
 This repo includes a Pages workflow at `.github/workflows/pages.yml` that deploys on pushes to `main` or `work`.
+
+## Quick smoke test after merges
+
+1. Open the deployed page and confirm the footer `last updated` timestamp is recent.
+2. Open **Almanac** tab:
+   - verify Indigo System category expands,
+   - verify Orbit Bands contains Low/Ring/High/Outer entries.
+3. Run `ships`, select a ship, and issue `send`:
+   - captain should send two departure messages,
+   - first message contains acknowledgement + destination + action,
+   - second message contains route callout in future tense (`will ...`).
+4. Assign a contract and confirm first departure action line says pickup or delivery as appropriate.
