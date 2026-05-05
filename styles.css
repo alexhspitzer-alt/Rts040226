@@ -7,13 +7,17 @@ body {
   margin: 0;
   background: radial-gradient(circle at top, #1a2230 0%, #0a0e14 62%);
   color: #d9ecff;
+  min-height: 100vh;
 }
 
 .layout {
-  max-width: 1150px;
+  max-width: min(1700px, 100%);
   margin: 0 auto;
   padding: 1rem;
   font-size: 0.84rem;
+  min-height: calc(100vh - 2.5rem);
+  display: flex;
+  flex-direction: column;
 }
 
 h1 {
@@ -42,8 +46,11 @@ h1 {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: 1fr minmax(260px, 320px);
+  grid-template-areas: "terminal metrics";
   gap: 1rem;
+  align-items: start;
+  flex: 1;
 }
 
 .list {
@@ -62,12 +69,92 @@ h1 {
 }
 
 .terminal {
-  grid-column: span 2;
+  grid-area: terminal;
   font-size: 1rem;
 }
 
+.metrics-panel {
+  grid-area: metrics;
+}
+
+.tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+}
+
+.tab-btn {
+  font-size: 0.72rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid #3f5f83;
+  background: #102236;
+  color: #b9d6f2;
+}
+
+.tab-btn.is-active {
+  background: #2f5f8e;
+  color: #e5f5ff;
+}
+
+.tab-panel h3 {
+  margin: 0.2rem 0 0.45rem;
+  font-size: 0.9rem;
+  color: #c7def5;
+}
+
+.almanac-root {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.almanac-category {
+  border: 1px solid #35516f;
+  border-radius: 7px;
+  background: #0d1724;
+}
+
+.almanac-category > summary,
+.almanac-group > summary,
+.almanac-entry > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.almanac-category > summary {
+  padding: 0.45rem 0.55rem;
+  color: #63a7ff;
+  font-weight: 700;
+}
+
+.almanac-group,
+.almanac-entry {
+  border-top: 1px solid #22364d;
+}
+
+.almanac-group > summary {
+  padding: 0.4rem 0.55rem;
+  color: #63a7ff;
+  font-weight: 700;
+}
+
+.almanac-entry > summary {
+  padding: 0.4rem 0.55rem;
+  color: #63a7ff;
+  font-weight: 400;
+}
+
+.almanac-entry-description {
+  margin: 0;
+  padding: 0.2rem 0.55rem 0.55rem;
+  color: #e9f2fb;
+  line-height: 1.35;
+  border-top: 1px dashed #28415b;
+}
+
 .feed {
-  height: 620px;
+  height: min(72vh, 900px);
   overflow: auto;
   background: #0a111a;
   border: 1px solid #3a5578;
@@ -191,11 +278,14 @@ button:hover {
 }
 
 @media (max-width: 800px) {
-  .terminal {
-    grid-column: span 1;
+  .grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "terminal"
+      "metrics";
   }
 
   .feed {
-    height: 340px;
+    height: 50vh;
   }
 }

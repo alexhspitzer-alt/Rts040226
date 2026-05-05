@@ -24,18 +24,36 @@
     </div>
 
     <section class="grid">
-      <article class="panel">
-        <h2>Tutorial Contracts</h2>
-        <ul id="contracts" class="list"></ul>
-      </article>
-
-      <article class="panel">
-        <h2>Fleet</h2>
-        <ul id="fleet" class="list"></ul>
+      <article class="panel metrics-panel">
+        <div class="tab-row" role="tablist" aria-label="Grid tabs">
+          <button type="button" class="tab-btn is-active" role="tab" aria-selected="true" aria-controls="metrics-contracts" id="tab-contracts" data-tab="contracts">Contracts</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-fleet" id="tab-fleet" data-tab="fleet">Fleet</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-news" id="tab-news" data-tab="news">News</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-almanac" id="tab-almanac" data-tab="almanac">Almanac</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-inbox" id="tab-inbox" data-tab="inbox">Inbox(<span id="inbox-unread">0</span>)</button>
+        </div>
+        <section id="metrics-contracts" class="tab-panel is-active" role="tabpanel" aria-labelledby="tab-contracts">
+          <h3>Contracts</h3>
+          <ul id="contracts" class="list"></ul>
+        </section>
+        <section id="metrics-fleet" class="tab-panel" role="tabpanel" aria-labelledby="tab-fleet" hidden>
+          <h3>Fleet</h3>
+          <ul id="fleet" class="list"></ul>
+        </section>
+        <section id="metrics-news" class="tab-panel" role="tabpanel" aria-labelledby="tab-news" hidden>
+          <h3>News</h3>
+        </section>
+        <section id="metrics-almanac" class="tab-panel" role="tabpanel" aria-labelledby="tab-almanac" hidden>
+          <h3>Almanac</h3>
+          <div id="almanac-root" class="almanac-root"></div>
+        </section>
+        <section id="metrics-inbox" class="tab-panel" role="tabpanel" aria-labelledby="tab-inbox" hidden>
+          <h3>Inbox</h3>
+        </section>
       </article>
 
       <article class="panel terminal">
-        <h2>Dispatch Terminal</h2>
+        <h2>Dispatch Console</h2>
         <button id="copy-console" type="button" class="copy-btn">Copy Console Log</button>
         <div id="feed" class="feed" aria-live="polite"></div>
         <form id="cmd-form" class="cmd-form">
@@ -54,16 +72,6 @@
         </form>
         <p class="hint">Try: <code>ships</code>, then select ship by typing its number or ID.</p>
       </article>
-
-      <article class="panel">
-        <h2>Tutorial Goals</h2>
-        <ol>
-          <li>Use <code>contracts</code> to inspect available jobs.</li>
-          <li>Assign ships with <code>assign &lt;contract&gt; &lt;ship&gt;</code>.</li>
-          <li>Watch delayed ship reports in the terminal feed.</li>
-          <li>Complete 3 contracts to finish tutorial mode.</li>
-        </ol>
-      </article>
     </section>
   </main>
   <footer class="build-meta-wrap" aria-label="Build metadata">
@@ -79,6 +87,23 @@
       const formattedUtc = utcDate.toISOString().replace("T", " ").slice(0, 16);
       buildMetaElement.textContent = `branch: ${branch} | last updated: ${formattedUtc} UTC`;
     }
+    const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
+    const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+    const setTab = (targetTab) => {
+      tabButtons.forEach((button) => {
+        const isActive = button.dataset.tab === targetTab;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-selected", String(isActive));
+      });
+      tabPanels.forEach((panel) => {
+        const isActive = panel.id === `metrics-${targetTab}`;
+        panel.classList.toggle("is-active", isActive);
+        panel.hidden = !isActive;
+      });
+    };
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => setTab(button.dataset.tab));
+    });
   </script>
   <script type="module" src="game.js"></script>
 </body>
