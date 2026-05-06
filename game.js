@@ -433,6 +433,13 @@ function queueCharacterMessage(delay, characterName, bucket, fallback, type = "c
   }, type === "comms" ? speakerMessageType(characterName) : type);
 }
 
+function scheduleCharacterMessage(delay, characterName, text, statusOverride = null, type = "comms") {
+  scheduleMessage(delay, () => {
+    if (!isContactPresent(characterName)) return null;
+    return `${characterName} ${speakerContext(characterName, statusOverride)}: ${text}`;
+  }, type === "comms" ? speakerMessageType(characterName) : type);
+}
+
 let PlayerHailFlow;
 
 async function loadReferenceData() {
@@ -1360,14 +1367,18 @@ function sendShip(shipId, destination) {
       actionType: "reposition",
     });
     if (departureComms) {
-      scheduleMessage(
+      scheduleCharacterMessage(
         uplink * 2,
-        `${departureComms.captain} ${speakerContext(departureComms.captain, "departing")}: ${departureComms.firstMessage}`,
+        departureComms.captain,
+        departureComms.firstMessage,
+        "departing",
         "comms"
       );
-      scheduleMessage(
+      scheduleCharacterMessage(
         (uplink * 2) + 1,
-        `${departureComms.captain} ${speakerContext(departureComms.captain, "departing")}: ${departureComms.routeMessage}`,
+        departureComms.captain,
+        departureComms.routeMessage,
+        "departing",
         "comms"
       );
     }
@@ -1453,14 +1464,18 @@ function assignContract(contractId, shipId) {
     actionType,
   });
   if (departureComms) {
-    scheduleMessage(
+    scheduleCharacterMessage(
       uplink * 2,
-      `${departureComms.captain} ${speakerContext(departureComms.captain, "departing")}: ${departureComms.firstMessage}`,
+      departureComms.captain,
+      departureComms.firstMessage,
+      "departing",
       "comms"
     );
-    scheduleMessage(
+    scheduleCharacterMessage(
       (uplink * 2) + 1,
-      `${departureComms.captain} ${speakerContext(departureComms.captain, "departing")}: ${departureComms.routeMessage}`,
+      departureComms.captain,
+      departureComms.routeMessage,
+      "departing",
       "comms"
     );
   }
