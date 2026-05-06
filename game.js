@@ -434,10 +434,14 @@ function queueCharacterMessage(delay, characterName, bucket, fallback, type = "c
 }
 
 function scheduleCharacterMessage(delay, characterName, text, statusOverride = null, type = "comms") {
+  const isBluFreightCaptain = Object.values(SHIP_CAPTAINS).includes(characterName);
+  const resolvedType = type === "comms"
+    ? (isBluFreightCaptain ? "comms-blufreight" : speakerMessageType(characterName))
+    : type;
   scheduleMessage(delay, () => {
     if (!isContactPresent(characterName)) return null;
     return `${characterName} ${speakerContext(characterName, statusOverride)}: ${text}`;
-  }, type === "comms" ? speakerMessageType(characterName) : type);
+  }, resolvedType);
 }
 
 let PlayerHailFlow;
