@@ -1251,11 +1251,11 @@ function scheduleTransitComms(ship, destination, distance, uplink) {
     "report"
   );
   if (captain) {
-    queueCharacterMessage(
+    scheduleCharacterMessage(
       uplink + distance + oneWaySignalToNode(destination),
       captain,
-      "acknowledgements",
-      "On station.",
+      `On station at ${nodeLabel(destination)}. Awaiting dispatch.`,
+      null,
       "comms"
     );
   }
