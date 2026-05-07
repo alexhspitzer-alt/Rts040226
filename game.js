@@ -1442,6 +1442,23 @@ function assignContract(contractId, shipId) {
       "comms"
     );
   }
+  if (ship.at !== contract.from) {
+    const firstLegTransit = travelTimeForRoute(driveShipId, toPickupSpan);
+    const legTwoComms = buildDepartureComms(ship, {
+      fromNodeId: contract.from,
+      destinationNodeId: contract.to,
+      actionType: "delivery",
+    });
+    if (legTwoComms) {
+      scheduleCharacterMessage(
+        uplink + firstLegTransit + oneWaySignalToNode(contract.from),
+        legTwoComms.captain,
+        `Cargo loaded. ${legTwoComms.message.replace("Acknowledged, Dispatch. ", "")}`,
+        "departing",
+        "comms"
+      );
+    }
+  }
   scheduleMessage(
     uplink + Math.max(1, Math.floor(total / 2)) + oneWaySignalToNode(contract.to),
     `${ship.id} mid-route check-in for ${contract.id}: cargo stable.`,
