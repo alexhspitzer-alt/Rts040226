@@ -728,60 +728,40 @@ function angleForNode(nodeId) {
   return Number.isFinite(moon?.angle) ? moon.angle : null;
 }
 
-function buildDeterministicDepartureCallout(fromNodeId, toNodeId) {
-  const fromAngle = angleForNode(fromNodeId);
-  const toAngle = angleForNode(toNodeId);
-  const fromBand = orbitBandValueForNode(fromNodeId);
-  const toBand = orbitBandValueForNode(toNodeId);
-  const parts = [];
-
-  if (Number.isFinite(fromAngle) && Number.isFinite(toAngle)) {
-    const ccwDelta = (toAngle - fromAngle + 360) % 360;
-    const cwDelta = (fromAngle - toAngle + 360) % 360;
-    const prograde = ccwDelta <= cwDelta;
-    parts.push(prograde ? "Prograde, counterclockwise around Indigo." : "Retrograde, clockwise around Indigo.");
-  }
-
-  if (Number.isFinite(fromBand) && Number.isFinite(toBand)) {
-    const delta = toBand - fromBand;
-    if (delta > 0) {
-      parts.push(delta >= 2 ? `Climbing ${delta} orbit bands; hard climb.` : "Climbing one orbit band.");
-    } else if (delta < 0) {
-      const drop = Math.abs(delta);
-      parts.push(drop >= 2 ? `Dropping ${drop} orbit bands; fast descent.` : "Dropping one orbit band.");
-    } else {
-      parts.push("Holding current orbit band.");
-    }
-  }
-
-  if (Number.isFinite(fromAngle) && Number.isFinite(toAngle)) {
-    const isDark = (angle) => angle > 90 && angle < 270;
-    const fromDark = isDark(fromAngle);
-    const toDark = isDark(toAngle);
-    if (!fromDark && toDark) parts.push("We will enter Indigo's shadow on this leg.");
-    else if (fromDark && !toDark) parts.push("We will cross the horizon and regain line-of-sight visibility.");
-    else if (toDark) parts.push("We will remain on Indigo's dark side through this segment.");
-    else parts.push("We will stay on the near side with line-of-sight navigation.");
-  }
-
-  return parts.join(" ");
-}
-
 function buildDepartureComms(ship, mission) {
   const captain = SHIP_CAPTAINS[ship.id];
   if (!captain) return null;
   const destinationLabel = nodeLabel(mission.destinationNodeId);
-  const greeting = "Acknowledged, Dispatch.";
   const actionByType = {
-    pickup: `I will proceed to ${destinationLabel} for cargo pickup.`,
-    delivery: `I will proceed to ${destinationLabel} for delivery.`,
-    reposition: `I will reposition to ${destinationLabel}.`,
+    pickup: "cargo pickup",
+    delivery: "delivery",
+    reposition: "repositioning",
   };
-  const actionLine = actionByType[mission.actionType] || actionByType.reposition;
-  const firstMessage = `${greeting} Destination confirmed: ${destinationLabel}. ${actionLine}`;
-  const routeLine = buildDeterministicDepartureCallout(mission.fromNodeId, mission.destinationNodeId)
-    || "I will follow the plotted route and report on arrival.";
-  return { captain, firstMessage, routeMessage: routeLine };
+  const purpose = actionByType[mission.actionType] || actionByType.reposition;
+
+  const fromAngle = angleForNode(mission.fromNodeId);
+  const toAngle = angleForNode(mission.destinationNodeId);
+  const fromBand = orbitBandValueForNode(mission.fromNodeId);
+  const toBand = orbitBandValueForNode(mission.destinationNodeId);
+
+  let headingSegment = "heading vector unavailable";
+  if (Number.isFinite(fromAngle) && Number.isFinite(toAngle)) {
+    const ccwDelta = (toAngle - fromAngle + 360) % 360;
+    const cwDelta = (fromAngle - toAngle + 360) % 360;
+    if (ccwDelta <= cwDelta) headingSegment = `prograde +${ccwDelta.toFixed(1)}°`;
+    else headingSegment = `retrograde -${cwDelta.toFixed(1)}°`;
+  }
+
+  let orbitSegment = "orbit change unavailable";
+  if (Number.isFinite(fromBand) && Number.isFinite(toBand)) {
+    const delta = toBand - fromBand;
+    if (delta > 0) orbitSegment = `climbing +${delta} band${delta === 1 ? "" : "s"}`;
+    else if (delta < 0) orbitSegment = `descending ${delta} band${Math.abs(delta) === 1 ? "" : "s"}`;
+    else orbitSegment = "holding current orbit band";
+  }
+
+  const message = `Acknowledged, Dispatch. Destination ${destinationLabel}; purpose ${purpose}; ${headingSegment}; ${orbitSegment}.`;
+  return { captain, message };
 }
 
 function minimumFuelForPlayerFleet(fromNodeId, toNodeId) {
@@ -1374,14 +1354,7 @@ function sendShip(shipId, destination) {
       scheduleCharacterMessage(
         uplink * 2,
         departureComms.captain,
-        departureComms.firstMessage,
-        "departing",
-        "comms"
-      );
-      scheduleCharacterMessage(
-        (uplink * 2) + 1,
-        departureComms.captain,
-        departureComms.routeMessage,
+        departureComms.message,
         "departing",
         "comms"
       );
@@ -1471,14 +1444,7 @@ function assignContract(contractId, shipId) {
     scheduleCharacterMessage(
       uplink * 2,
       departureComms.captain,
-      departureComms.firstMessage,
-      "departing",
-      "comms"
-    );
-    scheduleCharacterMessage(
-      (uplink * 2) + 1,
-      departureComms.captain,
-      departureComms.routeMessage,
+      departureComms.message,
       "departing",
       "comms"
     );
