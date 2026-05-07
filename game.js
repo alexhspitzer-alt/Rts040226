@@ -1266,6 +1266,7 @@ function scheduleFinalApproachDockingCall(ship, {
   destinationNodeId,
   uplink,
   transitTime,
+  departureOffset = 0,
 }) {
   const captain = SHIP_CAPTAINS[ship.id];
   if (!captain || !nodes[fromNodeId] || !nodes[destinationNodeId]) return;
@@ -1273,8 +1274,8 @@ function scheduleFinalApproachDockingCall(ship, {
   const destinationApproach = Math.max(1, Number(nodes[destinationNodeId].approach) || 1);
   const sameMoonCallDelay = 3;
   const preArrivalLead = Math.min(Math.max(2, destinationApproach), Math.max(2, Math.max(0, transitTime - 1)));
-  const sameMoonOutbound = uplink + Math.min(sameMoonCallDelay, Math.max(0, transitTime - 1));
-  const crossMoonOutbound = uplink + Math.max(0, transitTime - preArrivalLead);
+  const sameMoonOutbound = uplink + departureOffset + Math.min(sameMoonCallDelay, Math.max(0, transitTime - 1));
+  const crossMoonOutbound = uplink + departureOffset + Math.max(0, transitTime - preArrivalLead);
   const shipCallAt = sameMoonTransit ? sameMoonOutbound : crossMoonOutbound;
   queueCharacterMessage(
     shipCallAt + oneWaySignalToNode(destinationNodeId),
@@ -1477,11 +1478,15 @@ function assignContract(contractId, shipId) {
     }
   }
   if (captain) {
+    const firstLegTransit = travelTimeForRoute(driveShipId, toPickupSpan);
+    const finalLegTransit = Math.max(1, total - firstLegTransit);
+    const finalLegDepartureOffset = ship.at === contract.from ? 0 : firstLegTransit;
     scheduleFinalApproachDockingCall(ship, {
       fromNodeId: contract.from,
       destinationNodeId: contract.to,
       uplink,
-      transitTime: total,
+      transitTime: finalLegTransit,
+      departureOffset: finalLegDepartureOffset,
     });
   }
   scheduleMessage(
