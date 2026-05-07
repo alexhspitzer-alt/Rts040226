@@ -793,13 +793,6 @@ function buildBuddeRouteBrief(fromNodeId, toNodeId) {
     steps.push(prograde
       ? "Begin with a prograde burn (counterclockwise). Yes, the shorter way is usually better."
       : "Begin with a retrograde burn (clockwise). Even now, this is still the efficient option.");
-    const isDark = (angle) => angle > 90 && angle < 270;
-    const fromDark = isDark(fromAngle);
-    const toDark = isDark(toAngle);
-    if (!fromDark && toDark) steps.push("Expect entry into Indigo's shadow en route.");
-    else if (fromDark && !toDark) steps.push("You will cross the horizon and regain star-side visibility.");
-    else if (toDark) steps.push("Most of this segment remains on Indigo's dark side.");
-    else steps.push("This route stays on the near side with line-of-sight navigation.");
   }
 
   if (Number.isFinite(fromBand) && Number.isFinite(toBand)) {
