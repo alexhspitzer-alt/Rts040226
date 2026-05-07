@@ -1236,22 +1236,14 @@ function shipReport(shipId) {
 }
 
 function scheduleTransitComms(ship, destination, distance, uplink) {
-  const midpoint = Math.max(1, Math.floor(distance / 2));
   const captain = SHIP_CAPTAINS[ship.id];
-  scheduleMessage(
-    uplink + midpoint + oneWaySignalToNode(destination),
-    `${ship.id} update: passing relay corridor toward ${nodeLabel(destination)}.`,
-    "report"
-  );
   if (captain) {
-    queueCharacterMessage(
-      uplink + midpoint + oneWaySignalToNode(destination),
-      captain,
-      "neutral",
-      "Route remains stable.",
-      "comms",
-      "arriving"
-    );
+    scheduleFinalApproachDockingCall(ship, {
+      fromNodeId: ship.at,
+      destinationNodeId: destination,
+      uplink,
+      transitTime: distance,
+    });
   }
   scheduleMessage(
     uplink + distance + oneWaySignalToNode(destination),
@@ -1267,6 +1259,31 @@ function scheduleTransitComms(ship, destination, distance, uplink) {
       "comms"
     );
   }
+}
+
+function scheduleFinalApproachDockingCall(ship, {
+  fromNodeId,
+  destinationNodeId,
+  uplink,
+  transitTime,
+}) {
+  const captain = SHIP_CAPTAINS[ship.id];
+  if (!captain || !nodes[fromNodeId] || !nodes[destinationNodeId]) return;
+  const sameMoonTransit = nodes[fromNodeId].moon === nodes[destinationNodeId].moon;
+  const destinationApproach = Math.max(1, Number(nodes[destinationNodeId].approach) || 1);
+  const sameMoonCallDelay = 3;
+  const preArrivalLead = Math.min(Math.max(2, destinationApproach), Math.max(2, Math.max(0, transitTime - 1)));
+  const sameMoonOutbound = uplink + Math.min(sameMoonCallDelay, Math.max(0, transitTime - 1));
+  const crossMoonOutbound = uplink + Math.max(0, transitTime - preArrivalLead);
+  const shipCallAt = sameMoonTransit ? sameMoonOutbound : crossMoonOutbound;
+  queueCharacterMessage(
+    shipCallAt + oneWaySignalToNode(destinationNodeId),
+    captain,
+    "arriving",
+    `Final approach to ${nodeLabel(destinationNodeId)}. Requesting dock clearance.`,
+    "comms",
+    "arriving"
+  );
 }
 
 function sendShip(shipId, destination) {
@@ -1459,11 +1476,14 @@ function assignContract(contractId, shipId) {
       );
     }
   }
-  scheduleMessage(
-    uplink + Math.max(1, Math.floor(total / 2)) + oneWaySignalToNode(contract.to),
-    `${ship.id} mid-route check-in for ${contract.id}: cargo stable.`,
-    "report"
-  );
+  if (captain) {
+    scheduleFinalApproachDockingCall(ship, {
+      fromNodeId: contract.from,
+      destinationNodeId: contract.to,
+      uplink,
+      transitTime: total,
+    });
+  }
   scheduleMessage(
     uplink + total + oneWaySignalToNode(contract.to),
     `${ship.id} delivered ${contract.id} at ${nodeLabel(contract.to)}.`,
