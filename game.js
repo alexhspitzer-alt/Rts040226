@@ -424,15 +424,6 @@ function characterSpeak(characterName, bucket, fallback, type = "comms", statusO
   logLine(`${characterName} ${context}: ${text}`, lineType);
 }
 
-function queueCharacterMessage(delay, characterName, bucket, fallback, type = "comms", statusOverride = null) {
-  scheduleMessage(delay, () => {
-    if (!isContactPresent(characterName)) return null;
-    const context = speakerContext(characterName, statusOverride);
-    const text = pickLine(characterName, bucket) || fallback;
-    return `${characterName} ${context}: ${text}`;
-  }, type === "comms" ? speakerMessageType(characterName) : type);
-}
-
 function scheduleCharacterMessage(delay, characterName, text, statusOverride = null, type = "comms") {
   const isBluFreightCaptain = Object.values(SHIP_CAPTAINS).includes(characterName);
   const resolvedType = type === "comms"
@@ -1231,7 +1222,13 @@ function shipReport(shipId) {
   scheduleMessage(rtt, `Report ${ship.id}: status=${ship.status}, lastKnown=${ship.lastKnownAt || ship.at}, eta=${eta}s (RTT ${rtt}s).`, "report");
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
-    queueCharacterMessage(rtt, captain, "neutral", "Responding after comms delay. Standing by for tasking.", "comms");
+    scheduleCharacterMessage(
+      rtt,
+      captain,
+      "Responding after comms delay. Standing by for tasking.",
+      null,
+      "comms"
+    );
   }
 }
 
@@ -1277,13 +1274,12 @@ function scheduleFinalApproachDockingCall(ship, {
   const sameMoonOutbound = uplink + departureOffset + Math.min(sameMoonCallDelay, Math.max(0, transitTime - 1));
   const crossMoonOutbound = uplink + departureOffset + Math.max(0, transitTime - preArrivalLead);
   const shipCallAt = sameMoonTransit ? sameMoonOutbound : crossMoonOutbound;
-  queueCharacterMessage(
+  scheduleCharacterMessage(
     shipCallAt + oneWaySignalToNode(destinationNodeId),
     captain,
-    "arriving",
     `Final approach to ${nodeLabel(destinationNodeId)}. Requesting dock clearance.`,
-    "comms",
-    "arriving"
+    "arriving",
+    "comms"
   );
 }
 
@@ -1344,11 +1340,11 @@ function sendShip(shipId, destination) {
     basilSpeak("negative", `Order logged. ${ship.id} risk profile elevated.`, "basil");
     const captain = SHIP_CAPTAINS[ship.id];
     if (captain) {
-      queueCharacterMessage(
+      scheduleCharacterMessage(
         uplink + transitTime + oneWaySignalToNode(normalizedDestination),
         captain,
-        "negative",
         "We're detained for inspection. This run just went sideways.",
+        null,
         "comms"
       );
     }
@@ -1495,11 +1491,16 @@ function assignContract(contractId, shipId) {
     "report"
   );
   if (captain) {
-    const completionTone = inspectionDelay >= 180 ? "negative" : "positive";
-    const completionFallback = inspectionDelay >= 180
+    const completionLine = inspectionDelay >= 180
       ? "Delivery complete, but inspection delays burned the schedule."
       : "Delivery complete.";
-    queueCharacterMessage(uplink + total + oneWaySignalToNode(contract.to), captain, completionTone, completionFallback);
+    scheduleCharacterMessage(
+      uplink + total + oneWaySignalToNode(contract.to),
+      captain,
+      completionLine,
+      null,
+      "comms"
+    );
   }
 
   maybeIntroduceBudde();
