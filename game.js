@@ -736,11 +736,13 @@ function buildDepartureComms(ship, mission) {
   const toBand = orbitBandValueForNode(mission.destinationNodeId);
 
   let headingSegment = "heading vector unavailable";
+  let telemetryRedundant = false;
   if (Number.isFinite(fromAngle) && Number.isFinite(toAngle)) {
     const ccwDelta = (toAngle - fromAngle + 360) % 360;
     const cwDelta = (fromAngle - toAngle + 360) % 360;
     if (ccwDelta <= cwDelta) headingSegment = `prograde +${ccwDelta.toFixed(1)}°`;
     else headingSegment = `retrograde -${cwDelta.toFixed(1)}°`;
+    telemetryRedundant = ccwDelta === 0;
   }
 
   let orbitSegment = "orbit change unavailable";
@@ -749,9 +751,12 @@ function buildDepartureComms(ship, mission) {
     if (delta > 0) orbitSegment = `climbing +${delta} band${delta === 1 ? "" : "s"}`;
     else if (delta < 0) orbitSegment = `descending ${delta} band${Math.abs(delta) === 1 ? "" : "s"}`;
     else orbitSegment = "holding current orbit band";
+    telemetryRedundant = telemetryRedundant && delta === 0;
   }
 
-  const message = `Acknowledged, Dispatch. Destination ${destinationLabel}; purpose ${purpose}; ${headingSegment}; ${orbitSegment}.`;
+  const message = telemetryRedundant
+    ? `Acknowledged, Dispatch. Destination ${destinationLabel}; purpose ${purpose}.`
+    : `Acknowledged, Dispatch. Destination ${destinationLabel}; purpose ${purpose}; ${headingSegment}; ${orbitSegment}.`;
   return { captain, message };
 }
 
