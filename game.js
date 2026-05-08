@@ -1226,10 +1226,11 @@ function shipReport(shipId) {
   basilInform(
     `${scenarioStalenessLine || "Report requested."} ${basilShipIntel(ship)} Reply expected in ${rtt}s (uplink ${uplink}s each way). ${staleNote}`
   );
-  const locationOrDestination = (ship.status === "enroute" || ship.status === "arrived_pending_report")
+  const reportStatus = ship.status === "arrived_pending_report" ? "arrived" : ship.status;
+  const locationOrDestination = ship.status === "enroute"
     ? `destination=${ship.destination || ship.at}`
     : `location=${ship.at}`;
-  scheduleMessage(rtt, `Report ${ship.id}: status=${ship.status}, ${locationOrDestination}, eta=${eta}s (RTT ${rtt}s).`, "report");
+  scheduleMessage(rtt, `Report ${ship.id}: status=${reportStatus}, ${locationOrDestination}, eta=${eta}s (RTT ${rtt}s).`, "report");
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
     scheduleCharacterMessage(
