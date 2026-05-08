@@ -892,7 +892,9 @@ function showShipsList() {
     const capacityLabel = state.currentScenario >= 3 && !s.utility
       ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
       : "";
-    logLine(`${idx + 1}. ${s.id} (${s.status}${dockedSuffix}) @ ${s.at} | ${captain}${capacityLabel}`, "sys");
+    const showLocation = s.status === "idle" || s.status === "tasked";
+    const locationSegment = showLocation ? ` @ ${s.at}` : "";
+    logLine(`${idx + 1}. ${s.id} (${s.status}${dockedSuffix})${locationSegment} | ${captain}${capacityLabel}`, "sys");
   });
   logLine("Select ship by typing its number or ID.", "sys");
 }
@@ -1224,7 +1226,10 @@ function shipReport(shipId) {
   basilInform(
     `${scenarioStalenessLine || "Report requested."} ${basilShipIntel(ship)} Reply expected in ${rtt}s (uplink ${uplink}s each way). ${staleNote}`
   );
-  scheduleMessage(rtt, `Report ${ship.id}: status=${ship.status}, lastKnown=${ship.lastKnownAt || ship.at}, eta=${eta}s (RTT ${rtt}s).`, "report");
+  const locationOrDestination = (ship.status === "enroute" || ship.status === "arrived_pending_report")
+    ? `destination=${ship.destination || ship.at}`
+    : `location=${ship.at}`;
+  scheduleMessage(rtt, `Report ${ship.id}: status=${ship.status}, ${locationOrDestination}, eta=${eta}s (RTT ${rtt}s).`, "report");
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
     scheduleCharacterMessage(
@@ -1558,24 +1563,29 @@ function updateSimulation() {
       ship.status = "enroute";
     }
     if (ship.status === "enroute" && state.tick >= ship.busyUntil) {
+      const arrivalNodeId = ship.destination;
+      const returnSignal = oneWaySignalToNode(arrivalNodeId);
       if (ship.activeContractId) {
         const contract = state.contracts.find((c) => c.id === ship.activeContractId);
         if (contract && contract.status === "assigned") {
           contract.status = "delivered_pending_report";
-          const returnSignal = oneWaySignalToNode(contract.to);
           scheduleMessage(returnSignal, () => {
             finalizeContractDelivery(contract.id);
             return null;
           }, "sys");
         }
       }
-      ship.at = ship.destination;
-      ship.destination = undefined;
-      ship.activeContractId = undefined;
-      ship.status = "idle";
+      ship.at = arrivalNodeId;
+      ship.status = "arrived_pending_report";
       ship.departAt = 0;
-      ship.lastKnownAt = ship.at;
-      ship.lastContactTick = state.tick;
+      scheduleMessage(returnSignal, () => {
+        ship.destination = undefined;
+        ship.activeContractId = undefined;
+        ship.status = "idle";
+        ship.lastKnownAt = ship.at;
+        ship.lastContactTick = state.tick;
+        return null;
+      }, "sys");
     }
   });
 
