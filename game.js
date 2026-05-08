@@ -1322,8 +1322,9 @@ function sendShip(shipId, destination) {
 
   const effectiveRisk = state.risk + (state.escort ? -10 : 8);
   if (Math.random() * 100 < effectiveRisk * 0.3) {
+    const detentionNoticeAt = uplink + transitTime + oneWaySignalToNode(normalizedDestination);
     scheduleMessage(
-      uplink + transitTime + oneWaySignalToNode(normalizedDestination),
+      detentionNoticeAt,
       `${ship.id} detained briefly at ${nodeLabel(normalizedDestination)}. Cargo released after inspection.`,
       "alert"
     );
@@ -1337,11 +1338,15 @@ function sendShip(shipId, destination) {
       }`,
       "comms",
     );
-    basilSpeak("negative", `Order logged. ${ship.id} risk profile elevated.`, "basil");
+    scheduleMessage(
+      detentionNoticeAt,
+      `${BASIL_NAME} ${speakerContext(BASIL_NAME)}: Order logged. ${ship.id} risk profile elevated.`,
+      "basil"
+    );
     const captain = SHIP_CAPTAINS[ship.id];
     if (captain) {
       scheduleCharacterMessage(
-        uplink + transitTime + oneWaySignalToNode(normalizedDestination),
+        detentionNoticeAt,
         captain,
         "We're detained for inspection. This run just went sideways.",
         null,
