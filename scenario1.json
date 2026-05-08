@@ -140,7 +140,7 @@
         "context": "Play immediately after BUDDE's welcome line.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
-        "text": "Due to recent and entirely foreseeable corporate cost-control measures, bluFreight vessels will no longer move at the speed of light for instructional convenience. Ships are now constrained by their actual ability to accelerate mass, as reflected in their speed ratings. This is less magical, but considerably more honest."
+        "text": "Operational reminder: bluFreight vessels are constrained by their actual ability to accelerate mass, as reflected in their speed ratings. If a route feels slow, that is because physics remains uncooperative rather than because dispatch has offended the calendar."
       },
       {
         "id": "intro_fuel_is_real",
