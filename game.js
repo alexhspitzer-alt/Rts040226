@@ -61,7 +61,7 @@ const SHIP_SPEED_BY_ID = {
   "hauler-1": 2,
   "hauler-2": 2,
   "courier-1": 4,
-  [TUG_ID]: 2,
+  [TUG_ID]: 3,
 };
 const SHIP_CAPACITY_BY_ID = {
   "hauler-1": 10,
