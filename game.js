@@ -735,6 +735,7 @@ const BuddeAdvisor = createBuddeAdvisor({
   fuelCostForRoute,
   nodeLabel,
   candidateDestinationsForShip,
+  resolveDriveShipId: (shipId) => effectiveDriveShipId(shipId),
   buddeInform,
   buddeSpeak,
 });
