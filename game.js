@@ -323,18 +323,6 @@ const NavigationModel = createNavigationModel({
   shipSpeedById: SHIP_SPEED_BY_ID,
   commandNodeId,
 });
-const NpcController = createNpcController({
-  state,
-  getNodes: () => nodes,
-  getAdjacency: () => adjacency,
-  safeRouteDistance,
-  travelTimeForRoute,
-  oneWaySignalToNode,
-  shipSpeedById: SHIP_SPEED_BY_ID,
-  playerNodeId: PLAYER_NODE,
-  nodeLabel,
-  scheduleCharacterMessage,
-});
 
 function fmtTime(total) {
   const m = String(Math.floor(total / 60)).padStart(2, "0");
@@ -760,6 +748,18 @@ function scheduleMessage(delay, textOrFactory, type = "report") {
 
 const oneWaySignalToNode = (...args) => NavigationModel.oneWaySignalToNode(...args);
 const oneWaySignalToShip = (...args) => NavigationModel.oneWaySignalToShip(...args);
+const NpcController = createNpcController({
+  state,
+  getNodes: () => nodes,
+  getAdjacency: () => adjacency,
+  safeRouteDistance,
+  travelTimeForRoute,
+  oneWaySignalToNode,
+  shipSpeedById: SHIP_SPEED_BY_ID,
+  playerNodeId: PLAYER_NODE,
+  nodeLabel,
+  scheduleCharacterMessage,
+});
 
 function moonForNode(nodeId) {
   const node = nodes[nodeId];
