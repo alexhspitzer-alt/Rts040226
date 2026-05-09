@@ -20,6 +20,7 @@ import { createNavigationModel, createBuddeAdvisor } from "./modules/game-naviga
 import { createContractTools } from "./modules/game-contracts.js";
 import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js";
 import { createCommandRuntime } from "./modules/game-command-runtime.js";
+import { createNpcController } from "./modules/game-npc-controller.js";
 
 let nodes = {};
 let edges = [];
@@ -218,6 +219,7 @@ const state = {
   lastAmbientLine: null,
   mapData: null,
   buddeData: null,
+  civilianNpcs: [],
   scenarioDialogue: {},
   scenario2Dialogue: null,
   scenario3Dialogue: null,
@@ -320,6 +322,18 @@ const NavigationModel = createNavigationModel({
   getAdjacency: () => adjacency,
   shipSpeedById: SHIP_SPEED_BY_ID,
   commandNodeId,
+});
+const NpcController = createNpcController({
+  state,
+  getNodes: () => nodes,
+  getAdjacency: () => adjacency,
+  safeRouteDistance,
+  travelTimeForRoute,
+  oneWaySignalToNode,
+  shipSpeedById: SHIP_SPEED_BY_ID,
+  playerNodeId: PLAYER_NODE,
+  nodeLabel,
+  scheduleCharacterMessage,
 });
 
 function fmtTime(total) {
@@ -1608,6 +1622,7 @@ function finalizeContractDelivery(contractId) {
 }
 
 function updateSimulation() {
+  NpcController.update();
   state.ships.forEach((ship) => {
     if (ship.utility && ship.status === "docked" && ship.dockedTo) {
       const host = state.ships.find((entry) => entry.id === ship.dockedTo);
@@ -1761,6 +1776,7 @@ commandRuntime = createCommandRuntime({
   playerHailFlow: PlayerHailFlow,
   tutorialGoal: TUTORIAL_GOAL,
 });
+NpcController.bootstrap();
 
 ui.cmdForm.addEventListener("submit", (event) => {
   event.preventDefault();
