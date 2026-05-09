@@ -65,7 +65,7 @@ const SHIP_SPEED_BY_ID = {
   "hauler-2": 2,
   "hauler-3": 2,
   "courier-1": 4,
-  "shuttle-1": 3,
+  "shuttle-1": 4,
   [TUG_ID]: 3,
   "tug-2": 3,
 };
@@ -1000,6 +1000,13 @@ function effectiveDriveShipId(shipId) {
   return ship.utilityDockedBy || ship.id;
 }
 
+function shuttleLocalApproachFreeSpan(fromNodeId, toNodeId, driveShipId) {
+  const sameMoon = nodes[fromNodeId]?.moon && nodes[fromNodeId]?.moon === nodes[toNodeId]?.moon;
+  if (!sameMoon) return safeRouteDistance(fromNodeId, toNodeId);
+  if (!/^shuttle-/i.test(driveShipId || "")) return safeRouteDistance(fromNodeId, toNodeId);
+  return 1;
+}
+
 function showShipMenu(shipId) {
   state.selection.allowedDestinationIds = [];
   state.selection.dockableShipIds = [];
@@ -1362,7 +1369,7 @@ function sendShip(shipId, destination) {
 
   const driveShipId = effectiveDriveShipId(ship.id);
   const uplink = oneWaySignalToShip(ship);
-  const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
+  const routeSpan = shuttleLocalApproachFreeSpan(ship.at, normalizedDestination, driveShipId);
   const inspectionDelay = onionSkinInspectionDelay([normalizedDestination]);
   const transitTime = travelTimeForRoute(driveShipId, routeSpan) + inspectionDelay;
   const shipFuelCost = fuelCostForRoute(ship.at, normalizedDestination, driveShipId);
@@ -1473,8 +1480,8 @@ function assignContract(contractId, shipId) {
   const driveShipId = effectiveDriveShipId(ship.id);
   const uplink = oneWaySignalToShip(ship);
   basilCommsLatencyLine(ship, "orders");
-  const toPickupSpan = safeRouteDistance(ship.at, contract.from);
-  const toDropSpan = safeRouteDistance(contract.from, contract.to);
+  const toPickupSpan = shuttleLocalApproachFreeSpan(ship.at, contract.from, driveShipId);
+  const toDropSpan = shuttleLocalApproachFreeSpan(contract.from, contract.to, driveShipId);
   const inspectionTargets = [];
   if (ship.at !== contract.from) inspectionTargets.push(contract.from);
   inspectionTargets.push(contract.to);

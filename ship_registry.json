@@ -23,7 +23,7 @@
     "description": "Tug-class utility vessel. Little cargo space, limited dignity, and a genuinely useful ability to move heavier objects faster than they would manage alone.",
     "faction": "civilian",
     "role": "tow and utility ship",
-    "speed": 3,
+    "speed": 4,
     "cargoSpace": 0,
     "armor": 2,
     "guns": 0,
