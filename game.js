@@ -54,20 +54,29 @@ const SCENARIO3_CAPACITY_BRIEFING =
 const SHIP_CAPTAINS = {
   "hauler-1": "Capt. Soren Nnadi",
   "hauler-2": "Capt. Tamsin Rook",
+  "hauler-3": "Capt. Jonas Vale",
   "courier-1": "Capt. Laleh Mercer",
+  "shuttle-1": "Capt. Mara Ibarra",
   [TUG_ID]: "Capt. Imani Voss",
+  "tug-2": "Capt. Mara Ibarra",
 };
 const SHIP_SPEED_BY_ID = {
-  "hauler-1": 1,
-  "hauler-2": 1,
-  "courier-1": 3,
-  [TUG_ID]: 1,
+  "hauler-1": 2,
+  "hauler-2": 2,
+  "hauler-3": 2,
+  "courier-1": 4,
+  "shuttle-1": 4,
+  [TUG_ID]: 3,
+  "tug-2": 3,
 };
 const SHIP_CAPACITY_BY_ID = {
   "hauler-1": 10,
   "hauler-2": 10,
+  "hauler-3": 10,
   "courier-1": 4,
+  "shuttle-1": 2,
   [TUG_ID]: 1,
+  "tug-2": 1,
 };
 const CARGO_GENERATION_RULES = {
   locationSets: {
@@ -212,6 +221,7 @@ const state = {
   scenarioDialogue: {},
   scenario2Dialogue: null,
   scenario3Dialogue: null,
+  scenario4Dialogue: null,
   playerRequestDialogue: null,
   almanacEntries: null,
   tugIntroPlayed: false,
@@ -424,15 +434,6 @@ function characterSpeak(characterName, bucket, fallback, type = "comms", statusO
   logLine(`${characterName} ${context}: ${text}`, lineType);
 }
 
-function queueCharacterMessage(delay, characterName, bucket, fallback, type = "comms", statusOverride = null) {
-  scheduleMessage(delay, () => {
-    if (!isContactPresent(characterName)) return null;
-    const context = speakerContext(characterName, statusOverride);
-    const text = pickLine(characterName, bucket) || fallback;
-    return `${characterName} ${context}: ${text}`;
-  }, type === "comms" ? speakerMessageType(characterName) : type);
-}
-
 function scheduleCharacterMessage(delay, characterName, text, statusOverride = null, type = "comms") {
   const isBluFreightCaptain = Object.values(SHIP_CAPTAINS).includes(characterName);
   const resolvedType = type === "comms"
@@ -498,6 +499,7 @@ async function loadReferenceData() {
       };
       state.scenario2Dialogue = scenario?.scenario2_dialogue || null;
       state.scenario3Dialogue = scenario?.scenario3_dialogue || null;
+      state.scenario4Dialogue = scenario?.scenario4_dialogue || null;
     }
 
     if (playerRequestsResponse.ok) {
@@ -646,8 +648,41 @@ function playScenario3Intro() {
 }
 
 function playScenario4Intro() {
-  basilInform("Scenario 4 unlocked: Exclusive Distribution.");
-  basilInform("Only qualifying contracts in this scenario count toward completion objectives. Avoid bankruptcy.");
+  const introLines = state.scenario4Dialogue?.introSequence || [];
+  introLines.forEach((entry) => {
+    const flagId = entry?.id;
+    if (entry?.playOncePerScenario && flagId && state.scenario4Dialogue?.oneTimeFlags?.[flagId]) return;
+    if (entry?.speaker && entry?.text) {
+      logLine(`${entry.speaker} ${speakerContext(entry.speaker)}: ${entry.text}`, speakerMessageType(entry.speaker));
+    }
+    if (entry?.playOncePerScenario && flagId && state.scenario4Dialogue?.oneTimeFlags) {
+      state.scenario4Dialogue.oneTimeFlags[flagId] = true;
+    }
+  });
+}
+
+function setupScenario4Fleet() {
+  const spawnRules = state.scenario4Dialogue?.spawnRules || {};
+  const defaultSpawn = spawnRules.defaultNewShipSpawn || "yard";
+  const shuttleSpawn = spawnRules?.overrides?.shuttle || defaultSpawn;
+  const ensureGrantedShip = (id, at, utility = false) => {
+    if (state.ships.some((ship) => ship.id === id)) return;
+    state.ships.push({
+      id,
+      at,
+      status: "idle",
+      cargoCapacity: SHIP_CAPACITY_BY_ID[id] || 1,
+      utility,
+      dockedTo: null,
+      busyUntil: 0,
+      departAt: 0,
+      lastKnownAt: at,
+      lastContactTick: state.tick,
+    });
+  };
+  ensureGrantedShip("hauler-3", defaultSpawn, false);
+  ensureGrantedShip("tug-2", defaultSpawn, true);
+  ensureGrantedShip("shuttle-1", shuttleSpawn, false);
 }
 
 function addScenario3Tug() {
@@ -700,6 +735,7 @@ const BuddeAdvisor = createBuddeAdvisor({
   fuelCostForRoute,
   nodeLabel,
   candidateDestinationsForShip,
+  resolveDriveShipId: (shipId) => effectiveDriveShipId(shipId),
   buddeInform,
   buddeSpeak,
 });
@@ -745,11 +781,13 @@ function buildDepartureComms(ship, mission) {
   const toBand = orbitBandValueForNode(mission.destinationNodeId);
 
   let headingSegment = "heading vector unavailable";
+  let telemetryRedundant = false;
   if (Number.isFinite(fromAngle) && Number.isFinite(toAngle)) {
     const ccwDelta = (toAngle - fromAngle + 360) % 360;
     const cwDelta = (fromAngle - toAngle + 360) % 360;
     if (ccwDelta <= cwDelta) headingSegment = `prograde +${ccwDelta.toFixed(1)}°`;
     else headingSegment = `retrograde -${cwDelta.toFixed(1)}°`;
+    telemetryRedundant = ccwDelta === 0;
   }
 
   let orbitSegment = "orbit change unavailable";
@@ -758,9 +796,12 @@ function buildDepartureComms(ship, mission) {
     if (delta > 0) orbitSegment = `climbing +${delta} band${delta === 1 ? "" : "s"}`;
     else if (delta < 0) orbitSegment = `descending ${delta} band${Math.abs(delta) === 1 ? "" : "s"}`;
     else orbitSegment = "holding current orbit band";
+    telemetryRedundant = telemetryRedundant && delta === 0;
   }
 
-  const message = `Acknowledged, Dispatch. Destination ${destinationLabel}; purpose ${purpose}; ${headingSegment}; ${orbitSegment}.`;
+  const message = telemetryRedundant
+    ? `Acknowledged, Dispatch. Destination ${destinationLabel}; purpose ${purpose}.`
+    : `Acknowledged, Dispatch. Destination ${destinationLabel}; purpose ${purpose}; ${headingSegment}; ${orbitSegment}.`;
   return { captain, message };
 }
 
@@ -896,7 +937,9 @@ function showShipsList() {
     const capacityLabel = state.currentScenario >= 3 && !s.utility
       ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
       : "";
-    logLine(`${idx + 1}. ${s.id} (${s.status}${dockedSuffix}) @ ${s.at} | ${captain}${capacityLabel}`, "sys");
+    const showLocation = s.status === "idle" || s.status === "tasked";
+    const locationSegment = showLocation ? ` @ ${s.at}` : "";
+    logLine(`${idx + 1}. ${s.id} (${s.status}${dockedSuffix})${locationSegment} | ${captain}${capacityLabel}`, "sys");
   });
   logLine("Select ship by typing its number or ID.", "sys");
 }
@@ -980,6 +1023,19 @@ function showShipMenu(shipId) {
   if (state.currentScenario >= 3 && !state.scenario3CapacityBriefed) {
     state.scenario3CapacityBriefed = true;
     basilInform(SCENARIO3_CAPACITY_BRIEFING);
+  }
+  if (state.currentScenario === 4 && shipId === "shuttle-1") {
+    const flags = state.scenario4Dialogue?.oneTimeFlags;
+    const shuttleGreeting = state.scenario4Dialogue?.shipSelectionGreetings?.find((entry) => entry.id === "shuttle_captain_first_selection");
+    if (shuttleGreeting && !flags?.shuttle_captain_first_selection) {
+      scheduleMessage(1, `${shuttleGreeting.speaker} ${speakerContext(shuttleGreeting.speaker)}: ${shuttleGreeting.text}`, "comms");
+      if (flags) flags.shuttle_captain_first_selection = true;
+    }
+    const buddeNote = state.scenario4Dialogue?.buddeTutorialNotes?.find((entry) => entry.id === "budde_first_shuttle_explainer");
+    if (buddeNote && !flags?.budde_first_shuttle_explainer) {
+      scheduleMessage(1, `${buddeNote.speaker} ${speakerContext(buddeNote.speaker)}: ${buddeNote.text}`, "budde");
+      if (flags) flags.budde_first_shuttle_explainer = true;
+    }
   }
   let menuOptions = "A assign, S send, R report, B back to ship list.";
   if (ship.utility && ship.status === "docked") {
@@ -1085,6 +1141,7 @@ function checkScenarioCompletion() {
       state.scenario4Activated = true;
       state.currentScenario = 4;
       state.completedContracts = 0;
+      setupScenario4Fleet();
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
       while (openContracts().length < 4) generateContract();
       logLine("Scenario 4 unlocked: Exclusive Distribution.", "sys");
@@ -1228,30 +1285,32 @@ function shipReport(shipId) {
   basilInform(
     `${scenarioStalenessLine || "Report requested."} ${basilShipIntel(ship)} Reply expected in ${rtt}s (uplink ${uplink}s each way). ${staleNote}`
   );
-  scheduleMessage(rtt, `Report ${ship.id}: status=${ship.status}, lastKnown=${ship.lastKnownAt || ship.at}, eta=${eta}s (RTT ${rtt}s).`, "report");
+  const reportStatus = ship.status === "arrived_pending_report" ? "arrived" : ship.status;
+  const locationOrDestination = ship.status === "enroute"
+    ? `destination=${ship.destination || ship.at}`
+    : `location=${ship.at}`;
+  scheduleMessage(rtt, `Report ${ship.id}: status=${reportStatus}, ${locationOrDestination}, eta=${eta}s (RTT ${rtt}s).`, "report");
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
-    queueCharacterMessage(rtt, captain, "neutral", "Responding after comms delay. Standing by for tasking.", "comms");
+    scheduleCharacterMessage(
+      rtt,
+      captain,
+      "Responding after comms delay. Standing by for tasking.",
+      null,
+      "comms"
+    );
   }
 }
 
 function scheduleTransitComms(ship, destination, distance, uplink) {
-  const midpoint = Math.max(1, Math.floor(distance / 2));
   const captain = SHIP_CAPTAINS[ship.id];
-  scheduleMessage(
-    uplink + midpoint + oneWaySignalToNode(destination),
-    `${ship.id} update: passing relay corridor toward ${nodeLabel(destination)}.`,
-    "report"
-  );
   if (captain) {
-    queueCharacterMessage(
-      uplink + midpoint + oneWaySignalToNode(destination),
-      captain,
-      "neutral",
-      "Route remains stable.",
-      "comms",
-      "arriving"
-    );
+    scheduleFinalApproachDockingCall(ship, {
+      fromNodeId: ship.at,
+      destinationNodeId: destination,
+      uplink,
+      transitTime: distance,
+    });
   }
   scheduleMessage(
     uplink + distance + oneWaySignalToNode(destination),
@@ -1259,14 +1318,39 @@ function scheduleTransitComms(ship, destination, distance, uplink) {
     "report"
   );
   if (captain) {
-    queueCharacterMessage(
+    scheduleCharacterMessage(
       uplink + distance + oneWaySignalToNode(destination),
       captain,
-      "acknowledgements",
-      "On station.",
+      `On station at ${nodeLabel(destination)}. Awaiting dispatch.`,
+      null,
       "comms"
     );
   }
+}
+
+function scheduleFinalApproachDockingCall(ship, {
+  fromNodeId,
+  destinationNodeId,
+  uplink,
+  transitTime,
+  departureOffset = 0,
+}) {
+  const captain = SHIP_CAPTAINS[ship.id];
+  if (!captain || !nodes[fromNodeId] || !nodes[destinationNodeId]) return;
+  const sameMoonTransit = nodes[fromNodeId].moon === nodes[destinationNodeId].moon;
+  const destinationApproach = Math.max(1, Number(nodes[destinationNodeId].approach) || 1);
+  const sameMoonCallDelay = 3;
+  const preArrivalLead = Math.min(Math.max(2, destinationApproach), Math.max(2, Math.max(0, transitTime - 1)));
+  const sameMoonOutbound = uplink + departureOffset + Math.min(sameMoonCallDelay, Math.max(0, transitTime - 1));
+  const crossMoonOutbound = uplink + departureOffset + Math.max(0, transitTime - preArrivalLead);
+  const shipCallAt = sameMoonTransit ? sameMoonOutbound : crossMoonOutbound;
+  scheduleCharacterMessage(
+    shipCallAt + oneWaySignalToNode(destinationNodeId),
+    captain,
+    `Final approach to ${nodeLabel(destinationNodeId)}. Requesting dock clearance.`,
+    "arriving",
+    "comms"
+  );
 }
 
 function sendShip(shipId, destination) {
@@ -1308,8 +1392,9 @@ function sendShip(shipId, destination) {
 
   const effectiveRisk = state.risk + (state.escort ? -10 : 8);
   if (Math.random() * 100 < effectiveRisk * 0.3) {
+    const detentionNoticeAt = uplink + transitTime + oneWaySignalToNode(normalizedDestination);
     scheduleMessage(
-      uplink + transitTime + oneWaySignalToNode(normalizedDestination),
+      detentionNoticeAt,
       `${ship.id} detained briefly at ${nodeLabel(normalizedDestination)}. Cargo released after inspection.`,
       "alert"
     );
@@ -1323,14 +1408,18 @@ function sendShip(shipId, destination) {
       }`,
       "comms",
     );
-    basilSpeak("negative", `Order logged. ${ship.id} risk profile elevated.`, "basil");
+    scheduleMessage(
+      detentionNoticeAt,
+      `${BASIL_NAME} ${speakerContext(BASIL_NAME)}: Order logged. ${ship.id} risk profile elevated.`,
+      "basil"
+    );
     const captain = SHIP_CAPTAINS[ship.id];
     if (captain) {
-      queueCharacterMessage(
-        uplink + transitTime + oneWaySignalToNode(normalizedDestination),
+      scheduleCharacterMessage(
+        detentionNoticeAt,
         captain,
-        "negative",
         "We're detained for inspection. This run just went sideways.",
+        null,
         "comms"
       );
     }
@@ -1459,22 +1548,34 @@ function assignContract(contractId, shipId) {
       );
     }
   }
-  scheduleMessage(
-    uplink + Math.max(1, Math.floor(total / 2)) + oneWaySignalToNode(contract.to),
-    `${ship.id} mid-route check-in for ${contract.id}: cargo stable.`,
-    "report"
-  );
+  if (captain) {
+    const firstLegTransit = travelTimeForRoute(driveShipId, toPickupSpan);
+    const finalLegTransit = Math.max(1, total - firstLegTransit);
+    const finalLegDepartureOffset = ship.at === contract.from ? 0 : firstLegTransit;
+    scheduleFinalApproachDockingCall(ship, {
+      fromNodeId: contract.from,
+      destinationNodeId: contract.to,
+      uplink,
+      transitTime: finalLegTransit,
+      departureOffset: finalLegDepartureOffset,
+    });
+  }
   scheduleMessage(
     uplink + total + oneWaySignalToNode(contract.to),
     `${ship.id} delivered ${contract.id} at ${nodeLabel(contract.to)}.`,
     "report"
   );
   if (captain) {
-    const completionTone = inspectionDelay >= 180 ? "negative" : "positive";
-    const completionFallback = inspectionDelay >= 180
+    const completionLine = inspectionDelay >= 180
       ? "Delivery complete, but inspection delays burned the schedule."
       : "Delivery complete.";
-    queueCharacterMessage(uplink + total + oneWaySignalToNode(contract.to), captain, completionTone, completionFallback);
+    scheduleCharacterMessage(
+      uplink + total + oneWaySignalToNode(contract.to),
+      captain,
+      completionLine,
+      null,
+      "comms"
+    );
   }
 
   maybeIntroduceBudde();
@@ -1493,10 +1594,14 @@ function finalizeContractDelivery(contractId) {
   if (!contract || contract.status !== "delivered_pending_report") return;
   contract.status = "completed";
   const missionFuelCost = fuelBillingActive() && Number.isFinite(contract.fuelCost) ? contract.fuelCost : 0;
-  state.cash += contract.payout - missionFuelCost - (state.escort ? 60 : 0);
+  const isScenario4Qualifying = state.currentScenario === 4 && contract.client === "UFP" && String(contract.cargoType || "").toLowerCase() === "deuterium";
+  const appliedPayout = isScenario4Qualifying ? 0 : contract.payout;
+  state.cash += appliedPayout - missionFuelCost - (state.escort ? 60 : 0);
   state.rep = Math.min(100, state.rep + 2);
   state.risk = Math.max(8, state.risk - 1);
-  const countsForProgress = state.currentScenario === 1 || state.currentScenario >= 3 || Boolean(contract.client);
+  const countsForProgress = state.currentScenario === 4
+    ? isScenario4Qualifying
+    : state.currentScenario === 1 || state.currentScenario >= 3 || Boolean(contract.client);
   if (countsForProgress) state.completedContracts += 1;
   maybeTriggerScenario2VennDetainment();
   checkScenarioCompletion();
@@ -1522,24 +1627,29 @@ function updateSimulation() {
       ship.status = "enroute";
     }
     if (ship.status === "enroute" && state.tick >= ship.busyUntil) {
+      const arrivalNodeId = ship.destination;
+      const returnSignal = oneWaySignalToNode(arrivalNodeId);
       if (ship.activeContractId) {
         const contract = state.contracts.find((c) => c.id === ship.activeContractId);
         if (contract && contract.status === "assigned") {
           contract.status = "delivered_pending_report";
-          const returnSignal = oneWaySignalToNode(contract.to);
           scheduleMessage(returnSignal, () => {
             finalizeContractDelivery(contract.id);
             return null;
           }, "sys");
         }
       }
-      ship.at = ship.destination;
-      ship.destination = undefined;
-      ship.activeContractId = undefined;
-      ship.status = "idle";
+      ship.at = arrivalNodeId;
+      ship.status = "arrived_pending_report";
       ship.departAt = 0;
-      ship.lastKnownAt = ship.at;
-      ship.lastContactTick = state.tick;
+      scheduleMessage(returnSignal, () => {
+        ship.destination = undefined;
+        ship.activeContractId = undefined;
+        ship.status = "idle";
+        ship.lastKnownAt = ship.at;
+        ship.lastContactTick = state.tick;
+        return null;
+      }, "sys");
     }
   });
 
