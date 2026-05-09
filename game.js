@@ -217,6 +217,7 @@ const state = {
   dialogueDb: {},
   latencyBriefed: false,
   lastAmbientLine: null,
+  lastAmbientChatterTick: -Infinity,
   mapData: null,
   buddeData: null,
   civilianNpcs: [],
@@ -1683,7 +1684,9 @@ function updateSimulation() {
     state.risk = Math.max(8, Math.min(70, state.risk));
   }
 
-  if (state.tick % 120 === 0 && Math.random() < 0.35) {
+  const ambientRollWindowReached = state.tick % 120 === 0;
+  const ambientSafetyWindowExceeded = state.tick - state.lastAmbientChatterTick >= 360;
+  if (ambientRollWindowReached && (Math.random() < 0.35 || ambientSafetyWindowExceeded)) {
     const ambient = ["Cmdr. Elias Thorne", "Capt. Hadrik Venn", "Port Marshal Celia Wren"].filter(isContactPresent);
     if (ambient.length) {
       const speaker = ambient[Math.floor(Math.random() * ambient.length)];
@@ -1691,6 +1694,7 @@ function updateSimulation() {
       const line = pickLine(speaker, tone) || "Traffic conditions noted.";
       if (line !== state.lastAmbientLine) {
         state.lastAmbientLine = line;
+        state.lastAmbientChatterTick = state.tick;
         scheduleMessage(1, () => `${speaker} ${speakerContext(speaker)}: ${line}`, speakerMessageType(speaker));
       }
     }
