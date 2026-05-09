@@ -20,6 +20,7 @@ import { createNavigationModel, createBuddeAdvisor } from "./modules/game-naviga
 import { createContractTools } from "./modules/game-contracts.js";
 import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js";
 import { createCommandRuntime } from "./modules/game-command-runtime.js";
+import { createNpcController } from "./modules/game-npc-controller.js";
 
 let nodes = {};
 let edges = [];
@@ -216,8 +217,10 @@ const state = {
   dialogueDb: {},
   latencyBriefed: false,
   lastAmbientLine: null,
+  lastAmbientChatterTick: -Infinity,
   mapData: null,
   buddeData: null,
+  civilianNpcs: [],
   scenarioDialogue: {},
   scenario2Dialogue: null,
   scenario3Dialogue: null,
@@ -253,6 +256,7 @@ const ui = {
   fleet: document.getElementById("fleet"),
   feed: document.getElementById("feed"),
   copyConsole: document.getElementById("copy-console"),
+  consoleFollowToggle: document.getElementById("console-follow-toggle"),
   cmdForm: document.getElementById("cmd-form"),
   cmdInput: document.getElementById("cmd"),
   hailAction: document.getElementById("hail-action"),
@@ -746,6 +750,18 @@ function scheduleMessage(delay, textOrFactory, type = "report") {
 
 const oneWaySignalToNode = (...args) => NavigationModel.oneWaySignalToNode(...args);
 const oneWaySignalToShip = (...args) => NavigationModel.oneWaySignalToShip(...args);
+const NpcController = createNpcController({
+  state,
+  getNodes: () => nodes,
+  getAdjacency: () => adjacency,
+  safeRouteDistance,
+  travelTimeForRoute,
+  oneWaySignalToNode,
+  shipSpeedById: SHIP_SPEED_BY_ID,
+  playerNodeId: PLAYER_NODE,
+  nodeLabel,
+  scheduleCharacterMessage,
+});
 
 function moonForNode(nodeId) {
   const node = nodes[nodeId];
@@ -1608,6 +1624,7 @@ function finalizeContractDelivery(contractId) {
 }
 
 function updateSimulation() {
+  NpcController.update();
   state.ships.forEach((ship) => {
     if (ship.utility && ship.status === "docked" && ship.dockedTo) {
       const host = state.ships.find((entry) => entry.id === ship.dockedTo);
@@ -1668,7 +1685,9 @@ function updateSimulation() {
     state.risk = Math.max(8, Math.min(70, state.risk));
   }
 
-  if (state.tick % 120 === 0 && Math.random() < 0.35) {
+  const ambientRollWindowReached = state.tick % 120 === 0;
+  const ambientSafetyWindowExceeded = state.tick - state.lastAmbientChatterTick >= 360;
+  if (ambientRollWindowReached && (Math.random() < 0.35 || ambientSafetyWindowExceeded)) {
     const ambient = ["Cmdr. Elias Thorne", "Capt. Hadrik Venn", "Port Marshal Celia Wren"].filter(isContactPresent);
     if (ambient.length) {
       const speaker = ambient[Math.floor(Math.random() * ambient.length)];
@@ -1676,6 +1695,7 @@ function updateSimulation() {
       const line = pickLine(speaker, tone) || "Traffic conditions noted.";
       if (line !== state.lastAmbientLine) {
         state.lastAmbientLine = line;
+        state.lastAmbientChatterTick = state.tick;
         scheduleMessage(1, () => `${speaker} ${speakerContext(speaker)}: ${line}`, speakerMessageType(speaker));
       }
     }
@@ -1761,6 +1781,7 @@ commandRuntime = createCommandRuntime({
   playerHailFlow: PlayerHailFlow,
   tutorialGoal: TUTORIAL_GOAL,
 });
+NpcController.bootstrap();
 
 ui.cmdForm.addEventListener("submit", (event) => {
   event.preventDefault();

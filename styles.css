@@ -219,6 +219,18 @@ h1 {
   font-size: 0.78rem;
 }
 
+.console-tools {
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
+}
+
+.copy-btn.is-off {
+  background: #2a2f36;
+  border-color: #555f6d;
+  color: #c4ccd6;
+}
+
 .copy-btn:hover {
   background: #2f5f8e;
 }
