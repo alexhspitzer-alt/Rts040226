@@ -68,7 +68,8 @@ export function createNavigationModel({
       const toBand = this.orbitBandValue(toNode.moon);
       const bandDelta = toBand - fromBand;
       const driveShip = shipId ? state.ships.find((s) => s.id === shipId) : null;
-      const uphillMultiplier = driveShip?.utility ? 1 : 2;
+      const shuttleDrive = Boolean(driveShip && /^shuttle-/i.test(driveShip.id || ""));
+      const uphillMultiplier = shuttleDrive ? 6 : driveShip?.utility ? 1 : 2;
       const gravityMultiplier = bandDelta > 0 ? uphillMultiplier : bandDelta < 0 ? 0.35 : 1;
       return Math.max(10, Math.round(distance * 12 * gravityMultiplier));
     },
