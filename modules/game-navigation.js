@@ -63,14 +63,21 @@ export function createNavigationModel({
       const fromNode = nodes[fromNodeId];
       const toNode = nodes[toNodeId];
       if (!fromNode || !toNode) return 0;
-      const distance = this.safeRouteDistance(fromNodeId, toNodeId);
+      let distance = this.safeRouteDistance(fromNodeId, toNodeId);
       const fromBand = this.orbitBandValue(fromNode.moon);
       const toBand = this.orbitBandValue(toNode.moon);
       const bandDelta = toBand - fromBand;
       const driveShip = shipId ? state.ships.find((s) => s.id === shipId) : null;
-      const uphillMultiplier = driveShip?.utility ? 1 : 2;
+      const shuttleDrive = Boolean(driveShip && /^shuttle-/i.test(driveShip.id || ""));
+      if (shuttleDrive) {
+        const approachPhase = Math.max(0, Math.round(((fromNode.approach || 0) + (toNode.approach || 0)) / 4));
+        distance = Math.max(1, distance - approachPhase);
+      }
+      const uphillMultiplier = shuttleDrive ? 6 : driveShip?.utility ? 1 : 2;
       const gravityMultiplier = bandDelta > 0 ? uphillMultiplier : bandDelta < 0 ? 0.35 : 1;
-      return Math.max(10, Math.round(distance * 12 * gravityMultiplier));
+      const baseFuel = Math.round(distance * 12 * gravityMultiplier);
+      const shuttleAdjustedFuel = shuttleDrive ? Math.round(baseFuel * 0.9) : baseFuel;
+      return Math.max(10, shuttleAdjustedFuel);
     },
     fuelBillingActive() {
       return state.currentScenario >= 2;
