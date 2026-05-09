@@ -55,18 +55,21 @@ const SHIP_CAPTAINS = {
   "hauler-1": "Capt. Soren Nnadi",
   "hauler-2": "Capt. Tamsin Rook",
   "courier-1": "Capt. Laleh Mercer",
+  "shuttle-1": "Capt. Mara Ibarra",
   [TUG_ID]: "Capt. Imani Voss",
 };
 const SHIP_SPEED_BY_ID = {
   "hauler-1": 2,
   "hauler-2": 2,
   "courier-1": 4,
+  "shuttle-1": 3,
   [TUG_ID]: 3,
 };
 const SHIP_CAPACITY_BY_ID = {
   "hauler-1": 10,
   "hauler-2": 10,
   "courier-1": 4,
+  "shuttle-1": 2,
   [TUG_ID]: 1,
 };
 const CARGO_GENERATION_RULES = {
@@ -212,6 +215,7 @@ const state = {
   scenarioDialogue: {},
   scenario2Dialogue: null,
   scenario3Dialogue: null,
+  scenario4Dialogue: null,
   playerRequestDialogue: null,
   almanacEntries: null,
   tugIntroPlayed: false,
@@ -489,6 +493,7 @@ async function loadReferenceData() {
       };
       state.scenario2Dialogue = scenario?.scenario2_dialogue || null;
       state.scenario3Dialogue = scenario?.scenario3_dialogue || null;
+      state.scenario4Dialogue = scenario?.scenario4_dialogue || null;
     }
 
     if (playerRequestsResponse.ok) {
@@ -637,8 +642,54 @@ function playScenario3Intro() {
 }
 
 function playScenario4Intro() {
-  basilInform("Scenario 4 unlocked: Exclusive Distribution.");
-  basilInform("Only qualifying contracts in this scenario count toward completion objectives. Avoid bankruptcy.");
+  const introLines = state.scenario4Dialogue?.introSequence || [];
+  introLines.forEach((entry) => {
+    const flagId = entry?.id;
+    if (entry?.playOncePerScenario && flagId && state.scenario4Dialogue?.oneTimeFlags?.[flagId]) return;
+    if (entry?.speaker && entry?.text) {
+      logLine(`${entry.speaker} ${speakerContext(entry.speaker)}: ${entry.text}`, speakerMessageType(entry.speaker));
+    }
+    if (entry?.playOncePerScenario && flagId && state.scenario4Dialogue?.oneTimeFlags) {
+      state.scenario4Dialogue.oneTimeFlags[flagId] = true;
+    }
+  });
+}
+
+function setupScenario4Fleet() {
+  const shipById = Object.fromEntries(state.ships.map((ship) => [ship.id, ship]));
+  const spawnRules = state.scenario4Dialogue?.spawnRules || {};
+  const defaultSpawn = spawnRules.defaultNewShipSpawn || "yard";
+  const shuttleSpawn = spawnRules?.overrides?.shuttle || defaultSpawn;
+  const ensureShip = (id, at, utility = false) => {
+    const ship = shipById[id];
+    if (ship) {
+      ship.at = at;
+      ship.status = "idle";
+      ship.destination = undefined;
+      ship.activeContractId = undefined;
+      ship.departAt = 0;
+      ship.busyUntil = 0;
+      ship.utility = utility;
+      ship.lastKnownAt = at;
+      return;
+    }
+    state.ships.push({
+      id,
+      at,
+      status: "idle",
+      cargoCapacity: SHIP_CAPACITY_BY_ID[id] || 1,
+      utility,
+      dockedTo: null,
+      busyUntil: 0,
+      departAt: 0,
+      lastKnownAt: at,
+      lastContactTick: state.tick,
+    });
+  };
+  ensureShip("hauler-1", defaultSpawn, false);
+  ensureShip(TUG_ID, defaultSpawn, true);
+  ensureShip("shuttle-1", shuttleSpawn, false);
+  state.ships = state.ships.filter((ship) => ["hauler-1", TUG_ID, "shuttle-1"].includes(ship.id));
 }
 
 function addScenario3Tug() {
@@ -979,6 +1030,19 @@ function showShipMenu(shipId) {
     state.scenario3CapacityBriefed = true;
     basilInform(SCENARIO3_CAPACITY_BRIEFING);
   }
+  if (state.currentScenario === 4 && shipId === "shuttle-1") {
+    const flags = state.scenario4Dialogue?.oneTimeFlags;
+    const shuttleGreeting = state.scenario4Dialogue?.shipSelectionGreetings?.find((entry) => entry.id === "shuttle_captain_first_selection");
+    if (shuttleGreeting && !flags?.shuttle_captain_first_selection) {
+      scheduleMessage(1, `${shuttleGreeting.speaker} ${speakerContext(shuttleGreeting.speaker)}: ${shuttleGreeting.text}`, "comms");
+      if (flags) flags.shuttle_captain_first_selection = true;
+    }
+    const buddeNote = state.scenario4Dialogue?.buddeTutorialNotes?.find((entry) => entry.id === "budde_first_shuttle_explainer");
+    if (buddeNote && !flags?.budde_first_shuttle_explainer) {
+      scheduleMessage(1, `${buddeNote.speaker} ${speakerContext(buddeNote.speaker)}: ${buddeNote.text}`, "budde");
+      if (flags) flags.budde_first_shuttle_explainer = true;
+    }
+  }
   let menuOptions = "A assign, S send, R report, B back to ship list.";
   if (ship.utility && ship.status === "docked") {
     menuOptions = "U undock.";
@@ -1083,6 +1147,7 @@ function checkScenarioCompletion() {
       state.scenario4Activated = true;
       state.currentScenario = 4;
       state.completedContracts = 0;
+      setupScenario4Fleet();
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
       while (openContracts().length < 4) generateContract();
       logLine("Scenario 4 unlocked: Exclusive Distribution.", "sys");
@@ -1535,10 +1600,14 @@ function finalizeContractDelivery(contractId) {
   if (!contract || contract.status !== "delivered_pending_report") return;
   contract.status = "completed";
   const missionFuelCost = fuelBillingActive() && Number.isFinite(contract.fuelCost) ? contract.fuelCost : 0;
-  state.cash += contract.payout - missionFuelCost - (state.escort ? 60 : 0);
+  const isScenario4Qualifying = state.currentScenario === 4 && contract.client === "UFP" && String(contract.cargoType || "").toLowerCase() === "deuterium";
+  const appliedPayout = isScenario4Qualifying ? 0 : contract.payout;
+  state.cash += appliedPayout - missionFuelCost - (state.escort ? 60 : 0);
   state.rep = Math.min(100, state.rep + 2);
   state.risk = Math.max(8, state.risk - 1);
-  const countsForProgress = state.currentScenario === 1 || state.currentScenario >= 3 || Boolean(contract.client);
+  const countsForProgress = state.currentScenario === 4
+    ? isScenario4Qualifying
+    : state.currentScenario === 1 || state.currentScenario >= 3 || Boolean(contract.client);
   if (countsForProgress) state.completedContracts += 1;
   maybeTriggerScenario2VennDetainment();
   checkScenarioCompletion();
