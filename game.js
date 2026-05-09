@@ -54,23 +54,29 @@ const SCENARIO3_CAPACITY_BRIEFING =
 const SHIP_CAPTAINS = {
   "hauler-1": "Capt. Soren Nnadi",
   "hauler-2": "Capt. Tamsin Rook",
+  "hauler-3": "Capt. Jonas Vale",
   "courier-1": "Capt. Laleh Mercer",
   "shuttle-1": "Capt. Mara Ibarra",
   [TUG_ID]: "Capt. Imani Voss",
+  "tug-2": "Capt. Mara Ibarra",
 };
 const SHIP_SPEED_BY_ID = {
   "hauler-1": 2,
   "hauler-2": 2,
+  "hauler-3": 2,
   "courier-1": 4,
   "shuttle-1": 3,
   [TUG_ID]: 3,
+  "tug-2": 3,
 };
 const SHIP_CAPACITY_BY_ID = {
   "hauler-1": 10,
   "hauler-2": 10,
+  "hauler-3": 10,
   "courier-1": 4,
   "shuttle-1": 2,
   [TUG_ID]: 1,
+  "tug-2": 1,
 };
 const CARGO_GENERATION_RULES = {
   locationSets: {
@@ -656,23 +662,11 @@ function playScenario4Intro() {
 }
 
 function setupScenario4Fleet() {
-  const shipById = Object.fromEntries(state.ships.map((ship) => [ship.id, ship]));
   const spawnRules = state.scenario4Dialogue?.spawnRules || {};
   const defaultSpawn = spawnRules.defaultNewShipSpawn || "yard";
   const shuttleSpawn = spawnRules?.overrides?.shuttle || defaultSpawn;
-  const ensureShip = (id, at, utility = false) => {
-    const ship = shipById[id];
-    if (ship) {
-      ship.at = at;
-      ship.status = "idle";
-      ship.destination = undefined;
-      ship.activeContractId = undefined;
-      ship.departAt = 0;
-      ship.busyUntil = 0;
-      ship.utility = utility;
-      ship.lastKnownAt = at;
-      return;
-    }
+  const ensureGrantedShip = (id, at, utility = false) => {
+    if (state.ships.some((ship) => ship.id === id)) return;
     state.ships.push({
       id,
       at,
@@ -686,10 +680,9 @@ function setupScenario4Fleet() {
       lastContactTick: state.tick,
     });
   };
-  ensureShip("hauler-1", defaultSpawn, false);
-  ensureShip(TUG_ID, defaultSpawn, true);
-  ensureShip("shuttle-1", shuttleSpawn, false);
-  state.ships = state.ships.filter((ship) => ["hauler-1", TUG_ID, "shuttle-1"].includes(ship.id));
+  ensureGrantedShip("hauler-3", defaultSpawn, false);
+  ensureGrantedShip("tug-2", defaultSpawn, true);
+  ensureGrantedShip("shuttle-1", shuttleSpawn, false);
 }
 
 function addScenario3Tug() {
