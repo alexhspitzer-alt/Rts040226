@@ -20,6 +20,7 @@ import { createNavigationModel, createBuddeAdvisor } from "./modules/game-naviga
 import { createContractTools } from "./modules/game-contracts.js";
 import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js";
 import { createCommandRuntime } from "./modules/game-command-runtime.js";
+import { createCivilianTrafficState, runCivilianTrafficTick } from "./modules/game-civilian-traffic.js";
 
 let nodes = {};
 let edges = [];
@@ -223,6 +224,7 @@ const state = {
   scenario3Completed: false,
   onionSkinInspectionWaived: false,
   lastLatencyReminderTick: -Infinity,
+  civilianTraffic: [],
   consoleReadyAtMs: Date.now(),
   respondingToCommand: false,
 };
@@ -274,6 +276,12 @@ function commandNodeId() {
 
 function syncShipLocationsToActiveMap() {
   syncShipsToMap(state, nodes, PLAYER_NODE);
+  const fallbackNode = commandNodeId();
+  if (!Array.isArray(state.civilianTraffic)) return;
+  state.civilianTraffic.forEach((ship) => {
+    if (!nodes[ship.at]) ship.at = fallbackNode;
+    if (ship.destination && !nodes[ship.destination]) ship.destination = null;
+  });
 }
 
 function nodeLabel(nodeId) {
@@ -458,6 +466,7 @@ async function loadReferenceData() {
       const loaded = buildCanonicalTutorialMap(state.mapData);
       if (!loaded) logLine("Map load warning: tutorial layer unavailable. Using fallback graph.", "error");
       syncShipLocationsToActiveMap();
+      state.civilianTraffic = createCivilianTrafficState(state.tick, nodes, commandNodeId());
     }
 
     if (buddeResponse.ok) {
@@ -1315,6 +1324,14 @@ function updateSimulation() {
       }
     }
   }
+
+  runCivilianTrafficTick({
+    state,
+    tick: state.tick,
+    nodes,
+    nodeLabel,
+    logLine,
+  });
 
   if (isPlayerBankrupt()) {
     logLine("bluFreight insolvency event. Simulation halted.", "alert");
