@@ -1,4 +1,4 @@
-# refactor-game.js-into-smaller-files-mzpg10
+# first NPC controller
 
 # bluFreight Indigo Ops Prototype
 
