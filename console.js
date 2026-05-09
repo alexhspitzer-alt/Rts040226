@@ -7,6 +7,18 @@ export function createConsoleLogger({
   dotsDelayMs,
   revealDelayMs,
 }) {
+  function pinFeedToBottom() {
+    if (!ui.feed) return;
+    const maxScrollTop = Math.max(0, ui.feed.scrollHeight - ui.feed.clientHeight);
+    ui.feed.scrollTop = maxScrollTop;
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => {
+        const refreshedMax = Math.max(0, ui.feed.scrollHeight - ui.feed.clientHeight);
+        ui.feed.scrollTop = refreshedMax;
+      });
+    }
+  }
+
   function appendLine(text, type = "sys", stampedTick = state.tick) {
     const div = document.createElement("div");
     const safeType = String(type || "sys").toLowerCase().replace(/[^a-z0-9_-]/g, "-");
@@ -23,7 +35,7 @@ export function createConsoleLogger({
     div.appendChild(stamp);
     div.appendChild(body);
     ui.feed.appendChild(div);
-    ui.feed.scrollTop = ui.feed.scrollHeight;
+    pinFeedToBottom();
     return body;
   }
 
@@ -47,6 +59,7 @@ export function createConsoleLogger({
       setTimeout(() => {
         if (!bodyNode) return;
         bodyNode.innerHTML = ` ${stylizeConsoleText(text)}`;
+        pinFeedToBottom();
       }, Math.max(0, revealAt - Date.now()));
       return;
     }
