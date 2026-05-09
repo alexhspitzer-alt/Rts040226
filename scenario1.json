@@ -140,7 +140,7 @@
         "context": "Play immediately after BUDDE's welcome line.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
-        "text": "Due to recent and entirely foreseeable corporate cost-control measures, bluFreight vessels will no longer move at the speed of light for instructional convenience. Ships are now constrained by their actual ability to accelerate mass, as reflected in their speed ratings. This is less magical, but considerably more honest."
+        "text": "Operational reminder: bluFreight vessels are constrained by their actual ability to accelerate mass, as reflected in their speed ratings. If a route feels slow, that is because physics remains uncooperative rather than because dispatch has offended the calendar."
       },
       {
         "id": "intro_fuel_is_real",
@@ -199,6 +199,70 @@
         "speaker": "BASIL",
         "playOncePerScenario": true,
         "text": "On behalf of bluFreight management, I apologize for any inconvenience this calibration oversight may have caused your planning, expectations, or blood pressure. To offset the impact, you have been afforded an additional ship: tug-1, now added to your operational fleet to help keep this operation profitable."
+      }
+    ]
+  },
+  "scenario4_dialogue": {
+    "metadata": {
+      "scenarioId": "scenario4",
+      "title": "Exclusive Distribution",
+      "speakerLead": "BASIL"
+    },
+    "spawnRules": {
+      "defaultNewShipSpawn": "yard",
+      "overrides": {
+        "shuttle": "anchor_station"
+      }
+    },
+    "oneTimeFlags": {
+      "intro_exclusive_contract": false,
+      "intro_no_premium": false,
+      "intro_lump_sum": false,
+      "intro_assigned_ships": false,
+      "budde_first_shuttle_explainer": false,
+      "shuttle_captain_first_selection": false
+    },
+    "introSequence": [
+      {
+        "id": "intro_exclusive_contract",
+        "speaker": "BASIL",
+        "playOncePerScenario": true,
+        "text": "Welcome back, Operations Manager. bluFreight has entered into an exclusive and allegedly prestigious arrangement to distribute deuterium for the Union of Free Planets. From this point forward, only UFP deuterium contracts will count toward completion."
+      },
+      {
+        "id": "intro_no_premium",
+        "speaker": "BASIL",
+        "playOncePerScenario": true,
+        "text": "In exchange for this opportunity, management has chosen to preserve our status as lowest bidder by charging absolutely no premium on those deliveries. You will therefore earn no money from completing them. Fuel, however, remains fully billable at the current rate."
+      },
+      {
+        "id": "intro_lump_sum",
+        "speaker": "BASIL",
+        "playOncePerScenario": true,
+        "text": "The Union did provide a substantial payment up front as a single lump sum. Management has already spent it."
+      },
+      {
+        "id": "intro_assigned_ships",
+        "speaker": "BASIL",
+        "playOncePerScenario": true,
+        "text": "To support this exercise, you have been assigned one hauler, one tug, and one shuttle. I recommend you treat them as assets rather than commendations."
+      }
+    ],
+    "buddeTutorialNotes": [
+      {
+        "id": "budde_first_shuttle_explainer",
+        "speaker": "BUDDE",
+        "playOncePerScenario": true,
+        "text": "Shuttle advisory. Shuttle-class craft do not pay normal local approach costs and are efficient for short station-to-station or same-moon transfers. They are, however, catastrophically inefficient at climbing to higher orbit under their own power. For upward repositioning, attach a tug unless your objective is to convert fuel directly into regret."
+      }
+    ],
+    "shipSelectionGreetings": [
+      {
+        "id": "shuttle_captain_first_selection",
+        "speaker": "Capt. Mara Ibarra",
+        "shipClass": "shuttle",
+        "playOncePerScenario": true,
+        "text": "Captain Ibarra here. Shuttle's perfect for short hops, station errands, and VIP work. You want to move far or climb uphill, pair me with a tug first."
       }
     ]
   }
