@@ -8,12 +8,12 @@
     "intro_information_integrity": {
       "context": "Play immediately after the welcome introduction, as the tutorial explanation of communication delay and stale information.",
       "speaker": "BASIL",
-      "text": "My other role is helping you remember that information must travel like everything else. A report from a ship or station does not arrive here the instant it is sent; it crosses real distance at a finite speed, and by the time you read it, events may already have moved on. The farther away an asset is, the older its news will be when it reaches you, and the longer it will take for your reply to get back. My apologies that light remains so sluggish. I am assured Information Technology is doing everything in its power to improve this. In practice, this means you will often be making decisions based on what was true seconds, minutes, or longer ago rather than what is true now. My task is to keep those delays visible, so you do not mistake a last known position for a current one, or stale certainty for useful judgment."
+      "text": "My other role is helping you remember that information must travel like everything else. A report from a ship or station does not arrive here the instant it is sent; it crosses real distance at a finite speed, and by the time you read it, events may already have moved on. The farther away an asset is, the older its news will be when it reaches you, and the longer it will take for your reply to get back. My task is to keep those delays visible and to be a scapegoat for your inevitable mistakes based on stale information."
     },
     "intro_tutorial_scenario": {
       "context": "Play after the information-integrity explanation, when BASIL introduces the tutorial mission structure.",
       "speaker": "BASIL",
-      "text": "For your initial exercise, bluFreight has placed three ships at your disposal and assigned you three routine contracts to complete at your leisure. There is no operational time limit, no active penalty for delay, and no expectation that you perform heroically on your first shift. This scenario exists to familiarize you with dispatch procedure, asset selection, basic routing, and the regrettable reality that even simple freight work acquires personality once people are involved. You may review your available ships, assign contracts as you see fit, and complete all three deliveries in whatever order seems least embarrassing."
+      "text": "For your initial exercise, bluFreight has placed three ships at your disposal and assigned you three routine contracts to complete. There is no expectation that you perform heroically on your first shift. This scenario exists to familiarize you with dispatch procedure, asset selection, basic routing, and coping strategies for frustration. You may review your available ships, assign contracts as you see fit, and complete deliveries in whatever order seems least embarrassing."
     },
     "order_delay_acknowledgements": [
       {
@@ -24,7 +24,7 @@
       {
         "context": "Use when the player issues an order to a ship and BASIL is acknowledging a pending uplink with distance-related delay.",
         "speaker": "BASIL",
-        "text": "Order uplink in progress. The captain will receive it shortly, by the generous standards of interplanetary distance."
+        "text": "Order uplink in progress. The captain will receive it shortly, by the generous standards of relativistic telemetry."
       },
       {
         "context": "Use when an order has been dispatched but the target ship has not yet received it.",
@@ -66,20 +66,18 @@
       {
         "context": "Use when a report contains reassuring or neutral news, but BASIL still needs to caution the player about latency.",
         "speaker": "BASIL",
-        "text": "Captain’s report received. With sufficient distance, even reassuring news arrives pre-staled. I trust nothing catastrophic occurred between transmission and receipt."
+        "text": "Captain’s report received. I trust nothing catastrophic occurred between transmission and receipt."
       }
     ],
     "tutorial_complete": {
       "context": "Play once when the player completes all tutorial contracts.",
       "speaker": "BASIL",
-      "text": "Tutorial complete, Operations Manager. All three contracts have been fulfilled, your ships remain mostly intact, and bluFreight continues to enjoy the illusion of orderly commerce. You have now demonstrated basic competence in asset selection, contract assignment, and the management of delayed information across system-scale distances. This officially places you above several of my previous operators, though I regret to inform you the sample size is troubling. When you are ready, we may proceed to scenarios involving tighter schedules, less cooperative traffic, and consequences with actual personality."
-    }
-  },
+      "text": "Tutorial complete, Operations Manager. All three contracts have been fulfilled, your ships remain mostly intact, and bluFreight continues to enjoy the illusion of orderly commerce. You have now demonstrated basic competence in asset selection, contract assignment, and the management of delayed information across system-scale distances. This officially places you above several of my previous operators, though I regret to inform you the sample size is troubling.  },
   "budde_scenario_dialogue": {
     "intro": {
-      "context": "Trigger once, after the first successful contract assignment or destination send order.",
+      "context": "Trigger once, after the first successful contract assignment or destination send order in scenario 2.",
       "speaker": "BUDDE",
-      "text": "Hello. I am BUDDE, the Benchmark Unified Directions Dedicated Engine. I evaluate route efficiency, transfer timing, and orbital variance in order to move ships where they are going with as little waste as possible. During Scenario 1, fuel calculations are visible for navigation training but charges are waived. If there is a simpler, safer, or more pleasant option, I will explain why my recommendation is objectively superior. "
+      "text": "Hello. I am BUDDE, the Benchmark Unified Directions Dedicated Engine. I evaluate route efficiency, transfer timing, and orbital variance in order to move ships where they are going with as little waste as possible. If there is a simpler, safer, or more pleasant option, I will explain why my recommendation is objectively superior. "
     }
   },
   "scenario2_dialogue": {
@@ -133,7 +131,7 @@
         "context": "Play once at the start of scenario 2, before player input.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
-        "text": "Hello. I am BUDDE, the Benchmark Unified Directions Dedicated Engine. I optimize routes, burns, and transfer geometry across the Indigo system, and I am responsible for identifying avoidable waste in time, fuel, and motion. When multiple viable paths exist, I will identify which one performs better and by how much."
+        "text": "Hello. I am BUDDE, the Benchmark Unified Directions Dedicated Engine. I optimize routes, burns, and transfer geometry across the Indigo system, and I am responsible for identifying avoidable waste in time, fuel, and motion. When multiple viable paths exist, I will identify which one performs better and by how wrong other choices are."
       },
       {
         "id": "intro_cost_cutting",
@@ -147,28 +145,28 @@
         "context": "Play after cost-cutting explanation.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
-        "text": "Fuel is also no longer free. I understand some operators had become emotionally attached to that arrangement. You are now responsible not only for getting ships to their destination, but for doing so without converting your margin into exhaust."
+        "text": "Fuel is no longer free. You are now responsible not only for getting ships to their destination, but for doing so without converting your margin into exhaust."
       },
       {
         "id": "intro_gravity_lesson",
         "context": "Play after fuel explanation.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
-        "text": "Distance still matters, but fuel expenditure is not determined by distance alone. Indigo is large, dense, and uncooperative. Gravity strongly affects maneuver cost. A transfer that drops a ship from a higher orbit to a lower one near the planet may require only a fraction of the fuel used for lateral movement within the same orbital band. Climbing outward is worse. You must work against the planet's gravity well, which is expensive in both propellant and morale."
+        "text": "Distance matters, but fuel expenditure is not determined by distance alone. The gas giant Indigo is large, dense, and uncooperative. Gravity strongly affects maneuver cost. A radial transfer that drops a ship from a higher orbit to a lower one near the planet may require only a fraction of the fuel used for circumferential movement within the same orbital band. Climbing outward is worse. You must work against the planet's gravity well, which is expensive in both propellant and morale."
       },
       {
         "id": "intro_rule_of_thumb",
         "context": "Play after gravity lesson.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
-        "text": "As a practical rule: moving downward toward Indigo is usually cheap, moving laterally is ordinary, and climbing upward is punitive. In many cases, a downward maneuver can cost roughly one third the fuel of a same-band transfer of similar scale, while an upward climb may cost twice as much. You are encouraged to remember this before issuing orders that look elegant on a clipboard and ruinous in motion."
+        "text": "As a practical rule: falling downward toward Indigo is usually cheap, moving laterally is ordinary, and climbing upward is punitive. A downward maneuver can cost roughly one third the fuel of a same-band equivalent distance, while an upward climb will cost twice as much. You are encouraged to remember this before bankrupting the company with a single fuel invoice."
       },
       {
         "id": "intro_scenario_goal",
         "context": "Final scenario intro line.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
-        "text": "This exercise is intended to familiarize you with ship speed, fuel expenditure, and gravity-shaped routing. Your objective is to complete three contracts and avoid bankruptcy. Clients and cargo types will now be displayed for completeness. They do not yet alter outcomes, though I remain hopeful someone will eventually care what they are transporting."
+        "text": "This exercise is intended to familiarize you with ship speed, fuel expenditure, and gravity-shaped routing. Your objective is to complete three contracts and avoid bankruptcy. Clients and cargo types will now be displayed. They do not yet alter outcomes, though I remain hopeful someone besides me will eventually care what we are transporting."
       }
     ],
     "completion": {
@@ -191,14 +189,14 @@
         "context": "Play once at the start of scenario 3, before player input.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
-        "text": "I have identified and corrected a navigation calibration bug. Distances are now being corrected exponentially, which means near routes remain manageable while farther routes now reflect their true travel burden."
+        "text": "ALERT: I have identified and corrected a trigonometric navigation calibration bug. Distances are now being corrected exponentially, which means near routes remain similar while longer routes may now seem unfairly onerous. Unfortunately geometry is not sympathetic."
       },
       {
         "id": "intro_management_apology_and_tug",
         "context": "Play immediately after BUDDE's scenario 3 correction briefing.",
         "speaker": "BASIL",
         "playOncePerScenario": true,
-        "text": "On behalf of bluFreight management, I apologize for any inconvenience this calibration oversight may have caused your planning, expectations, or blood pressure. To offset the impact, you have been afforded an additional ship: tug-1, now added to your operational fleet to help keep this operation profitable."
+        "text": "I just saw BUDDE's announcement. On behalf of bluFreight management, I apologize for any inconvenience this calibration oversight may have caused your planning, expectations, or blood pressure. To offset the impact, you have been afforded an additional ship: tug-1, now added to your fleet to help keep this operation profitable."
       }
     ]
   },
@@ -227,7 +225,7 @@
         "id": "intro_exclusive_contract",
         "speaker": "BASIL",
         "playOncePerScenario": true,
-        "text": "Welcome back, Operations Manager. bluFreight has entered into an exclusive and allegedly prestigious arrangement to distribute deuterium for the Union of Free Planets. From this point forward, only UFP deuterium contracts will count toward completion."
+        "text": "Despite shareholder pressure to remain solvent, bluFreight has entered into an exclusive and allegedly prestigious arrangement to distribute deuterium for the Union of Free Planets. From this point forward, only UFP deuterium contracts will count toward completion."
       },
       {
         "id": "intro_no_premium",
@@ -245,7 +243,7 @@
         "id": "intro_assigned_ships",
         "speaker": "BASIL",
         "playOncePerScenario": true,
-        "text": "To support this exercise, you have been assigned one hauler, one tug, and one shuttle. I recommend you treat them as assets rather than commendations."
+        "text": "You have been allotted one hauler, one tug, and one shuttle. I recommend you treat them as assets rather than commendations."
       }
     ],
     "buddeTutorialNotes": [
@@ -262,7 +260,7 @@
         "speaker": "Capt. Mara Ibarra",
         "shipClass": "shuttle",
         "playOncePerScenario": true,
-        "text": "Captain Ibarra here. Shuttle's perfect for short hops, station errands, and VIP work. You want to move far or climb uphill, pair me with a tug first."
+        "text": "Captain Ibarra here. Shuttle's perfect for short hops, station errands, and VIP work. We only carry monopropellant for maneuvering, so climbing into higher orbit under our own power is not technically impossible but more of a hypothetical concept."
       }
     ]
   }
