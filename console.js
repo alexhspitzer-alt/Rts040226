@@ -7,6 +7,45 @@ export function createConsoleLogger({
   dotsDelayMs,
   revealDelayMs,
 }) {
+  let followConsole = true;
+  const FOLLOW_THRESHOLD_PX = 24;
+
+  function feedIsNearBottom() {
+    if (!ui.feed) return true;
+    return ui.feed.scrollTop + ui.feed.clientHeight >= ui.feed.scrollHeight - FOLLOW_THRESHOLD_PX;
+  }
+
+  function syncFollowToggleLabel() {
+    if (!ui.consoleFollowToggle) return;
+    ui.consoleFollowToggle.textContent = `Follow: ${followConsole ? "On" : "Off"}`;
+    ui.consoleFollowToggle.classList.toggle("is-off", !followConsole);
+  }
+
+  ui.feed?.addEventListener("scroll", () => {
+    followConsole = feedIsNearBottom();
+    syncFollowToggleLabel();
+  });
+
+  ui.consoleFollowToggle?.addEventListener("click", () => {
+    followConsole = !followConsole;
+    syncFollowToggleLabel();
+    if (followConsole) pinFeedToBottom(true);
+  });
+  syncFollowToggleLabel();
+
+  function pinFeedToBottom(force = false) {
+    if (!ui.feed) return;
+    if (!force && !followConsole) return;
+    const maxScrollTop = Math.max(0, ui.feed.scrollHeight - ui.feed.clientHeight);
+    ui.feed.scrollTop = maxScrollTop;
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => {
+        const refreshedMax = Math.max(0, ui.feed.scrollHeight - ui.feed.clientHeight);
+        ui.feed.scrollTop = refreshedMax;
+      });
+    }
+  }
+
   function appendLine(text, type = "sys", stampedTick = state.tick) {
     const div = document.createElement("div");
     const safeType = String(type || "sys").toLowerCase().replace(/[^a-z0-9_-]/g, "-");
@@ -23,7 +62,7 @@ export function createConsoleLogger({
     div.appendChild(stamp);
     div.appendChild(body);
     ui.feed.appendChild(div);
-    ui.feed.scrollTop = ui.feed.scrollHeight;
+    pinFeedToBottom();
     return body;
   }
 
@@ -47,6 +86,7 @@ export function createConsoleLogger({
       setTimeout(() => {
         if (!bodyNode) return;
         bodyNode.innerHTML = ` ${stylizeConsoleText(text)}`;
+        pinFeedToBottom();
       }, Math.max(0, revealAt - Date.now()));
       return;
     }

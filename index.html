@@ -45,6 +45,7 @@
         </section>
         <section id="metrics-almanac" class="tab-panel" role="tabpanel" aria-labelledby="tab-almanac" hidden>
           <h3>Almanac</h3>
+          <div id="almanac-root" class="almanac-root"></div>
         </section>
         <section id="metrics-inbox" class="tab-panel" role="tabpanel" aria-labelledby="tab-inbox" hidden>
           <h3>Inbox</h3>
@@ -53,7 +54,10 @@
 
       <article class="panel terminal">
         <h2>Dispatch Console</h2>
-        <button id="copy-console" type="button" class="copy-btn">Copy Console Log</button>
+        <div class="console-tools">
+          <button id="copy-console" type="button" class="copy-btn">Copy Console Log</button>
+          <button id="console-follow-toggle" type="button" class="copy-btn">Follow: On</button>
+        </div>
         <div id="feed" class="feed" aria-live="polite"></div>
         <form id="cmd-form" class="cmd-form">
           <label for="cmd" class="sr-only">Command</label>

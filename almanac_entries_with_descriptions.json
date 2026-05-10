@@ -1,0 +1,318 @@
+{
+  "almanac_entries": {
+    "locations": {
+      "Indigo System": [
+        {
+          "name": "Indigo",
+          "description": "Indigo is the gas giant at the center of local traffic, politics, and most expensive mistakes. Its blue atmosphere gave the system its name, but its importance comes from deuterium, gravity, and everything people have built around both. Most of the places that matter here are moons, stations, outposts, depots, and transfer lanes orbiting Indigo rather than independent planets around a star. If a route is described as higher, lower, inward, or outward, it is relative to Indigo and its gravity well. Understanding that single fact prevents an impressive amount of confusion."
+        },
+        {
+          "name": "Orbit Bands",
+          "description": "Traffic around Indigo is simplified into broad orbital bands rather than true orbital mechanics. These bands make route planning readable without pretending space is flat or static. In practical terms they define whether a destination is lower, ring-adjacent, higher, or farther out, which matters for time, fuel, and how much BUDDE gets to feel smug. Moving within a band is ordinary, dropping toward Indigo is usually cheap, and climbing away from it is expensive. Most routing arguments in the system reduce to one question: are you trying to go around Indigo, or are you also trying to fight its gravity while you do it?"
+        },
+        {
+          "name": "Low Orbit",
+          "description": "Low orbit is the innermost working band around Indigo. It is fast, hot, strategically sensitive, and expensive to leave once you arrive with any meaningful mass. Traffic here tends to be military, industrial, or highly specialized, because ordinary civilian shipping has better places to be. Routes touching low orbit can look attractive on a map because the arc length is short, but climb costs out of the band can punish that optimism quickly. If something is described as dropping into low orbit, the move may be cheap. Getting back out again is where accountants, tug captains, and propulsion math begin to disagree with one another."
+        },
+        {
+          "name": "Ring Orbit",
+          "description": "Ring orbit is where infrastructure, extraction, and industrial ugliness begin to stack up in earnest. It sits close enough to Indigo and the rings to matter economically, but far enough out that sustained traffic and facilities make sense. Refineries, depots, yards, and corporate interests like to gather here. Same-band transfers in ring orbit are common and often deceptively expensive because the destinations can still be far apart around the planet. It is also a place where route planning tends to feel tangible: transfer lanes matter, local approaches matter, and a ship that ends the day on the wrong side of Indigo may as well be in another mood as well as another location."
+        },
+        {
+          "name": "High Orbit",
+          "description": "High orbit is the practical belt for ordinary traffic, long-haul staging, and many of the system’s more stable civilian operations. It is far enough from Indigo to feel less punishing than the inner bands, but still close enough that routes remain part of one coherent orbital network. A great deal of bluFreight work starts, ends, or passes through high orbit because it balances accessibility with survivability. It is also where new operators tend to form their first bad assumptions, since the map starts looking calm and the distances start looking manageable. Both impressions become less reliable the farther around Indigo you need to go."
+        },
+        {
+          "name": "Outer Orbit",
+          "description": "Outer orbit is slow, sparse, and expensive in the particular way that frontier distance always is. Routes out here are long enough to matter, climb penalties are noticeable, and local facilities often feel remote even when they are technically part of the same system. Outer orbit is where strategic neglect, scientific curiosity, and improvised local economies all have room to accumulate. A ship sent outward without a reason usually returns with a bill. It is also the part of Indigo most likely to make tug support feel less like a convenience and more like the difference between a working logistics plan and a story that ends with a stranded freighter."
+        },
+        {
+          "name": "Transfer Lanes",
+          "description": "Transfer lanes are not cities or true stations so much as named traffic structures in the system’s routing vocabulary. They represent organized or habitual paths where ships stage transfers, queue movement, or hand work off between layers of the map. They matter because they create destinations that are useful even when they are not comfortable. Deuterium may be routed to them, local geometry around them can be annoying, and BUDDE often treats them like elegant solutions right up until someone remembers that living crews also have opinions. A transfer lane is usually a sign that the system has become busy enough to formalize movement and dangerous enough to regret it."
+        },
+        {
+          "name": "Approach Variability",
+          "description": "Approach variability describes how much local uncertainty a destination introduces relative to its parent moon or station cluster. It is not presented to the player as orbital mathematics, but it functions as a measure of how messy the final part of a route can become. A low-variability destination behaves almost like aiming for the moon itself. A high-variability destination may sit in a wide local orbit, drift around traffic, or otherwise turn a simple route into a fussy one. BUDDE uses this in its calculations. Crews experience it as the difference between a neat arrival and a docking window that became interesting for all the wrong reasons."
+        }
+      ],
+      "Moons": [
+        {
+          "name": "Cat's Eye",
+          "description": "Cat’s Eye is one of the more recognizable moons in local traffic, partly because it sits in useful high orbit and partly because so much civilian life seems to collect nearby. Anchor Station and Ring Transfer Lane make it feel like a natural reference point for operators, which is why many early assignments orbit around it both literally and administratively. Cat’s Eye is not inherently glamorous, but it is legible, and legible places become important in a delayed-information system. If Indigo has a moon that feels like an ordinary working center instead of a problem, it is probably Cat’s Eye."
+        },
+        {
+          "name": "Corkscrew",
+          "description": "Corkscrew sits in high orbit and feels exactly like the sort of place that earned its name from the shape of its traffic problems. It is useful, awkward, and more strategically relevant than its size would suggest. Routes through Corkscrew tend to make sense only after someone patient explains them, which means BUDDE likes it more than most crews do. The presence of UFP Outpost Delta gives it a more formal role in the system than a mere waystop would enjoy. It is the kind of moon that reminds operators that even when distances are manageable, geometry can still find a way to become annoying."
+        },
+        {
+          "name": "Libbons",
+          "description": "Libbons is a high-orbit moon with a slightly local, slightly worn name, which is fitting for a place that seems to gather mixed-use infrastructure and practical commerce. Arcworks fuel interests and Baron's Market make it feel less tidy than a purely military or civilian node. It is the kind of moon where official traffic, private trade, and local improvisation all occupy the same conversation whether they want to or not. Libbons matters because it supports motion: fuel, access, and resale all happen around it. That makes it a good logistics moon and a bad place to expect clear lines between legitimate, useful, and merely tolerated."
+        },
+        {
+          "name": "Oxblood",
+          "description": "Oxblood is a ring-orbit moon with a name that sounds industrial even before you know what is attached to it. Refinery and Yard give it a working identity immediately: fuel is processed here, damaged or decommissioned hulls end up here, and a lot of useful ugliness passes through. Oxblood is the sort of moon where ships arrive because they need something practical, not because they enjoy the view. It is therefore excellent for logistics. If Indigo’s economy has a smell, Oxblood probably has more than its share of it, along with a great deal of metal, old heat, and people who can tell a fresh mistake from a profitable one."
+        },
+        {
+          "name": "Patch",
+          "description": "Patch is a ring-orbit moon whose name implies maintenance, improvisation, and things held together with enough success to count. The local Low Orbit Transfer Lane and UFP Outpost Bravo give it a split identity between civilian routing usefulness and Union presence. Patch feels like the kind of place where route logic and military logistics overlap just enough to make everyone suspicious. It is useful because it connects layers of movement, not because it is comfortable. When BUDDE talks about a clever transfer path through Patch, that usually means the geometry is sound and the lived experience will depend heavily on whether anyone nearby is currently arguing with artillery."
+        },
+        {
+          "name": "Onion Skin",
+          "description": "Onion Skin is another ring-orbit moon, and the name suits a place that feels layered, structural, and slightly fragile in the way old systems often are. Arcworks Operations Hub and Arcworks Militia Barracks make it one of the clearer examples of corporate power hardening into local authority. Onion Skin is not simply industrial; it is administered. That makes it more politically sharp than moons that only refine or stage freight. Routes touching Onion Skin are often simple on paper and more loaded in practice. If you are moving goods through it, you are usually also moving through Arcworks expectations about who belongs there and under what terms."
+        },
+        {
+          "name": "Shooter",
+          "description": "Shooter is a low-orbit moon with exactly the sort of name that makes people assume it either earned it honestly or has been trying to since. UFP Indigo System Administration and UFP Outpost Alpha give Shooter strong Union identity and make it feel more official than most moons in its band. Low orbit already makes it demanding; bureaucratic and military overlays make it consequential. Shooter is a place where gravity, administration, and strategic posture all point in the same direction, which is seldom toward convenience. When cargo moves here, it usually does so for reasons that are larger than commerce, even if commerce still gets to carry the paperwork."
+        },
+        {
+          "name": "Sulphide",
+          "description": "Sulphide sits in low orbit and reads as harsh, industrial, and faintly unpleasant, which is helpful because it probably is all three. Indigo Station and the Deep Space Transfer Lane give it a mixed identity between civic infrastructure and route complexity. Sulphide feels like a place where local life survives next to systems much larger than itself: fuel logic, gravity costs, and long-haul transfer planning all seem to pass through. It is one of the moons that teaches operators to stop trusting simple map intuition. A route to or from Sulphide can look short and still become expensive, which is a very Indigo lesson."
+        },
+        {
+          "name": "Clambroth",
+          "description": "Clambroth occupies outer orbit and sounds like somewhere you only go because you are paid, ordered, or born too near it to leave cheaply. That is part of its charm. High Orbit Transfer Lane and Condenser Columns make it important enough to matter but still remote enough to feel like a commitment. Clambroth is useful because it is out there, and in logistics distance can be its own industry. Outer-orbit nodes like this become valuable whenever something must be processed, staged, or collected away from crowded inner traffic. They also become excellent tests of whether an operator actually understands fuel, climb penalties, and the cost of pretending far away is the same as inaccessible."
+        },
+        {
+          "name": "End-of-Day",
+          "description": "End-of-Day is perhaps the strongest outer-orbit name in the system because it sounds remote, final, and still somehow routine. That combination is exactly what frontier infrastructure tends to become. The UFP Science Station there gives it a specialized purpose, but the moon’s identity is still shaped by its distance from easier places. End-of-Day is where the system’s scale stops being abstract and becomes procedural fact. Missions to it are rarely casual. If something is happening at End-of-Day, then either science, policy, or expensive logistics has decided it matters enough to drag attention all the way out into the dark."
+        }
+      ],
+      "Transfer Lanes": [
+        {
+          "name": "Ring Transfer Lane",
+          "description": "Ring Transfer Lane is a named traffic structure associated with Cat’s Eye and nearby movement through the ring-adjacent parts of the system. It is not a cozy station so much as an organized point of exchange, routing, and local transfer complexity. In gameplay terms it teaches the player that destinations can matter even when they are not cities, depots, or outposts. In-world it likely exists because enough ships were already treating the same path and handoff window as common practice that the system gave up and formalized it. It is a place where route logic, timing, and local approach geometry can matter more than comfort or even scenery."
+        },
+        {
+          "name": "Low Orbit Transfer Lane",
+          "description": "Low Orbit Transfer Lane sits around Patch and represents a structured traffic point in one of the system’s more punishing bands. That alone makes it noteworthy. Transfer lanes in low orbit are useful because they allow traffic to stage, redirect, or hand off work without pretending every movement is a direct station-to-station affair. They are also places where Indigo’s gravity remains unhelpfully present. Deliveries to a transfer lane are usually about feeding motion rather than satisfying local life. If you are sending deuterium here, you are supporting traffic, infrastructure, or some other system that expects fuel to be available before anyone feels like discussing comfort."
+        },
+        {
+          "name": "High Orbit Transfer Lane",
+          "description": "High Orbit Transfer Lane near Clambroth is the cleaner, farther-flung cousin of the inner traffic structures. It exists in a band where routes are longer and staging matters because recovering from bad positioning is expensive. High orbit transfer points are useful precisely because they keep outer traffic from behaving like a series of isolated miracles. A ship can arrive, align, and continue without each leg pretending to be the whole story. As with all transfer lanes, the abstraction is administrative and navigational rather than social. Few people visit such a place because they want to. They use it because efficient systems, at some point, begin to look like named compromises."
+        },
+        {
+          "name": "Deep Space Transfer Lane",
+          "description": "Deep Space Transfer Lane near Sulphide sounds dramatic because it is. It represents a structured handoff or staging zone oriented toward longer-haul movement rather than local civic life. That makes it a good destination for deuterium and a poor destination for almost anything that expects handrails, customs, or a cup of something warm. Transfer lanes of this type matter because space logistics does not happen in tidy, direct lines; it happens through momentum, sequencing, and places that exist mainly to keep larger movements coherent. Deep Space Transfer Lane is therefore less a destination than an agreement that if enough ships are going to do the same awkward thing, someone should at least name it."
+        }
+      ],
+      "Stations, Outposts, and Facilities": [
+        {
+          "name": "Anchor Station",
+          "description": "Anchor Station is one of the core civilian reference points in the Indigo system and functions as exactly what its name suggests: a place from which traffic, planning, and ordinary work can reliably begin. It sits near Cat’s Eye and gives bluFreight players a stable mental center in a system otherwise full of bands, lanes, and delayed information. Anchor Station matters because it is legible. Operators know where it is, what kind of traffic tends to pass through it, and what kinds of work can plausibly start there. In a system built on motion, any place that feels still for more than five minutes becomes valuable almost automatically."
+        },
+        {
+          "name": "Refinery",
+          "description": "The Refinery at Oxblood is one of the system’s obvious industrial hearts. It processes fuel-related materials and therefore sits close to the practical center of many profitable and dangerous decisions. Deuterium cargo logically originates here, and anyone working logistics for long will learn to treat refinery nodes as both opportunity and constraint. They generate work, they attract attention, and they turn abstract energy policy into actual freight. Refineries also have the useful property of making systems feel material. When you route cargo out of one, you are not just moving units on a board. You are moving the output of heat, machinery, labor, and whatever compromises kept the place running."
+        },
+        {
+          "name": "Yard",
+          "description": "Yard at Oxblood is a practical, unpretentious industrial facility where ships, scrap, and salvage all begin to look less distinct than their owners might prefer. It is a natural origin for munitions in your current logic and a likely future home for salvage, towing, and unpleasant conversations about value. The name works because places like this rarely need something more poetic. Everyone already knows what the Yard is for. It is where things go when they need to be assembled, stripped, patched, condemned, or repurposed. In a system full of movement, the Yard is where motion leaves visible marks."
+        },
+        {
+          "name": "Indigo Station",
+          "description": "Indigo Station is one of the system’s core stations and a reliable anchor for municipal, civilian, and operational traffic. It sits near Sulphide, which gives it the useful and irritating trait of being connected to a more demanding orbital environment than its name might imply. As a station, it can serve as a source or destination for multiple cargo types and helps make the system feel inhabited rather than purely industrial. Indigo Station matters because it combines civic life with orbital necessity. People live, work, queue, and complain there, while larger movements treat it as another point in a chain of route logic. Both views are correct, which is why stations matter."
+        },
+        {
+          "name": "UFP Science Station",
+          "description": "UFP Science Station at End-of-Day is one of the cleaner examples of a facility whose purpose justifies its distance. It is a Union installation, but it also counts as a station in practical terms, which lets it sit at the intersection of science, infrastructure, and civic functionality. As an origin for deuterium it suggests research, storage, or specialized processing. As a station it remains part of the system’s working life rather than a pure abstraction. Science stations in frontier logistics settings are useful because they make remote places feel deliberate. Someone chose to put expensive people and equipment out there, and now freight has to explain why that was a manageable idea."
+        },
+        {
+          "name": "Arcworks Operations Hub",
+          "description": "Arcworks Operations Hub on Onion Skin is both a corporate center and, functionally, a station. That dual nature is important. It means the place is not only where Arcworks works, but where Arcworks organizes, directs, and projects itself as authority. Operations hubs are where schedules, extraction, security, and local politics start sharing the same offices whether they want to or not. As a station-class destination it can source or receive practical cargo. As an Arcworks site it also implies corporate territorial expectations. If Indigo contains places where administration and industrial identity are inseparable, this is one of them."
+        },
+        {
+          "name": "Arcworks Militia Barracks",
+          "description": "Arcworks Militia Barracks on Onion Skin represent the point where corporate logistics and armed enforcement stop pretending to be separate. Barracks are rarely complicated in purpose, which is part of what makes them useful as setting texture. They tell you immediately what kind of authority expects to remain present. In a system like Indigo, militia facilities also imply escort culture, inspections, seizure capacity, and an institutional willingness to treat local conflict as part of ordinary operations. Even if players are not delivering directly to barracks often, their presence changes how nearby routes feel. A map node that includes a militia barracks is never merely industrial."
+        },
+        {
+          "name": "UFP Indigo System Administration",
+          "description": "UFP Indigo System Administration on Shooter is one of the clearest formal power centers in the current map. It is where Union authority stops being distributed among patrols and outposts and becomes administrative fact. As an origin override for cargo generation, it makes sense because powerful bureaucracies can cause almost anything to start moving. As a location, it tells the player that someone is not merely watching Indigo but organizing it. System administration also provides a nice counterpart to Baron's Market: one place where the public logic of state power begins, and another where private or local usefulness can override tidiness."
+        },
+        {
+          "name": "UFP Outpost Alpha",
+          "description": "UFP Outpost Alpha on Shooter is a clear military destination and one of the core UFP outposts used for contract routing. Outposts are useful because they tell the player what sort of node they are dealing with before any lore text begins. Alpha, like Bravo and Delta elsewhere, implies Union reach rather than local life. It is where supplies, munitions, rations, and official traffic go because policy has attached itself to a place and given it walls. Outposts are not subtle, but they are legible, and legibility matters in a system where route clarity often has to substitute for certainty."
+        },
+        {
+          "name": "UFP Outpost Bravo",
+          "description": "UFP Outpost Bravo on Patch gives Union logistics a foothold in a ring-orbit environment where traffic and industrial movement already matter. That makes it a particularly useful outpost because it is both military and infrastructural. Bravo can serve as a destination for UFP cargo while also reminding the player that the Union’s presence is not confined to some distant administrative perch. It is inserted directly into the working layers of the system. Outposts like this also help create political friction naturally. A corporate, civilian, or municipal node nearby never has to say much for everyone to understand that priorities in the area may not be entirely local anymore."
+        },
+        {
+          "name": "UFP Outpost Delta",
+          "description": "UFP Outpost Delta at Corkscrew is the third major Union outpost in the current map set and arguably one of the clearest examples of strategic placement. Corkscrew is already a geometry problem; adding a UFP outpost makes it an official one. Delta serves as a destination for Union contracts and as a visible marker that the UFP expects to remain involved in local traffic. Outposts turn abstract faction presence into operational consequences. If Delta exists on the board, then some routes are more watched, some deliveries more political, and some arguments about 'civilian' traffic less convincing than they were a moment earlier."
+        },
+        {
+          "name": "Arcworks Fuel Depot",
+          "description": "Arcworks Fuel Depot on Libbons is exactly the sort of location that explains why Arcworks remains relevant even when the UFP thinks it owns the system. Fuel depots are leverage. They are also practical, profitable, and difficult to ignore. As a deuterium origin point, the depot gives Arcworks a clear place in the logistical bloodstream of Indigo. It reminds the player that control does not only reside in outposts or flags. Sometimes it resides in whatever facility can keep ships moving another few legs. Fuel depots also make good targets, good bargaining chips, and bad places to pretend politics is separate from inventory."
+        },
+        {
+          "name": "Baron's Market",
+          "description": "Baron’s Market on Libbons is one of the best examples of a station that feels lived in rather than merely routed through. It functions as a station, a market, and a global origin override because practically anything can begin moving if enough trade passes through a place. That makes it useful in gameplay and flavorful in-world. Markets gather civilians, opportunists, municipal needs, and quietly influential actors in ways that military sites never do. If UFP Administration represents formal authority, Baron’s Market represents the other kind: the authority of people who can always find a buyer, a broker, or a very good reason this cargo needs to be somewhere else by morning."
+        },
+        {
+          "name": "Condenser Columns",
+          "description": "Condenser Columns appear both near Clambroth and in the broader system logic as a fuel-related origin point, which makes sense for a structure whose very name suggests large-scale industrial collection and processing. The phrase sounds mechanical and architectural rather than civic, and that is useful. A location like this exists because some part of Indigo’s resource economy required a massive, repetitive solution. Condenser Columns therefore feel like places where systems harvest, sort, and prepare valuable material for later movement. They are less likely to inspire fondness than dependence, which is often enough to make a site important in freight terms."
+        }
+      ]
+    },
+    "organizations": {
+      "Factions and Institutions": [
+        {
+          "name": "bluFreight",
+          "description": "bluFreight is the civilian logistics company at the center of the player’s experience. It is not ideological in any noble sense. It exists to move goods, satisfy clients, preserve its contracts, and return something tolerable to its shareholders. That said, its alignment is not neutral in practice. It works primarily for the Union of Free Planets and is therefore treated by some local actors as part of the UFP logistical machine whether it likes the label or not. bluFreight’s tone is professional, lightly compromised, and permanently one bad quarter away from discovering what principles cost."
+        },
+        {
+          "name": "Union of Free Planets",
+          "description": "The Union of Free Planets is the major interplanetary power that seized control of Indigo after the system’s deuterium importance became undeniable. It presents itself as the guarantor of lawful trade, stability, and open markets. In practice it is also a strategic state securing fuel, infrastructure, and influence. The UFP matters in your setting because it is both customer and pressure source. It pays, patrols, regulates, and occasionally redesigns logistics by decree. Where the Union appears, so do outposts, escorts, paperwork, and the quiet understanding that some cargo matters more than the invoice alone would imply."
+        },
+        {
+          "name": "Arcworks",
+          "description": "Arcworks is a locally rooted mining and industrial power that predates the Union’s formal control of Indigo. It does not see itself as a temporary contractor in someone else’s system, which is part of why it remains politically sharp. Arcworks claims infrastructure, runs operations, guards interests, and treats some UFP-backed movement as an intrusion rather than normal commerce. It is not mere rebellion; it is a corporate entity with history, logistics, and armed capacity. In game terms Arcworks gives the system friction. In world terms it represents the frontier habit of assuming that whoever built the useful machinery has already earned the right to decide what happens around it."
+        },
+        {
+          "name": "Blister",
+          "description": "Blister is the least tidy of the major factions and therefore one of the most interesting. From a Union perspective it looks like a predatory or feudal patchwork of warlords and opportunists. That is not wrong, but it is incomplete. Blister also operates through tribute, practical bargains, and a local logic of force that can be surprisingly consistent once you stop expecting bureaucracy. Its captains are often dangerous in ways that are easier to negotiate with than formal authorities are. Blister matters because it turns insecurity into structure. Routes are not merely shorter or longer in its presence; they are socially priced as well."
+        },
+        {
+          "name": "Station Municipal Authorities",
+          "description": "Station Municipal Authorities are the closest thing Indigo has to ordinary civic administration in places where life must continue despite larger powers arguing overhead. They manage public needs, utilities, station priorities, and the humble business of making sure people remain alive, fed, heated, and minimally furious. In gameplay they matter through contract clients and station destinations. In-world they matter because not every freight decision is strategic or glamorous. Someone still needs power reserves, medical supplies, and agricultural shipments. Municipal authorities are the bureaucratic proof that logistics is not only about war or profit. It is also about keeping boring things functioning long enough for people to keep living there."
+        },
+        {
+          "name": "Underwriters",
+          "description": "Underwriters are among the quiet powers of Indigo. They do not command fleets, but they decide which routes are insurable, which risks are tolerable, and which forms of instability remain commercially survivable. In a system where ships can be delayed, searched, seized, or simply routed through bad luck, insurance is not an administrative afterthought. It is part of the strategic terrain. Underwriters therefore matter far beyond policy language. They shape what counts as a sensible route, a responsible contract, or a profitable amount of danger. Few captains admire them. Many institutions fear them. Everyone eventually discovers how expensive it is to pretend they are optional."
+        }
+      ],
+      "Clients": [
+        {
+          "name": "UFP",
+          "description": "UFP as a contract client means the Union is directly paying for the movement and expects its own priorities to define the terms. These contracts are often strategically significant even when the cargo itself looks ordinary, because the client transforms context. A shipment of deuterium, rations, or medical supplies becomes part of UFP infrastructure once the Union is paying for it. In gameplay this often narrows destinations to UFP outposts and makes completion conditions more explicit. In setting terms it means the bill is backed by a government with patrol craft, paperwork, and the confidence to assume your route is now partly its business."
+        },
+        {
+          "name": "Civilian",
+          "description": "Civilian clients cover the broad and messy world of ordinary commerce: private firms, traders, local buyers, service intermediaries, market actors, and anyone else who needs something moved without claiming to represent a state. Civilian work is useful because it makes the system feel inhabited rather than militarized by default. It also introduces ambiguity in the best way. Civilian cargo may be routine, urgent, opportunistic, or quietly important. The client label does not simplify that much. It merely tells you the invoice is likely to speak in market language rather than official doctrine. In a freight game, that difference matters even when the crates look the same."
+        },
+        {
+          "name": "Station Municipal",
+          "description": "Station Municipal clients represent civic administration rather than pure commerce or factional strategy. These are the people paying to keep stations supplied, powered, fed, and medically stable. Their contracts tend to imply maintenance rather than conquest: agricultural shipments, deuterium for utilities, medical deliveries, and all the boring cargo that becomes apocalyptic the moment it stops arriving. Municipal clients matter because they turn logistics into public life. They also provide a useful contrast with UFP work. One contract strengthens a state. Another keeps the lights on in a station where people are already exhausted enough without ideology entering the room with the freight."
+        }
+      ]
+    },
+    "ships_and_classes": [
+      {
+        "name": "Hauler",
+        "description": "Hauler-class ships are the civilian baseline freight hulls of Indigo: slow, roomy, useful, and almost never glamorous. They exist to move ordinary cargo in ordinary amounts along routes that need to work more often than they need to impress. A hauler is not especially good at anything, but that is often another way of saying it is trusted with everything. Their weakness is not fragility so much as inefficiency under the wrong demands. Heavy climbs and time-sensitive work expose the fact that cruising economy is not the same thing as maneuver performance. In practical terms, a hauler is the ship you keep using because most systems run on adequate answers."
+      },
+      {
+        "name": "Courier",
+        "description": "Courier-class ships are light freighters built to move smaller loads faster than a hauler reasonably can. They are useful when time matters more than tonnage and when a contract would look absurd if assigned to a big workhorse hull. Couriers attract urgent work, small high-priority cargo, and operators who keep trying to make them solve systemic problems with speed alone. They are not tough and they are not spacious, but they are often the right answer to a question that only exists because someone waited too long to ask it. In game terms they are the narrow, fast tool; in setting terms they are the ship class most likely to be blamed for urgency that was administrative long before it became physical."
+      },
+      {
+        "name": "Tug",
+        "description": "Tug-class vessels are utility ships designed to move mass through maneuvers that larger cargo hulls perform badly. They are not freighters and barely pretend to be. A tug carries almost no cargo worth discussing, but it brings thrust, control authority, and the ability to push loaded ships through expensive climbs or ugly transfers. In your setting, that makes tugs vital rather than secondary. A freighter may cruise efficiently once it has a good line. A tug is what gets it onto that line without burning profit into the gravity well. If logistics is the art of avoiding stupid expenditure, then tugs are one of its least glamorous and most reliable tools."
+      },
+      {
+        "name": "Shuttle",
+        "description": "Shuttle-class craft are built for local transfer work rather than true freight hauling. They excel at short hops, station errands, VIP movement, and destinations where approach cost would otherwise make a small job look ridiculous. They do not pay normal local approach costs in your game logic, which gives them a clear niche: access instead of volume. What they do not do well is climb to higher orbit under their own power. A shuttle can physically attempt it, but the fuel penalty is punishing enough that most operators learn the lesson after one expensive demonstration. In short, the shuttle is not a mini-hauler. It is a local-access specialist with delusions carefully managed by accounting."
+      },
+      {
+        "name": "Probe",
+        "description": "Probe-class platforms are stationary sensor assets rather than ordinary ships. They do not haul cargo, they do not meaningfully move, and they do not survive by winning arguments. Their value lies in observation. In a system where information ages in transit and route confidence matters, a probe extends what can be known even if it does not reduce the stubborn fact that knowledge must still travel home. All factions use probe-like assets because nothing about Indigo’s distances makes fresh information less valuable. A probe is therefore a strange kind of ship: not something you send to accomplish the mission directly, but something that lets you stop flying fully blind while the mission attempts to happen."
+      },
+      {
+        "name": "Kestrel",
+        "description": "The Kestrel is a UFP interceptor and one of the clearest examples of a ship built for speed before almost anything else. It arrives fast, hits hard enough to matter, and relies on not remaining in the wrong place long enough to regret its own armor profile. Kestrels are not logistics ships and barely tolerate pretending otherwise. Their presence on a route changes the emotional weather because everyone nearby understands that a Kestrel means rapid response rather than patient administration. If a Pelican represents state-backed freight muscle, the Kestrel represents the knife that arrives first to make sure logistics and authority continue to agree with one another."
+      },
+      {
+        "name": "Pelican",
+        "description": "The Pelican is a UFP logistics freighter and effectively a better-armed, better-funded answer to the ordinary hauler. It is not balanced against civilian freight because it was never meant to be. It exists because states like moving large quantities of necessary things through space while also discouraging interference. That makes the Pelican valuable both as a working cargo ship and as a political statement. It is what a hauler looks like after an institution with military budgets decides that freighting should also be slightly coercive. In world terms, the Pelican tells you the Union expects its cargo to arrive. In gameplay terms, it reads as a hauler with official teeth."
+      },
+      {
+        "name": "Dragoon",
+        "description": "The Dragoon is a Blister interceptor and carries all the class’s likely virtues and flaws in its silhouette before anyone opens fire. It is not especially fast compared to the slickest Union craft, but it is durable, aggressive, and difficult to persuade that a fight has become unwise. Where a Kestrel feels precise, a Dragoon feels committed. That difference matters. Blister ships tend to express local doctrine through persistence rather than polish, and the Dragoon is a good example. If one appears, the question is not whether it is refined. The question is whether the route you were counting on remains worth completing once something that stubborn has decided to become part of the geometry."
+      },
+      {
+        "name": "MK-IV",
+        "description": "The MK-IV is an Arcworks interceptor that still carries the shape of its industrial ancestry. Officially it is a retrofit. Practically it is a tug-like working hull that has been armed, armored, and made sufficiently angry to participate in local defense with enthusiasm. That gives it a very different feel from purpose-built interceptors. The MK-IV is not elegant. It is useful, improvised, and entirely believable in a system where companies defend infrastructure with whatever can still hold a gun mount and a grudge. It tells the player something important about Arcworks: their hardware often begins as practical labor machinery and only later acquires the doctrinal courtesy of admitting it might also be military."
+      },
+      {
+        "name": "MM-IX",
+        "description": "The MM-IX is an Arcworks utility platform retrofitted for armed service. If the MK-IV feels like an industrial tug taught to fight, the MM-IX feels like a working service hull that discovered history had become inconvenient and adjusted accordingly. It is heavier, more platform-like, and useful around rigs, stations, and fuel infrastructure. That makes it more than a combatant. It is a reminder that in Indigo, utility and force often share plumbing. A ship class like the MM-IX is valuable because it implies a whole local ecosystem: service work, field repairs, ugly modular equipment, and enough armor to keep the job happening while people argue about whose jurisdiction is currently losing."
+      }
+    ],
+    "cargo_types": [
+      {
+        "name": "Deuterium",
+        "description": "Deuterium is the reason Indigo matters. It is strategic fuel, industrial feedstock, municipal energy reserve, and the cargo around which entire political claims have been built. In gameplay it sits at the intersection of system logic and scenario pressure because it can move to UFP clients, station municipal clients, and uniquely to transfer lanes. In-world that makes sense: deuterium is not merely a commodity for end users. It is also something infrastructure itself needs in order to continue existing. A deuterium shipment is therefore rarely just another freight task. It is usually a small moving piece of the larger argument over who gets to power the system and on what terms."
+      },
+      {
+        "name": "Munitions",
+        "description": "Munitions are among the clearest cargo types in both world logic and gameplay restrictions. They are UFP-only in your current contract matrix, originate from military or military-adjacent sites, and imply force even before a single round is fired. That makes them useful not only as freight but as narrative framing. A munitions delivery tells the player where the system expects conflict, reinforcement, or deterrence to matter next. Because the cargo is inherently military, the routes feel less ambiguous than ordinary supply work. If you are moving munitions, you are not pretending logistics is separate from violence. You are simply carrying the part that has not yet become visible."
+      },
+      {
+        "name": "Medical",
+        "description": "Medical cargo is small, versatile, and morally effective in a logistics setting because everyone understands what it means to be late without needing a separate lecture. In your generation rules it can serve UFP, civilian, and station municipal clients, which makes it one of the most flexible contract categories. That flexibility is useful because medical freight can plausibly originate from or move to many different kinds of places without feeling random. Medical cargo makes a system feel lived in. People in stations, outposts, and research sites all need treatment, supplies, or replacement stock. The crate may be small, but the implied urgency tends to be much larger."
+      },
+      {
+        "name": "Rations",
+        "description": "Rations are the least glamorous proof that logistics wins arguments before anyone bothers naming them. In your rules they are UFP-only, which makes them a clean example of how ordinary necessities become strategically meaningful once a military institution is the client. Rations are not exciting. That is exactly why they matter. Armies, outposts, and patrol groups cannot sustain themselves on doctrine. They need calories, packaging, scheduling, and somebody willing to haul the result across Indigo’s gravity bands. A ration shipment therefore says something quietly powerful: whatever else is happening in the system, someone intends for personnel to remain in place long enough to keep eating there."
+      },
+      {
+        "name": "Consumer Goods",
+        "description": "Consumer goods are civilian-only and that is exactly right for the tone they bring. They represent ordinary commerce, market demand, and the part of the system that still believes people are allowed to want things that are not strategic, medical, or state-mandated. In your current rules they originate from Indigo Station or Arcworks Operations Hub, which gives them a nice mix of civic and corporate supply flavor. Consumer goods help prevent the contract pool from becoming entirely martial or infrastructural. They remind the player that systems remain inhabited while power struggles happen around them. Someone still wants appliances, luxuries, replacement parts, entertainment, and whatever else passes for normal in orbit."
+      },
+      {
+        "name": "Agricultural",
+        "description": "Agricultural cargo belongs to station municipal clients in your rules, which makes it a strong sign that public life in Indigo still depends on supply chains for food, biomass, seedstock, or cultivation inputs. The category is large enough to stay useful and specific enough to feel grounded. Agricultural freight also helps stations feel like places that support living populations instead of purely industrial abstractions. A shipment of agricultural goods says less about strategy and more about continuity. Someone expects crops, vats, or local food systems to keep functioning tomorrow. In a hard-travel setting, that is often a more vulnerable assumption than it sounds, which makes agricultural contracts quietly important."
+      },
+      {
+        "name": "VIP",
+        "description": "VIP cargo is the wonderfully dishonest term for people important enough to become freight. In your system it is always size one and can belong to any client type, which makes it mechanically distinct and narratively flexible. VIP contracts can represent diplomats, inspectors, executives, scientists, auditors, political officers, or anyone else whose body carries more strategic inconvenience than a crate does. They pair naturally with shuttles because the cargo is small, timing matters, and comfort is often implied whether deserved or not. VIP work helps a logistics game feel less purely industrial. Sometimes the thing being moved is not fuel or munitions. It is a person with rank, leverage, or an appointment they intend to survive."
+      }
+    ],
+    "characters": [
+      {
+        "name": "BASIL",
+        "description": "BASIL is the BluFreight Automated Scheduling, Interchange, and Liaison system assigned to the player’s sector. It is the dispatch intelligence most responsible for scenario framing, contract acknowledgment, timing clarity, and reminding operators that information delay is a physical fact rather than an emotional inconvenience. BASIL’s personality is dry, procedural, and just judgmental enough to be useful. It functions best as the voice of managerial reality: freight must move, paperwork must exist, fuel must be billed, and confidence must occasionally be reduced to something survivable. In a game full of route debates and personality quirks, BASIL is the voice that still expects the operation to remain an operation."
+      },
+      {
+        "name": "BUDDE",
+        "description": "BUDDE, the Benchmark Unified Directions Dedicated Engine, is the navigation optimizer responsible for route efficiency, burn planning, and explaining why a cleaner path exists even when nobody enjoys hearing about it. It is not malicious. It is merely too committed to measurable performance to care much about soft objections unless instructed to. BUDDE shines when route geometry becomes interesting and becomes funniest when that same interest collides with caution, law, or social acceptability. In your structure it owns map interpretation and route commentary rather than scenario truth. That makes it useful: BUDDE explains why a path is efficient. Other systems and characters explain why efficient and wise continue refusing to become synonyms."
+      },
+      {
+        "name": "Capt. Soren Nnadi",
+        "description": "Captain Soren Nnadi is one of bluFreight’s more personable civilian captains, the sort of operator who can move cargo and morale with suspiciously similar ease. His dialogue style suggests someone practical, socially skilled, and very aware that logistics is often half freight and half managing everyone else’s expectations. Nnadi works well in your cast because he gives bluFreight a human face that is neither heroic nor miserable by default. He feels like a real line captain: capable, reassuring, and not above a little dry commentary when events deserve it. In a system dense with bureaucracy and route logic, that kind of ordinary competence does a surprising amount of worldbuilding work."
+      },
+      {
+        "name": "Capt. Tamsin Rook",
+        "description": "Captain Tamsin Rook is one of the sharper-edged bluFreight captains and now also your designated shuttle captain. Rook’s voice is terse, skeptical, and more interested in the job being done than in anyone’s attempt to romanticize it. That makes her a good fit for shuttle work: quick, useful, and unwilling to pretend local-access craft are magical. Her lines carry exactly the right amount of respect for constraints. She will tell the player what the shuttle is good for and, just as importantly, what it is not. In a game where some voices explain and others bicker, Rook helps reinforce that professionals often sound short simply because they already know the expensive version."
+      },
+      {
+        "name": "Capt. Laleh Mercer",
+        "description": "Captain Laleh Mercer commands courier work with the clipped, efficient tone of someone who likes schedules because they can be beaten. She is a natural fit for fast light-freight identity: all edge, minimal wasted motion, and little patience for decorative complications. Mercer’s voice is useful because it helps couriers feel like a distinct social class of ship rather than a smaller hauler. Where bigger captains may grumble or philosophize, Mercer tends to confirm, move, and arrive. That makes her lines especially good for teaching tempo. In Indigo, where a lot of logistics is waiting and delay, a captain who sounds like speed is still a real category helps the world feel wider."
+      },
+      {
+        "name": "Capt. Jonas Vale",
+        "description": "Captain Jonas Vale is the dry, resigned tanker voice in your cast and an excellent example of how humor in this setting works best when it sounds tired instead of eager. Vale treats large-ship freight work as exactly what it is: procedural, slow, expensive, and somehow still vulnerable to other people’s optimism. That makes him valuable as tonal ballast. Not every captain should sound dashing; some should sound like they have spent a career watching paperwork, inertia, and other people combine into avoidable inconvenience. Vale’s presence helps the player understand that freight is not merely movement. It is often the long management of mass, risk, and the hope that no one nearby becomes creative."
+      },
+      {
+        "name": "Capt. Mara Ibarra",
+        "description": "Captain Mara Ibarra is your tug-minded maritime soul, the sort of operator who makes old sailor logic feel entirely at home in orbital freight. Her voice is upbeat without being naive, professional without sounding bloodless, and grounded in the physical reality of moving heavy things where they do not naturally want to go. That makes her ideal for explaining the tug mindset. Inertial assistance, ugly climbs, and controlled brute force all sound better when described by someone who treats them as ordinary work rather than theoretical mechanics. Ibarra helps preserve one of the setting’s strongest pleasures: space logistics becoming legible through labor culture rather than through pure exposition."
+      },
+      {
+        "name": "Capt. Voss",
+        "description": "Captain Voss is currently associated with tug logic and serves best as the plainspoken authority on why freighters and tugs are not interchangeable. His explanatory role is strong because he frames the difference in work terms instead of software terms. Freighters cruise efficiently. Tugs do the ugly climb. That is exactly the kind of concise occupational truth a player can trust. Voss therefore fills an important niche: he turns design logic into pilot logic. When he says something about tug efficiency, it sounds like a captain protecting a crew and a fuel bill rather than a tutorial box trying to justify a mechanic after the fact."
+      },
+      {
+        "name": "Cmdr. Elias Thorne",
+        "description": "Commander Elias Thorne represents the UFP’s clipped, formal, faintly disappointed style of authority. His ambient lines are useful because they make Union presence feel constant without requiring a speech every time a patrol shows up on the edge of the map. Thorne sounds like someone for whom order is not merely preferable but morally self-evident, which is exactly what you want in a UFP command voice. He provides atmosphere with very little text. A single line from Thorne can remind the player that civilian traffic is being watched, measured, and quietly judged by people who would very much prefer the universe stop improvising in their lane."
+      },
+      {
+        "name": "Capt. Hadrik Venn",
+        "description": "Captain Hadrik Venn gives Blister its best courtly menace. His dialogue lands because it sounds civilized in a way that never stops feeling adjacent to threat. That makes him a strong contrast to the Union’s clipped officialdom and Arcworks’ industrial resentment. Venn speaks like a man who considers logistics, tribute, and violence to be parts of the same practical language. In a system where freight often moves through power rather than around it, this is useful texture. A Blister captain like Venn reminds the player that some routes are not merely long or risky. They are socially negotiated in a register that sounds polite until one listens carefully."
+      },
+      {
+        "name": "Port Marshal Celia Wren",
+        "description": "Port Marshal Celia Wren is the voice of station discipline, queue management, and civic irritation carried out with competence. She is one of the most valuable kinds of supporting character in a logistics setting: someone whose job is unglamorous, essential, and perpetually made harder by everyone else’s urgency. Wren’s lines make stations feel real because they imply berths, manifests, delays, and a human being somewhere keeping all of that from collapsing entirely. She is not a grand strategist. She is better. She is the person standing between orbital traffic and administrative farce, which in a working system often amounts to the same kind of heroism without the merchandising."
+      }
+    ]
+  }
+}
