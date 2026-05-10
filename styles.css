@@ -225,6 +225,12 @@ h1 {
   margin-bottom: 0.5rem;
 }
 
+#console-follow-toggle {
+  font-size: 1.1rem;
+  line-height: 1;
+  padding-inline: 0.7rem;
+}
+
 .copy-btn.is-off {
   background: #2a2f36;
   border-color: #555f6d;

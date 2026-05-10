@@ -17,7 +17,7 @@ export function createConsoleLogger({
 
   function syncFollowToggleLabel() {
     if (!ui.consoleFollowToggle) return;
-    ui.consoleFollowToggle.textContent = `Follow: ${followConsole ? "★" : "↓"}`;
+    ui.consoleFollowToggle.textContent = followConsole ? "★" : "↓";
     ui.consoleFollowToggle.classList.toggle("is-off", !followConsole);
   }
 
