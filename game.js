@@ -1422,7 +1422,7 @@ function sendShip(shipId, destination) {
       `${arcworksInspector} ${speakerContext(arcworksInspector, "interdicting")}: ${
         pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."
       }`,
-      "comms",
+      speakerMessageType(arcworksInspector),
     );
     scheduleMessage(
       detentionNoticeAt,
