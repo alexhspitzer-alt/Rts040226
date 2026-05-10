@@ -9,14 +9,14 @@
         "Confirmed. Updating the schedule and everyone else's blood pressure."
       ],
       "greetings": [
-        "Dispatch online. Your problems are now my formatting problem.",
+        "Dispatch online. Your problems are now my exception logs.",
         "Good shift. Traffic is active and paperwork remains undefeated.",
         "Operations console ready. Try not to make this interesting too early."
       ],
       "positive": [
         "That resolved more cleanly than expected.",
-        "A pleasingly efficient outcome.",
-        "Situation improved. I will mark this as a rare success."
+        "I hope this outcome will improve your key productivity indicators.",
+        "Situation improved. I will mark this as a technical success."
       ],
       "negative": [
         "That has, regrettably, become a problem.",
@@ -472,7 +472,7 @@
         "Yes. What now?"
       ],
       "positive": [
-        "Good. That frees space and lowers my blood pressure.",
+        "Good. I'm going to get some more coffee.",
         "That's one problem off my docks.",
         "Much better. I might even catch up."
       ],
@@ -592,8 +592,8 @@
       ],
       "greetings": [
         "Chief Executive Lewin, Arcworks transit authority.",
-        "Arcworks inspection channel open.",
-        "You are speaking to transit enforcement. Proceed carefully."
+        "Arcworks administration channel open.",
+        "You may interpret the following silence as consideration but not affirmation."
       ],
       "positive": [
         "That is at least more rational.",
@@ -602,7 +602,7 @@
       ],
       "negative": [
         "As expected, this worsens matters.",
-        "That remains unacceptable under local claim.",
+        "That remains unacceptable.",
         "An unfortunate and preventable escalation."
       ],
       "neutral": [
