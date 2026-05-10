@@ -298,7 +298,12 @@ export function createCommandRuntime({
     if (command === "comms") {
       const names = activeCommsContacts();
       if (!names.length) return logLine("Comms directory unavailable.", "error");
-      logLine(`Comms directory: ${names.join(" | ")}`, "sys");
+      logLine("Comms directory:", "sys");
+      names.forEach((name) => {
+        const factionRaw = state.dialogueDb?.[name]?.faction;
+        const faction = String(factionRaw || "Independent").trim();
+        logLine(`- ${name} [${faction}]`, speakerMessageType(name));
+      });
       return true;
     }
 
