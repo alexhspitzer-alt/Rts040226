@@ -255,7 +255,7 @@ const ui = {
   contracts: document.getElementById("contracts"),
   fleet: document.getElementById("fleet"),
   feed: document.getElementById("feed"),
-  copyConsole: document.getElementById("copy-console"),
+  copyConsole: document.getElementById("copy-console-link"),
   consoleFollowToggle: document.getElementById("console-follow-toggle"),
   cmdForm: document.getElementById("cmd-form"),
   cmdInput: document.getElementById("cmd"),
@@ -1794,7 +1794,8 @@ ui.cmdForm.addEventListener("submit", (event) => {
   render();
 });
 
-ui.copyConsole?.addEventListener("click", () => {
+ui.copyConsole?.addEventListener("click", (event) => {
+  event.preventDefault();
   copyConsoleToClipboard();
 });
 

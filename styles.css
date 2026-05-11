@@ -219,10 +219,16 @@ h1 {
   font-size: 0.78rem;
 }
 
-.console-tools {
+.console-header {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.45rem;
   margin-bottom: 0.5rem;
+}
+
+.console-header h2 {
+  margin: 0;
 }
 
 #console-follow-toggle {
@@ -285,14 +291,28 @@ button:hover {
 }
 
 .build-meta-wrap {
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin: 0.2rem 0 0.6rem;
+  padding: 0 1rem;
 }
 
 .build-meta {
   font-size: 0.62rem;
   color: #8aa3bf;
   letter-spacing: 0.02em;
+}
+
+.build-meta-link {
+  font-size: 0.72rem;
+  color: #95c9ff;
+  text-decoration: underline;
+  text-transform: lowercase;
+}
+
+.build-meta-link:hover {
+  color: #c6e3ff;
 }
 
 @media (max-width: 800px) {
