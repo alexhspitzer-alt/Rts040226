@@ -32,7 +32,9 @@ export function createNpcController({
 
   function pickDestination(fromNodeId, allowedNodeIds = null) {
     const adjacency = getAdjacency();
-    const allow = Array.isArray(allowedNodeIds) && allowedNodeIds.length ? new Set(allowedNodeIds) : null;
+    const hasWhitelist = Array.isArray(allowedNodeIds);
+    if (hasWhitelist && allowedNodeIds.length === 0) return null;
+    const allow = hasWhitelist ? new Set(allowedNodeIds) : null;
     const options = (adjacency[fromNodeId] || []).map((edge) => edge.to).filter((nodeId) => nodeId && (!allow || allow.has(nodeId)));
     if (options.length) return randomPick(options);
     const allNodes = allow ? [...allow] : Object.keys(getNodes());
@@ -97,11 +99,12 @@ export function createNpcController({
         /indigo station/i,
         /baron'?s market/i,
       ];
-      const ufpNodeIds = nodeIds.filter((nodeId) => {
+      const resolveUfpNodeIds = () => nodeIds.filter((nodeId) => {
         if (UFP_OR_STATION_NODE_IDS.has(nodeId)) return true;
         const label = String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
         return UFP_OR_STATION_LABEL_PATTERNS.some((pattern) => pattern.test(label));
       });
+      const ufpNodeIds = resolveUfpNodeIds();
       const spawnUfp = () => randomPick(ufpNodeIds) || spawn();
       state.civilianNpcs = [
         { id: "npc-hauler-1", callsign: "Hauler Vesper-14", captainName: "Capt. Elara Voss", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
@@ -127,6 +130,27 @@ export function createNpcController({
     update() {
       const npcs = state.civilianNpcs || [];
       npcs.forEach((npc) => {
+        if (npc.faction === "ufp") {
+          const nodeIds = Object.keys(getNodes());
+          const allowed = nodeIds.filter((nodeId) => {
+            const label = String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
+            return [
+              "ufp_outpost_alpha",
+              "ufp_outpost_bravo",
+              "ufp_indigo_system_administration",
+              "ufp_outpost_delta",
+              "ufp_science_station",
+              "anchor_station",
+              "indigo_station",
+              "barons_market",
+            ].includes(nodeId)
+              || /ufp outpost alpha|ufp outpost bravo|ufp indigo system administration|ufp outpost delta|ufp science station|anchor station|indigo station|baron'?s market/i.test(label);
+          });
+          npc.allowedNodeIds = allowed;
+          if (npc.at && !allowed.includes(npc.at) && allowed.length) {
+            npc.at = randomPick(allowed);
+          }
+        }
         if (npc.status === "idle" && state.tick >= npc.departAt) {
           startTransit(npc);
           return;
