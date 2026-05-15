@@ -30,11 +30,14 @@ export function createNpcController({
     npc.departAt = state.tick + randomInt(NPC_ARRIVAL_MIN, NPC_ARRIVAL_MAX);
   }
 
-  function pickDestination(fromNodeId) {
+  function pickDestination(fromNodeId, allowedNodeIds = null) {
     const adjacency = getAdjacency();
-    const options = (adjacency[fromNodeId] || []).map((edge) => edge.to).filter(Boolean);
+    const hasWhitelist = Array.isArray(allowedNodeIds);
+    if (hasWhitelist && allowedNodeIds.length === 0) return null;
+    const allow = hasWhitelist ? new Set(allowedNodeIds) : null;
+    const options = (adjacency[fromNodeId] || []).map((edge) => edge.to).filter((nodeId) => nodeId && (!allow || allow.has(nodeId)));
     if (options.length) return randomPick(options);
-    const allNodes = Object.keys(getNodes());
+    const allNodes = allow ? [...allow] : Object.keys(getNodes());
     const fallback = allNodes.filter((nodeId) => nodeId !== fromNodeId);
     return randomPick(fallback);
   }
@@ -50,15 +53,15 @@ export function createNpcController({
     const callAt = uplink + Math.max(0, transitTime - lead) + oneWaySignalToNode(destinationNodeId);
     scheduleCharacterMessage(
       callAt,
-      npc.callsign,
-      `${npc.callsign} on final approach to ${nodeLabel(destinationNodeId)}. Requesting docking clearance.`,
+      npc.captainName || npc.callsign,
+      `${npc.callsign} on final approach to ${nodeLabel(destinationNodeId)}. ${npc.faction === "ufp" ? "Announcing docking." : "Requesting docking clearance."}`,
       "arriving",
       "comms"
     );
   }
 
   function startTransit(npc) {
-    const destinationNodeId = pickDestination(npc.at);
+    const destinationNodeId = pickDestination(npc.at, npc.allowedNodeIds);
     if (!destinationNodeId) return;
     const routeSpan = safeRouteDistance(npc.at, destinationNodeId);
     const transitTime = travelTimeForRoute(npc.id, routeSpan);
@@ -76,11 +79,41 @@ export function createNpcController({
       if (Array.isArray(state.civilianNpcs) && state.civilianNpcs.length) return;
       const nodeIds = Object.keys(getNodes());
       const spawn = () => randomPick(nodeIds) || playerNodeId;
+      const UFP_OR_STATION_NODE_IDS = new Set([
+        "ufp_outpost_alpha",
+        "ufp_outpost_bravo",
+        "ufp_indigo_system_administration",
+        "ufp_outpost_delta",
+        "ufp_science_station",
+        "anchor_station",
+        "indigo_station",
+        "barons_market",
+      ]);
+      const UFP_OR_STATION_LABEL_PATTERNS = [
+        /ufp outpost alpha/i,
+        /ufp outpost bravo/i,
+        /ufp indigo system administration/i,
+        /ufp outpost delta/i,
+        /ufp science station/i,
+        /anchor station/i,
+        /indigo station/i,
+        /baron'?s market/i,
+      ];
+      const resolveUfpNodeIds = () => nodeIds.filter((nodeId) => {
+        if (UFP_OR_STATION_NODE_IDS.has(nodeId)) return true;
+        const label = String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
+        return UFP_OR_STATION_LABEL_PATTERNS.some((pattern) => pattern.test(label));
+      });
+      const ufpNodeIds = resolveUfpNodeIds();
+      const spawnUfp = () => randomPick(ufpNodeIds) || spawn();
       state.civilianNpcs = [
-        { id: "npc-hauler-1", callsign: "CIV Hauler Vesper-14", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-hauler-2", callsign: "CIV Hauler Morrow-22", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-courier-1", callsign: "CIV Courier Kite-7", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-courier-2", callsign: "CIV Courier Finch-3", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-hauler-1", callsign: "Hauler Vesper-14", captainName: "Capt. Elara Voss", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-hauler-2", callsign: "Hauler Morrow-22", captainName: "Capt. Rowan Pike", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-courier-1", callsign: "Courier Kite-7", captainName: "Capt. Nia Calder", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-courier-2", callsign: "Courier Finch-3", captainName: "Capt. Joren Hale", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-ufp-kestrel-1", callsign: "UFP Kestrel-2", captainName: "Lt. Mara Quill", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
+        { id: "npc-ufp-kestrel-2", callsign: "UFP Kestrel-3", captainName: "Lt. Arlen Dax", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
+        { id: "npc-ufp-pelican-1", callsign: "UFP Pelican-1", captainName: "Cmdr. Ilya Soren", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
       ];
       state.civilianNpcs.forEach((npc) => {
         const wait = randomInt(NPC_ARRIVAL_MIN, NPC_ARRIVAL_MAX);
@@ -90,10 +123,34 @@ export function createNpcController({
       shipSpeedById["npc-hauler-2"] = 2;
       shipSpeedById["npc-courier-1"] = 4;
       shipSpeedById["npc-courier-2"] = 4;
+      shipSpeedById["npc-ufp-kestrel-1"] = 4;
+      shipSpeedById["npc-ufp-kestrel-2"] = 4;
+      shipSpeedById["npc-ufp-pelican-1"] = 3;
     },
     update() {
       const npcs = state.civilianNpcs || [];
       npcs.forEach((npc) => {
+        if (npc.faction === "ufp") {
+          const nodeIds = Object.keys(getNodes());
+          const allowed = nodeIds.filter((nodeId) => {
+            const label = String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
+            return [
+              "ufp_outpost_alpha",
+              "ufp_outpost_bravo",
+              "ufp_indigo_system_administration",
+              "ufp_outpost_delta",
+              "ufp_science_station",
+              "anchor_station",
+              "indigo_station",
+              "barons_market",
+            ].includes(nodeId)
+              || /ufp outpost alpha|ufp outpost bravo|ufp indigo system administration|ufp outpost delta|ufp science station|anchor station|indigo station|baron'?s market/i.test(label);
+          });
+          npc.allowedNodeIds = allowed;
+          if (npc.at && !allowed.includes(npc.at) && allowed.length) {
+            npc.at = randomPick(allowed);
+          }
+        }
         if (npc.status === "idle" && state.tick >= npc.departAt) {
           startTransit(npc);
           return;

@@ -53,10 +53,9 @@
       </article>
 
       <article class="panel terminal">
-        <h2>Dispatch Console</h2>
-        <div class="console-tools">
-          <button id="copy-console" type="button" class="copy-btn">Copy Console Log</button>
-          <button id="console-follow-toggle" type="button" class="copy-btn">Follow: On</button>
+        <div class="console-header">
+          <h2>Dispatch Console</h2>
+          <button id="console-follow-toggle" type="button" class="copy-btn">★</button>
         </div>
         <div id="feed" class="feed" aria-live="polite"></div>
         <form id="cmd-form" class="cmd-form">
@@ -78,17 +77,17 @@
     </section>
   </main>
   <footer class="build-meta-wrap" aria-label="Build metadata">
-    <small id="build-meta" class="build-meta" data-branch="refactor-game.js-into-smaller-files-mzpg10">branch: refactor-game.js-into-smaller-files-mzpg10 | last updated: loading…</small>
+    <a id="copy-console-link" class="build-meta-link" href="#">copy console log</a>
+    <small id="build-meta" class="build-meta">last updated: loading…</small>
   </footer>
 
   <script>
     const buildMetaElement = document.getElementById("build-meta");
     if (buildMetaElement) {
-      const branch = buildMetaElement.dataset.branch || "unknown";
       const sourceDate = document.lastModified ? new Date(document.lastModified) : new Date();
       const utcDate = Number.isNaN(sourceDate.getTime()) ? new Date() : sourceDate;
       const formattedUtc = utcDate.toISOString().replace("T", " ").slice(0, 16);
-      buildMetaElement.textContent = `branch: ${branch} | last updated: ${formattedUtc} UTC`;
+      buildMetaElement.textContent = `last updated: ${formattedUtc} UTC`;
     }
     const tabButtons = Array.from(document.querySelectorAll(".tab-btn"));
     const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
