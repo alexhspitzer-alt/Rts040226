@@ -61,6 +61,43 @@ const SHIP_CAPTAINS = {
   [TUG_ID]: "Capt. Imani Voss",
   "tug-2": "Capt. Mara Ibarra",
 };
+
+const BLUFREIGHT_APPROACH_LINES = {
+  "Capt. Soren Nnadi": [
+    (dest) => `Final approach to ${dest}. Requesting dock clearance; we'll keep it orderly.`,
+    (dest) => `On final for ${dest}. Requesting clearance and a calm pier if anyone has one.`,
+  ],
+  "Capt. Tamsin Rook": [
+    (dest) => `Final approach to ${dest}. Requesting dock clearance. Keep it brief.`,
+    (dest) => `Approach run to ${dest}. Requesting clearance. We'll make this quick.`,
+  ],
+  "Capt. Laleh Mercer": [
+    (dest) => `Final approach to ${dest}. Requesting dock clearance; timing is tight.`,
+    (dest) => `On final for ${dest}. Requesting clearance now.`,
+  ],
+  "Capt. Jonas Vale": [
+    (dest) => `Final approach to ${dest}. Requesting dock clearance for a very large ship with very little patience.`,
+    (dest) => `Approach to ${dest} underway. Requesting clearance before someone invents a queue.`,
+  ],
+  "Capt. Mara Ibarra": [
+    (dest) => `Final approach to ${dest}. Requesting dock clearance; tides look clean from here.`,
+    (dest) => `On final into ${dest}. Requesting clearance and a steady hand on traffic.`,
+  ],
+  "Capt. Imani Voss": [
+    (dest) => `Final approach to ${dest}. Tug inbound, requesting dock clearance.`,
+    (dest) => `On final for ${dest}. Requesting clearance; bringing her in smooth.`,
+  ],
+};
+
+function pickBluFreightApproachLine(captain, destinationLabel) {
+  const variants = BLUFREIGHT_APPROACH_LINES[captain] || [
+    (dest) => `Final approach to ${dest}. Requesting dock clearance.`,
+    (dest) => `On final for ${dest}. Requesting docking clearance.`,
+  ];
+  const lineBuilder = variants[Math.floor(Math.random() * variants.length)] || variants[0];
+  return lineBuilder(destinationLabel);
+}
+
 const SHIP_SPEED_BY_ID = {
   "hauler-1": 2,
   "hauler-2": 2,
@@ -1378,7 +1415,7 @@ function scheduleFinalApproachDockingCall(ship, {
   scheduleCharacterMessage(
     shipCallAt + oneWaySignalToNode(destinationNodeId),
     captain,
-    `Final approach to ${nodeLabel(destinationNodeId)}. Requesting dock clearance.`,
+    pickBluFreightApproachLine(captain, nodeLabel(destinationNodeId)),
     "arriving",
     "comms"
   );
