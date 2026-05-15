@@ -427,6 +427,22 @@ export function createCommandRuntime({
       return true;
     }
 
+    if (command === "dbnpc") {
+      const npcs = Array.isArray(state.civilianNpcs) ? state.civilianNpcs : [];
+      if (!npcs.length) {
+        logLine("dbNPC: no NPCs currently tracked.", "sys");
+        return true;
+      }
+      logLine("dbNPC: NPC positions", "sys");
+      npcs.forEach((npc, idx) => {
+        const atLabel = nodeLabel(npc.at);
+        const destinationLabel = npc.destination ? ` -> ${nodeLabel(npc.destination)}` : "";
+        const captain = npc.captainName ? ` | ${npc.captainName}` : "";
+        logLine(`${idx + 1}. ${npc.callsign}${captain} | ${npc.status} | ${atLabel}${destinationLabel}`, "sys");
+      });
+      return true;
+    }
+
     if (command === "pause") {
       state.running = !state.running;
       logLine(state.running ? "Simulation resumed." : "Simulation paused.", "sys");
