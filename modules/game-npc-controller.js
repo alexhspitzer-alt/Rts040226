@@ -77,13 +77,37 @@ export function createNpcController({
       if (Array.isArray(state.civilianNpcs) && state.civilianNpcs.length) return;
       const nodeIds = Object.keys(getNodes());
       const spawn = () => randomPick(nodeIds) || playerNodeId;
-      const ufpNodeIds = nodeIds.filter((nodeId) => /ufp/i.test(nodeLabel(nodeId)));
+      const UFP_OR_STATION_NODE_IDS = new Set([
+        "ufp_outpost_alpha",
+        "ufp_outpost_bravo",
+        "ufp_indigo_system_administration",
+        "ufp_outpost_delta",
+        "ufp_science_station",
+        "anchor_station",
+        "indigo_station",
+        "barons_market",
+      ]);
+      const UFP_OR_STATION_LABEL_PATTERNS = [
+        /ufp outpost alpha/i,
+        /ufp outpost bravo/i,
+        /ufp indigo system administration/i,
+        /ufp outpost delta/i,
+        /ufp science station/i,
+        /anchor station/i,
+        /indigo station/i,
+        /baron'?s market/i,
+      ];
+      const ufpNodeIds = nodeIds.filter((nodeId) => {
+        if (UFP_OR_STATION_NODE_IDS.has(nodeId)) return true;
+        const label = String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
+        return UFP_OR_STATION_LABEL_PATTERNS.some((pattern) => pattern.test(label));
+      });
       const spawnUfp = () => randomPick(ufpNodeIds) || spawn();
       state.civilianNpcs = [
-        { id: "npc-hauler-1", callsign: "CIV Hauler Vesper-14", captainName: "Capt. Elara Voss", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-hauler-2", callsign: "CIV Hauler Morrow-22", captainName: "Capt. Rowan Pike", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-courier-1", callsign: "CIV Courier Kite-7", captainName: "Capt. Nia Calder", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-courier-2", callsign: "CIV Courier Finch-3", captainName: "Capt. Joren Hale", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-hauler-1", callsign: "Hauler Vesper-14", captainName: "Capt. Elara Voss", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-hauler-2", callsign: "Hauler Morrow-22", captainName: "Capt. Rowan Pike", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-courier-1", callsign: "Courier Kite-7", captainName: "Capt. Nia Calder", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-courier-2", callsign: "Courier Finch-3", captainName: "Capt. Joren Hale", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
         { id: "npc-ufp-kestrel-1", callsign: "UFP Kestrel-2", captainName: "Lt. Mara Quill", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
         { id: "npc-ufp-kestrel-2", callsign: "UFP Kestrel-3", captainName: "Lt. Arlen Dax", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
         { id: "npc-ufp-pelican-1", callsign: "UFP Pelican-1", captainName: "Cmdr. Ilya Soren", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
