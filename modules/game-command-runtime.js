@@ -298,7 +298,12 @@ export function createCommandRuntime({
     if (command === "comms") {
       const names = activeCommsContacts();
       if (!names.length) return logLine("Comms directory unavailable.", "error");
-      logLine(`Comms directory: ${names.join(" | ")}`, "sys");
+      logLine("Comms directory:", "sys");
+      names.forEach((name) => {
+        const factionRaw = state.dialogueDb?.[name]?.faction;
+        const faction = String(factionRaw || "Independent").trim();
+        logLine(`- ${name} [${faction}]`, speakerMessageType(name));
+      });
       return true;
     }
 
@@ -419,6 +424,22 @@ export function createCommandRuntime({
       if (!resolvedShip) return logLine(`Could not resolve ship "${parts[1]}". Try ship ID or visible ship number.`, "error");
       if (resolvedShip.interpretation) logLine(resolvedShip.interpretation, "sys");
       sendShip(resolvedShip.shipId, parts[2]);
+      return true;
+    }
+
+    if (command === "dbnpc") {
+      const npcs = Array.isArray(state.civilianNpcs) ? state.civilianNpcs : [];
+      if (!npcs.length) {
+        logLine("dbNPC: no NPCs currently tracked.", "sys");
+        return true;
+      }
+      logLine("dbNPC: NPC positions", "sys");
+      npcs.forEach((npc, idx) => {
+        const atLabel = nodeLabel(npc.at);
+        const destinationLabel = npc.destination ? ` -> ${nodeLabel(npc.destination)}` : "";
+        const captain = npc.captainName ? ` | ${npc.captainName}` : "";
+        logLine(`${idx + 1}. ${npc.callsign}${captain} | ${npc.status} | ${atLabel}${destinationLabel}`, "sys");
+      });
       return true;
     }
 

@@ -36,7 +36,7 @@ const PLAYER_NODE = "anchor_station";
 const CONSOLE_MESSAGE_GAP_MS = 750;
 const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
 const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
-const SCENARIO_PATH = "./scenario1.json";
+const SCENARIO_PATH = "./scenarioDat.json";
 const PLAYER_REQUESTS_PATH = "./indigo_dialogue_player_requests.json";
 const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
 const LEGACY_NODE_ALIASES = {
@@ -179,6 +179,20 @@ const SPEAKER_PROFILES = {
   "Port Marshal Celia Wren": { location: "Anchor Station Docks", status: DEFAULT_SPEAKER_STATUS },
   [ARCWORKS_EXEC_NAME]: { location: "Arcworks Transit Authority", status: DEFAULT_SPEAKER_STATUS },
 };
+const NPC_CAPTAIN_FACTIONS = {
+  "Capt. Elara Voss": "civilian",
+  "Capt. Rowan Pike": "civilian",
+  "Capt. Nia Calder": "civilian",
+  "Capt. Joren Hale": "civilian",
+  "Lt. Mara Quill": "ufp",
+  "Lt. Arlen Dax": "ufp",
+  "Cmdr. Ilya Soren": "ufp",
+  "Capt. Rysa Korr": "blister",
+  "Capt. Varek Noll": "blister",
+  "Supervisor Edda Marr": "arcworks",
+  "Supervisor Tal Ren": "arcworks",
+};
+
 const CONTACT_PROFILES = {
   [THORNE_NAME]: { nodeId: "ufp_outpost_delta", shipTag: "UFP Kestrel-1", present: true },
   [VENN_NAME]: { nodeId: "yard", shipTag: "Blister Dragoon-1", present: true },
@@ -255,7 +269,7 @@ const ui = {
   contracts: document.getElementById("contracts"),
   fleet: document.getElementById("fleet"),
   feed: document.getElementById("feed"),
-  copyConsole: document.getElementById("copy-console"),
+  copyConsole: document.getElementById("copy-console-link"),
   consoleFollowToggle: document.getElementById("console-follow-toggle"),
   cmdForm: document.getElementById("cmd-form"),
   cmdInput: document.getElementById("cmd"),
@@ -410,7 +424,8 @@ function speakerMessageType(name) {
   if (name === BASIL_NAME) return "basil";
   if (name === BUDDE_NAME) return "budde";
 
-  const faction = String(state.dialogueDb[name]?.faction || "").toLowerCase();
+  const fallbackFaction = NPC_CAPTAIN_FACTIONS[name] || "";
+  const faction = String(state.dialogueDb[name]?.faction || fallbackFaction).toLowerCase();
   if (SHIP_CAPTAINS && Object.values(SHIP_CAPTAINS).includes(name)) return "comms-blufreight";
   if (faction === "blufreight") return "comms-blufreight";
   if (faction === "ufp") return "comms-ufp";
@@ -1422,7 +1437,7 @@ function sendShip(shipId, destination) {
       `${arcworksInspector} ${speakerContext(arcworksInspector, "interdicting")}: ${
         pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."
       }`,
-      "comms",
+      speakerMessageType(arcworksInspector),
     );
     scheduleMessage(
       detentionNoticeAt,
@@ -1794,7 +1809,8 @@ ui.cmdForm.addEventListener("submit", (event) => {
   render();
 });
 
-ui.copyConsole?.addEventListener("click", () => {
+ui.copyConsole?.addEventListener("click", (event) => {
+  event.preventDefault();
   copyConsoleToClipboard();
 });
 

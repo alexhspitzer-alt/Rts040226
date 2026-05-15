@@ -72,7 +72,9 @@
     "tutorial_complete": {
       "context": "Play once when the player completes all tutorial contracts.",
       "speaker": "BASIL",
-      "text": "Tutorial complete, Operations Manager. All three contracts have been fulfilled, your ships remain mostly intact, and bluFreight continues to enjoy the illusion of orderly commerce. You have now demonstrated basic competence in asset selection, contract assignment, and the management of delayed information across system-scale distances. This officially places you above several of my previous operators, though I regret to inform you the sample size is troubling.  },
+      "text": "Tutorial complete, Operations Manager. All three contracts have been fulfilled, your ships remain mostly intact, and bluFreight continues to enjoy the illusion of orderly commerce. You have now demonstrated basic competence in asset selection, contract assignment, and the management of delayed information across system-scale distances. This officially places you above several of my previous operators, though I regret to inform you the sample size is troubling."
+    }
+  },
   "budde_scenario_dialogue": {
     "intro": {
       "context": "Trigger once, after the first successful contract assignment or destination send order in scenario 2.",
