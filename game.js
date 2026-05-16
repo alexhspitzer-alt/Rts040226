@@ -217,11 +217,11 @@ const SPEAKER_PROFILES = {
   [ARCWORKS_EXEC_NAME]: { location: "Arcworks Transit Authority", status: DEFAULT_SPEAKER_STATUS },
 };
 const NPC_CAPTAIN_FACTIONS = {
-  "Capt. Elara Voss": "civilian",
+  "Capt. Elara Kade": "civilian",
   "Capt. Rowan Pike": "civilian",
   "Capt. Nia Calder": "civilian",
   "Capt. Joren Hale": "civilian",
-  "Lt. Mara Quill": "ufp",
+  "Lt. Sera Malk": "ufp",
   "Lt. Arlen Dax": "ufp",
   "Cmdr. Ilya Soren": "ufp",
   "Capt. Rysa Korr": "blister",
