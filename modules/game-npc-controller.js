@@ -73,16 +73,16 @@ const NPC_APPROACH_FACTORS = {
   blister: {
     prefixes: ["Local channel", "Traffic ping", "Signal burst", "Proximity broadcast", "Open channel", "Marking channel"],
     cores: [
-      (ship) => `${ship}`,
-      (ship) => `${ship}, local mark active`,
-      (ship) => `${ship}, transponder hot`,
-      (ship) => `${ship}, signal on this channel`,
+      (ship, destination) => `${ship} near ${destination}`,
+      (ship, destination) => `${ship}, local mark active at ${destination}`,
+      (ship, destination) => `${ship}, transponder hot approaching ${destination}`,
+      (ship, destination) => `${ship}, signal on this channel by ${destination}`,
     ],
     suffixes: [
-      "activating transponder on local channel.",
-      "local channel transponder now active.",
-      "broadcasting transponder mark on this channel.",
-      "transponder identifier is now live.",
+      (destination) => `activating transponder on local channel near ${destination}.`,
+      (destination) => `local channel transponder now active for ${destination} traffic.`,
+      (destination) => `broadcasting transponder mark on this channel at ${destination}.`,
+      (destination) => `transponder identifier is now live near ${destination}.`,
     ],
   },
 };
@@ -136,7 +136,8 @@ export function createNpcController({
     const prefix = pickLineVariant(pool.prefixes, lastByFaction?.prefixIndex ?? -1);
     const core = pickLineVariant(pool.cores, lastByFaction?.coreIndex ?? -1);
     const suffix = pickLineVariant(pool.suffixes, lastByFaction?.suffixIndex ?? -1);
-    const line = `${prefix.value}: ${core.value(npc.callsign, destinationLabel)}; ${suffix.value}`;
+    const suffixText = typeof suffix.value === "function" ? suffix.value(destinationLabel) : suffix.value;
+    const line = `${prefix.value}: ${core.value(npc.callsign, destinationLabel)}; ${suffixText}`;
     recentNpcLineHistory.push({ tick: state.tick, faction, prefixIndex: prefix.index, coreIndex: core.index, suffixIndex: suffix.index });
     return line;
   }
