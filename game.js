@@ -291,6 +291,8 @@ const state = {
   lastLatencyReminderTick: -Infinity,
   consoleReadyAtMs: Date.now(),
   respondingToCommand: false,
+  inbox: [],
+  unreadInboxCount: 0,
 };
 
 function isPlayerBankrupt() {
@@ -312,6 +314,10 @@ const ui = {
   cmdInput: document.getElementById("cmd"),
   hailAction: document.getElementById("hail-action"),
   almanacRoot: document.getElementById("almanac-root"),
+  inboxList: document.getElementById("inbox-list"),
+  inboxUnread: document.getElementById("inbox-unread"),
+  tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
+  tabPanels: Array.from(document.querySelectorAll(".tab-panel")),
 };
 
 let adjacency = {};
@@ -678,15 +684,16 @@ function playScenarioIntro() {
   ].filter(Boolean);
 
   if (!introLines.length) return;
-  introLines.forEach((line) => logLine(`${BASIL_NAME} ${speakerContext(BASIL_NAME)}: ${line}`, "basil"));
+  postTutorialInboxSequence(BASIL_NAME, introLines, "Tutorial briefing from BASIL received. Check Inbox tab.");
 }
 
 function playScenario2Intro() {
   const introLines = state.scenario2Dialogue?.introSequence || [];
-  introLines
-    .map((entry) => entry?.text)
-    .filter(Boolean)
-    .forEach((line) => logLine(`${BUDDE_NAME} ${speakerContext(BUDDE_NAME)}: ${line}`, "budde"));
+  postTutorialInboxSequence(
+    BUDDE_NAME,
+    introLines.map((entry) => entry?.text).filter(Boolean),
+    "Tutorial briefing from BUDDE received. Check Inbox tab.",
+  );
 }
 
 function playScenario3Intro() {
@@ -996,6 +1003,42 @@ function render() {
     li.textContent = `${idx + 1}. ${s.id} @ ${nodeLabel(s.at)} | ${s.status}${capacityLabel}`;
     ui.fleet.appendChild(li);
   });
+  renderInbox();
+}
+
+function renderInbox() {
+  if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
+  if (!ui.inboxList) return;
+  ui.inboxList.innerHTML = "";
+  state.inbox.forEach((msg, idx) => {
+    const li = document.createElement("li");
+    li.textContent = `${idx + 1}. ${msg.speaker}: ${msg.text}`;
+    ui.inboxList.appendChild(li);
+  });
+}
+
+function activateTab(tabName) {
+  ui.tabButtons.forEach((btn) => {
+    const active = btn.dataset.tab === tabName;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  ui.tabPanels.forEach((panel) => {
+    const active = panel.id === `metrics-${tabName}`;
+    panel.classList.toggle("is-active", active);
+    panel.hidden = !active;
+  });
+  if (tabName === "inbox") state.unreadInboxCount = 0;
+  renderInbox();
+}
+
+function postTutorialInboxSequence(speaker, lines, consoleNotice) {
+  const filtered = Array.isArray(lines) ? lines.filter(Boolean) : [];
+  if (!filtered.length) return;
+  filtered.forEach((text) => state.inbox.push({ speaker, text }));
+  const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
+  if (!inboxActive) state.unreadInboxCount += filtered.length;
+  logLine(consoleNotice, "sys");
 }
 
 function showShipsList() {
@@ -1849,6 +1892,12 @@ ui.cmdForm.addEventListener("submit", (event) => {
 ui.copyConsole?.addEventListener("click", (event) => {
   event.preventDefault();
   copyConsoleToClipboard();
+});
+
+ui.tabButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activateTab(button.dataset.tab || "contracts");
+  });
 });
 
 async function init() {
