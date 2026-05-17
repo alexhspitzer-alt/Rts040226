@@ -1012,7 +1012,21 @@ function renderInbox() {
   ui.inboxList.innerHTML = "";
   state.inbox.forEach((msg, idx) => {
     const li = document.createElement("li");
-    li.textContent = `${idx + 1}. ${msg.speaker}: ${msg.text}`;
+    li.className = "inbox-item";
+    const details = document.createElement("details");
+    details.className = "inbox-mail";
+
+    const summary = document.createElement("summary");
+    summary.className = "inbox-mail-summary";
+    summary.textContent = `${idx + 1}. ${msg.speaker} — ${msg.subject}`;
+    details.appendChild(summary);
+
+    const body = document.createElement("p");
+    body.className = `inbox-mail-body inbox-mail-body-${msg.messageType || "sys"}`;
+    body.textContent = msg.body;
+    details.appendChild(body);
+
+    li.appendChild(details);
     ui.inboxList.appendChild(li);
   });
 }
@@ -1035,9 +1049,12 @@ function activateTab(tabName) {
 function postTutorialInboxSequence(speaker, lines, consoleNotice) {
   const filtered = Array.isArray(lines) ? lines.filter(Boolean) : [];
   if (!filtered.length) return;
-  filtered.forEach((text) => state.inbox.push({ speaker, text }));
+  const body = filtered.join("\n\n");
+  const subject = `${speaker} Tutorial Briefing`;
+  const messageType = speakerMessageType(speaker);
+  state.inbox.push({ speaker, subject, body, messageType });
   const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
-  if (!inboxActive) state.unreadInboxCount += filtered.length;
+  if (!inboxActive) state.unreadInboxCount += 1;
   logLine(consoleNotice, "sys");
 }
 

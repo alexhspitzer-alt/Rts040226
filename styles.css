@@ -153,6 +153,35 @@ h1 {
   border-top: 1px dashed #28415b;
 }
 
+.inbox-item {
+  padding: 0;
+  overflow: hidden;
+}
+
+.inbox-mail > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.45rem 0.55rem;
+  color: #cde6ff;
+  font-weight: 700;
+}
+
+.inbox-mail-body {
+  margin: 0;
+  padding: 0.2rem 0.55rem 0.6rem;
+  border-top: 1px dashed #28415b;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
+.inbox-mail-body-basil {
+  color: #9cf3b1;
+}
+
+.inbox-mail-body-budde {
+  color: #d7b8ff;
+}
+
 .feed {
   height: min(72vh, 900px);
   overflow: auto;
