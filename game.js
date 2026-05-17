@@ -293,6 +293,7 @@ const state = {
   respondingToCommand: false,
   inbox: [],
   unreadInboxCount: 0,
+  inboxOpenIndexes: [],
 };
 
 function isPlayerBankrupt() {
@@ -1009,12 +1010,20 @@ function render() {
 function renderInbox() {
   if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
   if (!ui.inboxList) return;
+  const openSet = new Set(state.inboxOpenIndexes || []);
   ui.inboxList.innerHTML = "";
   state.inbox.forEach((msg, idx) => {
     const li = document.createElement("li");
     li.className = "inbox-item";
     const details = document.createElement("details");
     details.className = "inbox-mail";
+    details.open = openSet.has(idx);
+    details.addEventListener("toggle", () => {
+      const current = new Set(state.inboxOpenIndexes || []);
+      if (details.open) current.add(idx);
+      else current.delete(idx);
+      state.inboxOpenIndexes = [...current].sort((a, b) => a - b);
+    });
 
     const summary = document.createElement("summary");
     summary.className = "inbox-mail-summary";
