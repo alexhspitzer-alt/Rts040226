@@ -1004,7 +1004,6 @@ function render() {
     li.textContent = `${idx + 1}. ${s.id} @ ${nodeLabel(s.at)} | ${s.status}${capacityLabel}`;
     ui.fleet.appendChild(li);
   });
-  renderInbox();
 }
 
 function renderInbox() {
@@ -1051,8 +1050,12 @@ function activateTab(tabName) {
     panel.classList.toggle("is-active", active);
     panel.hidden = !active;
   });
-  if (tabName === "inbox") state.unreadInboxCount = 0;
-  renderInbox();
+  if (tabName === "inbox") {
+    state.unreadInboxCount = 0;
+    renderInbox();
+  } else if (ui.inboxUnread) {
+    ui.inboxUnread.textContent = String(state.unreadInboxCount);
+  }
 }
 
 function postTutorialInboxSequence(speaker, lines, consoleNotice) {
@@ -1064,6 +1067,7 @@ function postTutorialInboxSequence(speaker, lines, consoleNotice) {
   state.inbox.push({ speaker, subject, body, messageType });
   const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
   if (!inboxActive) state.unreadInboxCount += 1;
+  renderInbox();
   logLine(consoleNotice, "sys");
 }
 
