@@ -969,7 +969,18 @@ function contractNumber(contractId) {
   return m ? Number(m[1]) : null;
 }
 
+function commandPromptLabel() {
+  const pending = state.selection?.pending;
+  const selectedShipId = state.selection?.selectedShipId;
+  if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
+  if (pending === "await_contract") return `<${formatShipId(selectedShipId)} contracts>`;
+  if (pending === "await_destination") return `<${formatShipId(selectedShipId)} destinations>`;
+  if (pending === "await_utility_dock_target") return `<${formatShipId(selectedShipId)} dock target>`;
+  return `<${formatShipId(selectedShipId)} actions>`;
+}
+
 function render() {
+  if (ui.cmdInput) ui.cmdInput.placeholder = commandPromptLabel();
   ui.clock.textContent = fmtTime(state.tick);
   ui.cash.textContent = String(state.cash);
   ui.rep.textContent = String(state.rep);
