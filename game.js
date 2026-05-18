@@ -972,10 +972,12 @@ function contractNumber(contractId) {
 function commandPromptLabel() {
   const pending = state.selection?.pending;
   const selectedShipId = state.selection?.selectedShipId;
+  if (pending === "await_route_from") return "<Map routes: from>";
+  if (pending === "await_route_to") return "<Map routes: to>";
   if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
   if (pending === "await_contract") return `<${formatShipId(selectedShipId)} contracts>`;
   if (pending === "await_destination") return `<${formatShipId(selectedShipId)} destinations>`;
-  if (pending === "await_utility_dock_target") return `<${formatShipId(selectedShipId)} dock target>`;
+  if (pending === "await_dock_target") return `<${formatShipId(selectedShipId)} dock target>`;
   return `<${formatShipId(selectedShipId)} actions>`;
 }
 
