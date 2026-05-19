@@ -1017,6 +1017,9 @@ function render() {
     li.textContent = `${idx + 1}. ${s.id} @ ${nodeLabel(s.at)} | ${s.status}${capacityLabel}`;
     ui.fleet.appendChild(li);
   });
+  if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
+  const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
+  if (inboxActive) renderInbox();
 }
 
 function renderInbox() {
@@ -1039,12 +1042,13 @@ function renderInbox() {
 
     const summary = document.createElement("summary");
     summary.className = "inbox-mail-summary";
-    summary.textContent = `${idx + 1}. ${msg.speaker} — ${msg.subject}`;
+    const subject = msg.subject || `${msg.speaker || "System"} message`;
+    summary.textContent = `${idx + 1}. ${msg.speaker} — ${subject}`;
     details.appendChild(summary);
 
     const body = document.createElement("p");
     body.className = `inbox-mail-body inbox-mail-body-${msg.messageType || "sys"}`;
-    body.textContent = msg.body;
+    body.textContent = msg.body || msg.text || "";
     details.appendChild(body);
 
     li.appendChild(details);
