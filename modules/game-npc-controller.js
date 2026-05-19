@@ -184,7 +184,7 @@ export function createNpcController({
     scheduleCharacterMessage(
       callAt,
       npc.captainName || npc.callsign,
-      buildFactionMessage(npc, destinationNodeId),
+      `${npc.callsign} on final approach to ${nodeLabel(destinationNodeId)}. ${npc.faction === "ufp" ? "Announcing docking." : "Requesting docking clearance."}`,
       "arriving",
       "comms"
     );
@@ -236,30 +236,14 @@ export function createNpcController({
       });
       const ufpNodeIds = resolveUfpNodeIds();
       const spawnUfp = () => randomPick(ufpNodeIds) || spawn();
-      const blisterNodeIds = nodeIds.filter((nodeId) => {
-        const label = String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
-        return ["deep_space_transfer_lane", "high_orbit_transfer_lane", "ring_transfer_lane", "low_orbit_transfer_lane", "yard", "refinery", "barons_market"].includes(nodeId)
-          || /transfer lane|yard|refinery|baron'?s market/i.test(label);
-      });
-      const arcworksNodeIds = nodeIds.filter((nodeId) => {
-        const label = String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
-        return ["onion_skin", "refinery", "condenser_columns", "barons_market", "indigo_station"].includes(nodeId)
-          || /onion skin|refinery|condenser columns|baron'?s market|indigo station/i.test(label);
-      });
-      const spawnBlister = () => randomPick(blisterNodeIds) || spawn();
-      const spawnArcworks = () => randomPick(arcworksNodeIds) || spawn();
       state.civilianNpcs = [
-        { id: "npc-hauler-1", callsign: "Hauler Vesper-14", captainName: "Capt. Elara Kade", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-hauler-1", callsign: "Hauler Vesper-14", captainName: "Capt. Elara Voss", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
         { id: "npc-hauler-2", callsign: "Hauler Morrow-22", captainName: "Capt. Rowan Pike", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
         { id: "npc-courier-1", callsign: "Courier Kite-7", captainName: "Capt. Nia Calder", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
         { id: "npc-courier-2", callsign: "Courier Finch-3", captainName: "Capt. Joren Hale", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-ufp-kestrel-1", callsign: "UFP Kestrel-2", captainName: "Lt. Sera Malk", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
+        { id: "npc-ufp-kestrel-1", callsign: "UFP Kestrel-2", captainName: "Lt. Mara Quill", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
         { id: "npc-ufp-kestrel-2", callsign: "UFP Kestrel-3", captainName: "Lt. Arlen Dax", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
         { id: "npc-ufp-pelican-1", callsign: "UFP Pelican-1", captainName: "Cmdr. Ilya Soren", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
-        { id: "npc-blister-dragoon-1", callsign: "Blister Dragoon-2", captainName: "Capt. Rysa Korr", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
-        { id: "npc-blister-dragoon-2", callsign: "Blister Dragoon-3", captainName: "Capt. Varek Noll", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
-        { id: "npc-arcworks-mk4-1", callsign: "Arcworks MK-IV", captainName: "Supervisor Edda Marr", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
-        { id: "npc-arcworks-mm9-1", callsign: "Arcworks MM-IX", captainName: "Supervisor Tal Ren", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
       ];
       state.civilianNpcs.forEach((npc) => {
         const wait = randomLoiterSeconds();
@@ -272,28 +256,25 @@ export function createNpcController({
       shipSpeedById["npc-ufp-kestrel-1"] = 4;
       shipSpeedById["npc-ufp-kestrel-2"] = 4;
       shipSpeedById["npc-ufp-pelican-1"] = 3;
-      shipSpeedById["npc-blister-dragoon-1"] = 4;
-      shipSpeedById["npc-blister-dragoon-2"] = 4;
-      shipSpeedById["npc-arcworks-mk4-1"] = 2;
-      shipSpeedById["npc-arcworks-mm9-1"] = 2;
     },
     update() {
       const npcs = state.civilianNpcs || [];
       npcs.forEach((npc) => {
-        if (npc.faction === "ufp" || npc.faction === "blister" || npc.faction === "arcworks") {
+        if (npc.faction === "ufp") {
           const nodeIds = Object.keys(getNodes());
           const allowed = nodeIds.filter((nodeId) => {
             const label = String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
-            if (npc.faction === "ufp") {
-              return ["ufp_outpost_alpha","ufp_outpost_bravo","ufp_indigo_system_administration","ufp_outpost_delta","ufp_science_station","anchor_station","indigo_station","barons_market"].includes(nodeId)
-                || /ufp outpost alpha|ufp outpost bravo|ufp indigo system administration|ufp outpost delta|ufp science station|anchor station|indigo station|baron'?s market/i.test(label);
-            }
-            if (npc.faction === "blister") {
-              return ["deep_space_transfer_lane","high_orbit_transfer_lane","ring_transfer_lane","low_orbit_transfer_lane","yard","refinery","barons_market"].includes(nodeId)
-                || /transfer lane|yard|refinery|baron'?s market/i.test(label);
-            }
-            return ["onion_skin","refinery","condenser_columns","barons_market","indigo_station"].includes(nodeId)
-              || /onion skin|refinery|condenser columns|baron'?s market|indigo station/i.test(label);
+            return [
+              "ufp_outpost_alpha",
+              "ufp_outpost_bravo",
+              "ufp_indigo_system_administration",
+              "ufp_outpost_delta",
+              "ufp_science_station",
+              "anchor_station",
+              "indigo_station",
+              "barons_market",
+            ].includes(nodeId)
+              || /ufp outpost alpha|ufp outpost bravo|ufp indigo system administration|ufp outpost delta|ufp science station|anchor station|indigo station|baron'?s market/i.test(label);
           });
           npc.allowedNodeIds = allowed;
           if (npc.at && !allowed.includes(npc.at) && allowed.length) {
