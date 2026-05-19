@@ -287,6 +287,9 @@ const state = {
   lastLatencyReminderTick: -Infinity,
   consoleReadyAtMs: Date.now(),
   respondingToCommand: false,
+  inbox: [],
+  unreadInboxCount: 0,
+  inboxOpenIndexes: [],
 };
 
 function isPlayerBankrupt() {
@@ -308,6 +311,10 @@ const ui = {
   cmdInput: document.getElementById("cmd"),
   hailAction: document.getElementById("hail-action"),
   almanacRoot: document.getElementById("almanac-root"),
+  inboxList: document.getElementById("inbox-list"),
+  inboxUnread: document.getElementById("inbox-unread"),
+  tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
+  tabPanels: Array.from(document.querySelectorAll(".tab-panel")),
 };
 
 let adjacency = {};
@@ -674,15 +681,16 @@ function playScenarioIntro() {
   ].filter(Boolean);
 
   if (!introLines.length) return;
-  introLines.forEach((line) => logLine(`${BASIL_NAME} ${speakerContext(BASIL_NAME)}: ${line}`, "basil"));
+  postTutorialInboxSequence(BASIL_NAME, introLines, "Tutorial briefing from BASIL received. Check Inbox tab.");
 }
 
 function playScenario2Intro() {
   const introLines = state.scenario2Dialogue?.introSequence || [];
-  introLines
-    .map((entry) => entry?.text)
-    .filter(Boolean)
-    .forEach((line) => logLine(`${BUDDE_NAME} ${speakerContext(BUDDE_NAME)}: ${line}`, "budde"));
+  postTutorialInboxSequence(
+    BUDDE_NAME,
+    introLines.map((entry) => entry?.text).filter(Boolean),
+    "Tutorial briefing from BUDDE received. Check Inbox tab.",
+  );
 }
 
 function playScenario3Intro() {
@@ -957,7 +965,20 @@ function contractNumber(contractId) {
   return m ? Number(m[1]) : null;
 }
 
+function commandPromptLabel() {
+  const pending = state.selection?.pending;
+  const selectedShipId = state.selection?.selectedShipId;
+  if (pending === "await_route_from") return "<Map routes: from>";
+  if (pending === "await_route_to") return "<Map routes: to>";
+  if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
+  if (pending === "await_contract") return `<${formatShipId(selectedShipId)} contracts>`;
+  if (pending === "await_destination") return `<${formatShipId(selectedShipId)} destinations>`;
+  if (pending === "await_dock_target") return `<${formatShipId(selectedShipId)} dock target>`;
+  return `<${formatShipId(selectedShipId)} actions>`;
+}
+
 function render() {
+  if (ui.cmdInput) ui.cmdInput.placeholder = commandPromptLabel();
   ui.clock.textContent = fmtTime(state.tick);
   ui.cash.textContent = String(state.cash);
   ui.rep.textContent = String(state.rep);
@@ -992,6 +1013,71 @@ function render() {
     li.textContent = `${idx + 1}. ${s.id} @ ${nodeLabel(s.at)} | ${s.status}${capacityLabel}`;
     ui.fleet.appendChild(li);
   });
+}
+
+function renderInbox() {
+  if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
+  if (!ui.inboxList) return;
+  const openSet = new Set(state.inboxOpenIndexes || []);
+  ui.inboxList.innerHTML = "";
+  state.inbox.forEach((msg, idx) => {
+    const li = document.createElement("li");
+    li.className = "inbox-item";
+    const details = document.createElement("details");
+    details.className = "inbox-mail";
+    details.open = openSet.has(idx);
+    details.addEventListener("toggle", () => {
+      const current = new Set(state.inboxOpenIndexes || []);
+      if (details.open) current.add(idx);
+      else current.delete(idx);
+      state.inboxOpenIndexes = [...current].sort((a, b) => a - b);
+    });
+
+    const summary = document.createElement("summary");
+    summary.className = "inbox-mail-summary";
+    summary.textContent = `${idx + 1}. ${msg.speaker} — ${msg.subject}`;
+    details.appendChild(summary);
+
+    const body = document.createElement("p");
+    body.className = `inbox-mail-body inbox-mail-body-${msg.messageType || "sys"}`;
+    body.textContent = msg.body;
+    details.appendChild(body);
+
+    li.appendChild(details);
+    ui.inboxList.appendChild(li);
+  });
+}
+
+function activateTab(tabName) {
+  ui.tabButtons.forEach((btn) => {
+    const active = btn.dataset.tab === tabName;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  ui.tabPanels.forEach((panel) => {
+    const active = panel.id === `metrics-${tabName}`;
+    panel.classList.toggle("is-active", active);
+    panel.hidden = !active;
+  });
+  if (tabName === "inbox") {
+    state.unreadInboxCount = 0;
+    renderInbox();
+  } else if (ui.inboxUnread) {
+    ui.inboxUnread.textContent = String(state.unreadInboxCount);
+  }
+}
+
+function postTutorialInboxSequence(speaker, lines, consoleNotice) {
+  const filtered = Array.isArray(lines) ? lines.filter(Boolean) : [];
+  if (!filtered.length) return;
+  const body = filtered.join("\n\n");
+  const subject = `${speaker} Tutorial Briefing`;
+  const messageType = speakerMessageType(speaker);
+  state.inbox.push({ speaker, subject, body, messageType });
+  const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
+  if (!inboxActive) state.unreadInboxCount += 1;
+  renderInbox();
+  logLine(consoleNotice, "sys");
 }
 
 function showShipsList() {
@@ -1845,6 +1931,12 @@ ui.cmdForm.addEventListener("submit", (event) => {
 ui.copyConsole?.addEventListener("click", (event) => {
   event.preventDefault();
   copyConsoleToClipboard();
+});
+
+ui.tabButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activateTab(button.dataset.tab || "contracts");
+  });
 });
 
 async function init() {
