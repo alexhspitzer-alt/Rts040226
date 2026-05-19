@@ -699,12 +699,10 @@ function playScenario2Intro() {
 
 function playScenario3Intro() {
   const introLines = state.scenario3Dialogue?.introSequence || [];
-  introLines.forEach((entry) => {
-    const text = entry?.text;
-    if (!text) return;
-    const speaker = entry?.speaker || BASIL_NAME;
-    logLine(`${speaker} ${speakerContext(speaker)}: ${text}`, speakerMessageType(speaker));
-  });
+  postScenarioIntroInboxMessages(
+    introLines.map((entry) => ({ speaker: entry?.speaker || BASIL_NAME, text: entry?.text })),
+    "Scenario 3 briefing received. Check Inbox tab.",
+  );
   if (!state.scenario3CapacityBriefed) {
     state.scenario3CapacityBriefed = true;
     basilInform(SCENARIO3_CAPACITY_BRIEFING);
@@ -713,16 +711,18 @@ function playScenario3Intro() {
 
 function playScenario4Intro() {
   const introLines = state.scenario4Dialogue?.introSequence || [];
+  const inboxPayload = [];
   introLines.forEach((entry) => {
     const flagId = entry?.id;
     if (entry?.playOncePerScenario && flagId && state.scenario4Dialogue?.oneTimeFlags?.[flagId]) return;
     if (entry?.speaker && entry?.text) {
-      logLine(`${entry.speaker} ${speakerContext(entry.speaker)}: ${entry.text}`, speakerMessageType(entry.speaker));
+      inboxPayload.push({ speaker: entry.speaker, text: entry.text });
     }
     if (entry?.playOncePerScenario && flagId && state.scenario4Dialogue?.oneTimeFlags) {
       state.scenario4Dialogue.oneTimeFlags[flagId] = true;
     }
   });
+  postScenarioIntroInboxMessages(inboxPayload, "Scenario 4 briefing received. Check Inbox tab.");
 }
 
 function setupScenario4Fleet() {
@@ -1027,23 +1027,27 @@ function renderInbox() {
   if (!ui.inboxList) return;
   const openSet = new Set(state.inboxOpenIndexes || []);
   ui.inboxList.innerHTML = "";
-  state.inbox.forEach((msg, idx) => {
+  const ordered = [...state.inbox].reverse();
+  ordered.forEach((msg, idx) => {
+    const actualIndex = state.inbox.length - 1 - idx;
     const li = document.createElement("li");
     li.className = "inbox-item";
     const details = document.createElement("details");
     details.className = "inbox-mail";
-    details.open = openSet.has(idx);
+    details.open = openSet.has(actualIndex);
     details.addEventListener("toggle", () => {
       const current = new Set(state.inboxOpenIndexes || []);
-      if (details.open) current.add(idx);
-      else current.delete(idx);
+      if (details.open) current.add(actualIndex);
+      else current.delete(actualIndex);
       state.inboxOpenIndexes = [...current].sort((a, b) => a - b);
     });
 
     const summary = document.createElement("summary");
     summary.className = "inbox-mail-summary";
     const subject = msg.subject || `${msg.speaker || "System"} message`;
-    summary.textContent = `${idx + 1}. ${msg.speaker} — ${subject}`;
+    const from = msg.from || msg.speaker || "System";
+    const stamp = msg.timestamp || fmtTime(msg.tick || state.tick);
+    summary.textContent = `${stamp} | From: ${from} | ${subject}`;
     details.appendChild(summary);
 
     const body = document.createElement("p");
@@ -1081,11 +1085,42 @@ function postTutorialInboxSequence(speaker, lines, consoleNotice) {
   const body = filtered.join("\n\n");
   const subject = `${speaker} Tutorial Briefing`;
   const messageType = speakerMessageType(speaker);
-  state.inbox.push({ speaker, subject, body, messageType });
+  state.inbox.push({ speaker, from: speaker, subject, body, messageType, tick: state.tick, timestamp: fmtTime(state.tick) });
   const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
   if (!inboxActive) state.unreadInboxCount += 1;
   renderInbox();
   logLine(consoleNotice, "sys");
+}
+
+function postScenarioIntroInboxMessages(entries, consoleNotice) {
+  const valid = Array.isArray(entries) ? entries.filter((entry) => entry?.speaker && entry?.text) : [];
+  if (!valid.length) return;
+  const grouped = [];
+  valid.forEach((entry) => {
+    const last = grouped[grouped.length - 1];
+    if (last && last.speaker === entry.speaker) {
+      last.lines.push(entry.text);
+    } else {
+      grouped.push({ speaker: entry.speaker, lines: [entry.text] });
+    }
+  });
+  grouped.forEach((group) => {
+    const messageType = speakerMessageType(group.speaker);
+    state.inbox.push({
+      speaker: group.speaker,
+      from: group.speaker,
+      cc: grouped.filter((g) => g.speaker !== group.speaker).map((g) => g.speaker),
+      subject: `Scenario ${state.currentScenario} Briefing`,
+      body: group.lines.join("\n\n"),
+      messageType,
+      tick: state.tick,
+      timestamp: fmtTime(state.tick),
+    });
+  });
+  const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
+  if (!inboxActive) state.unreadInboxCount += grouped.length;
+  renderInbox();
+  if (consoleNotice) logLine(consoleNotice, "sys");
 }
 
 function showShipsList() {
