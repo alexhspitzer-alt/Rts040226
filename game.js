@@ -40,6 +40,7 @@ const OPERATING_COST_PER_SHIP_PER_MINUTE = 8;
 const OPERATING_COST_INTERVAL_SECONDS = 15;
 const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
+const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
 const SCENARIO_PATH = "./scenarioDat.json";
 const PLAYER_REQUESTS_PATH = "./indigo_dialogue_player_requests.json";
 const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
@@ -298,6 +299,7 @@ const state = {
   inbox: [],
   unreadInboxCount: 0,
   inboxOpenIndexes: [],
+  operatingExpenseAccrued: 0,
 };
 
 function isPlayerBankrupt() {
@@ -1127,6 +1129,25 @@ function postScenarioIntroInboxMessages(entries, consoleNotice) {
   if (consoleNotice) logLine(consoleNotice, "sys");
 }
 
+function postOperatingExpenseReport() {
+  const amount = Math.max(0, Math.round(state.operatingExpenseAccrued || 0));
+  if (amount <= 0) return;
+  state.inbox.push({
+    speaker: "Gregory Trundle, bluFreight Accounting",
+    from: "Gregory Trundle, bluFreight Accounting",
+    subject: "expense ledger",
+    body: `Operating expenses assessed over the last 5 minutes: -$${amount}.\n\nRate card: $${OPERATING_COST_PER_SHIP_PER_MINUTE}/ship/minute, billed in ${OPERATING_COST_INTERVAL_SECONDS}-second intervals.`,
+    messageType: "sys",
+    tick: state.tick,
+    timestamp: fmtTime(state.tick),
+  });
+  state.operatingExpenseAccrued = 0;
+  const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
+  if (!inboxActive) state.unreadInboxCount += 1;
+  renderInbox();
+  logLine("Operating expense report is available in Inbox.", "sys");
+}
+
 function showShipsList() {
   state.ships.forEach((s, idx) => {
     const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
@@ -1809,8 +1830,11 @@ function updateSimulation() {
     const operatingCost = Math.round((state.ships.length || 0) * OPERATING_COST_PER_SHIP_PER_INTERVAL);
     if (operatingCost > 0) {
       state.cash -= operatingCost;
-      logLine(`Operating expense assessed: -$${operatingCost} ($${OPERATING_COST_PER_SHIP_PER_INTERVAL}/ship/${OPERATING_COST_INTERVAL_SECONDS}s).`, "sys");
+      state.operatingExpenseAccrued += operatingCost;
     }
+  }
+  if (state.tick > 0 && state.tick % OPERATING_COST_REPORT_INTERVAL_SECONDS === 0) {
+    postOperatingExpenseReport();
   }
   NpcController.update();
   state.ships.forEach((ship) => {
