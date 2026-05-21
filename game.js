@@ -36,6 +36,10 @@ const PLAYER_NODE = "anchor_station";
 const CONSOLE_MESSAGE_GAP_MS = 750;
 const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
 const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
+const OPERATING_COST_PER_SHIP_PER_MINUTE = 8;
+const OPERATING_COST_INTERVAL_SECONDS = 15;
+const OPERATING_COST_PER_SHIP_PER_INTERVAL =
+  (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const SCENARIO_PATH = "./scenarioDat.json";
 const PLAYER_REQUESTS_PATH = "./indigo_dialogue_player_requests.json";
 const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
@@ -1801,6 +1805,13 @@ function finalizeContractDelivery(contractId) {
 }
 
 function updateSimulation() {
+  if (state.tick > 0 && state.tick % OPERATING_COST_INTERVAL_SECONDS === 0) {
+    const operatingCost = Math.round((state.ships.length || 0) * OPERATING_COST_PER_SHIP_PER_INTERVAL);
+    if (operatingCost > 0) {
+      state.cash -= operatingCost;
+      logLine(`Operating expense assessed: -$${operatingCost} ($${OPERATING_COST_PER_SHIP_PER_INTERVAL}/ship/${OPERATING_COST_INTERVAL_SECONDS}s).`, "sys");
+    }
+  }
   NpcController.update();
   state.ships.forEach((ship) => {
     if (ship.utility && ship.status === "docked" && ship.dockedTo) {
