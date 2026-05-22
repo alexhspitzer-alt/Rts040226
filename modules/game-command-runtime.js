@@ -246,7 +246,7 @@ export function createCommandRuntime({
       showShipMenu(shipId);
       return true;
     }
-    if (letter === "r") {
+    if (letter === "i" || letter === "r") {
       shipReport(shipId);
       showShipMenu(shipId);
       return true;

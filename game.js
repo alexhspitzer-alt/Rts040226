@@ -257,9 +257,9 @@ const state = {
   scenario3Activated: false,
   scenario4Activated: false,
   ships: [
-    { id: "hauler-1", at: "anchor_station", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["hauler-1"], busyUntil: 0, departAt: 0, lastKnownAt: "anchor_station", lastContactTick: 0 },
-    { id: "hauler-2", at: "refinery", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["hauler-2"], busyUntil: 0, departAt: 0, lastKnownAt: "refinery", lastContactTick: 0 },
-    { id: "courier-1", at: "indigo_station", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["courier-1"], busyUntil: 0, departAt: 0, lastKnownAt: "indigo_station", lastContactTick: 0 },
+    { id: "hauler-1", at: "anchor_station", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["hauler-1"], busyUntil: 0, departAt: 0, lastKnownAt: "anchor_station", lastContactTick: 0, acquiredAtTick: 0 },
+    { id: "hauler-2", at: "refinery", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["hauler-2"], busyUntil: 0, departAt: 0, lastKnownAt: "refinery", lastContactTick: 0, acquiredAtTick: 0 },
+    { id: "courier-1", at: "indigo_station", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["courier-1"], busyUntil: 0, departAt: 0, lastKnownAt: "indigo_station", lastContactTick: 0, acquiredAtTick: 0 },
   ],
   delayedMessages: [],
   nextContract: 1,
@@ -300,6 +300,7 @@ const state = {
   unreadInboxCount: 0,
   inboxOpenIndexes: [],
   operatingExpenseAccrued: 0,
+  operatingExpenseWindowStartTick: 0,
 };
 
 function isPlayerBankrupt() {
@@ -748,6 +749,7 @@ function setupScenario4Fleet() {
       departAt: 0,
       lastKnownAt: at,
       lastContactTick: state.tick,
+      acquiredAtTick: state.tick,
     });
   };
   ensureGrantedShip("hauler-3", defaultSpawn, false);
@@ -770,6 +772,7 @@ function addScenario3Tug() {
     departAt: 0,
     lastKnownAt: spawnNode,
     lastContactTick: state.tick,
+    acquiredAtTick: state.tick,
   });
 }
 
@@ -1132,16 +1135,29 @@ function postScenarioIntroInboxMessages(entries, consoleNotice) {
 function postOperatingExpenseReport() {
   const amount = Math.max(0, Math.round(state.operatingExpenseAccrued || 0));
   if (amount <= 0) return;
+  const windowStartTick = Number.isFinite(state.operatingExpenseWindowStartTick) ? state.operatingExpenseWindowStartTick : 0;
+  const windowEndTick = state.tick;
+  const shipDurations = state.ships
+    .map((ship) => {
+      const acquiredAt = Number.isFinite(ship.acquiredAtTick) ? ship.acquiredAtTick : 0;
+      const secondsControlled = Math.max(0, windowEndTick - Math.max(windowStartTick, acquiredAt));
+      return { id: ship.id, secondsControlled };
+    })
+    .filter((entry) => entry.secondsControlled > 0);
+  const durationLines = shipDurations.length
+    ? shipDurations.map((entry) => `- ${formatShipId(entry.id)}: ${entry.secondsControlled}s controlled in-window`).join("\n")
+    : "- No ships were under player control during this window.";
   state.inbox.push({
     speaker: "Gregory Trundle, bluFreight Accounting",
     from: "Gregory Trundle, bluFreight Accounting",
-    subject: "expense ledger",
-    body: `Operating expenses assessed over the last 5 minutes: -$${amount}.\n\nRate card: $${OPERATING_COST_PER_SHIP_PER_MINUTE}/ship/minute, billed in ${OPERATING_COST_INTERVAL_SECONDS}-second intervals.`,
+    subject: "Expense Report",
+    body: `Operating expenses assessed: -$${amount}.\n\nCoverage: ${fmtTime(windowStartTick)} to ${fmtTime(windowEndTick)} (${Math.max(0, windowEndTick - windowStartTick)}s).\nShips billed this window: ${shipDurations.length}.\n\nShip control durations:\n${durationLines}\n\nRate card: $${OPERATING_COST_PER_SHIP_PER_MINUTE}/ship/minute, billed in ${OPERATING_COST_INTERVAL_SECONDS}-second intervals.`,
     messageType: "sys",
     tick: state.tick,
     timestamp: fmtTime(state.tick),
   });
   state.operatingExpenseAccrued = 0;
+  state.operatingExpenseWindowStartTick = windowEndTick;
   const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
   if (!inboxActive) state.unreadInboxCount += 1;
   renderInbox();
@@ -1255,11 +1271,11 @@ function showShipMenu(shipId) {
       if (flags) flags.budde_first_shuttle_explainer = true;
     }
   }
-  let menuOptions = "A assign, S send, R report, B back to ship list.";
+  let menuOptions = "A assign, S send, I information, B back to ship list.";
   if (ship.utility && ship.status === "docked") {
     menuOptions = "U undock.";
   } else if (ship.utility) {
-    menuOptions = "D dock, S send, R report, B back to ship list.";
+    menuOptions = "D dock, S send, I information, B back to ship list.";
   }
   logLine(`${shipId} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
 }
