@@ -66,6 +66,15 @@ const SHIP_CAPTAINS = {
   [TUG_ID]: "Capt. Imani Voss",
   "tug-2": "Capt. Mara Ibarra",
 };
+const SHIP_FIRST_MATES = {
+  "hauler-1": "First Mate Elara Quill",
+  "hauler-2": "First Mate Bren Talvik",
+  "hauler-3": "First Mate Nia Varr",
+  "courier-1": "First Mate Juno Pike",
+  "shuttle-1": "First Mate Corin Hale",
+  [TUG_ID]: "First Mate Sela Dorn",
+  "tug-2": "First Mate Oren Myles",
+};
 
 const BLUFREIGHT_APPROACH_LINES = {
   "Capt. Soren Nnadi": [
@@ -1164,6 +1173,34 @@ function postOperatingExpenseReport() {
   logLine("Operating expense report is available in Inbox.", "sys");
 }
 
+function postTripReportToInbox(ship, report) {
+  const from = SHIP_FIRST_MATES[ship.id] || `First Mate, ${formatShipId(ship.id)}`;
+  const hazardsText = report.hazards?.length ? report.hazards.join("; ") : "None reported";
+  const body = [
+    `Vessel: ${formatShipId(ship.id)}`,
+    `Outcome: ${report.outcome}`,
+    `Contract: ${report.contractLabel || "None"}`,
+    `Distance traveled: ${report.distanceText}`,
+    `Fuel spent: ${report.fuelSpent}`,
+    `Earnings: $${report.earnings || 0}`,
+    `Hazards: ${hazardsText}`,
+    `Damage: ${report.damage || "None reported"}`,
+    `Net proceeds after expenses: $${report.netProceeds || 0}`,
+  ].join("\n");
+  state.inbox.push({
+    speaker: from,
+    from,
+    subject: "Post-Trip Report",
+    body,
+    messageType: "comms-blufreight",
+    tick: state.tick,
+    timestamp: fmtTime(state.tick),
+  });
+  const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
+  if (!inboxActive) state.unreadInboxCount += 1;
+  renderInbox();
+}
+
 function showShipsList() {
   state.ships.forEach((s, idx) => {
     const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
@@ -1629,6 +1666,9 @@ function sendShip(shipId, destination) {
     currentLegTransit: transitTime,
     currentLegFuel: shipFuelCost,
     recallNodeId: ship.at,
+    destination: normalizedDestination,
+    routeSpan,
+    hazards: [],
   };
 
   const effectiveRisk = state.risk + (state.escort ? -10 : 8);
@@ -1639,6 +1679,7 @@ function sendShip(shipId, destination) {
       `${ship.id} detained briefly at ${nodeLabel(normalizedDestination)}. Cargo released after inspection.`,
       "alert"
     );
+    ship.travelPlan?.hazards?.push("Brief detention inspection");
     state.cash -= 70;
     state.rep -= 1;
     const arcworksInspector = ARCWORKS_EXEC_NAME;
@@ -1743,6 +1784,7 @@ function assignContract(contractId, shipId) {
   ship.busyUntil = ship.departAt + total;
   ship.destination = contract.to;
   contract.status = "assigned";
+  contract.assignedShipId = ship.id;
   ship.activeContractId = contract.id;
   contract.fuelCost = fuelCost;
   const firstLegTransit = travelTimeForRoute(driveShipId, toPickupSpan);
@@ -1755,6 +1797,8 @@ function assignContract(contractId, shipId) {
     secondLegFuel: fuelCostForRoute(contract.from, contract.to, driveShipId),
     firstLegTo: contract.from,
     secondLegTo: contract.to,
+    totalRouteSpan,
+    hazards: inspectionDelay > 0 ? ["Inspection delay on contested route"] : [],
   };
 
   const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
@@ -1864,6 +1908,16 @@ function recallShip(shipId) {
     const contract = state.contracts.find((c) => c.id === ship.activeContractId && c.status === "assigned");
     if (contract) contract.status = "open";
   }
+  postTripReportToInbox(ship, {
+    outcome: "Recall completed",
+    contractLabel: ship.activeContractId || "Cancelled active contract",
+    distanceText: `Partial current leg (${Math.round(legProgress * 100)}%) + return to ${nodeLabel(recallNodeId)}`,
+    fuelSpent: fuelBillingActive() ? `${recallFuel}` : `${recallFuel} (training waiver)`,
+    earnings: 0,
+    hazards: plan.hazards || [],
+    damage: "None reported",
+    netProceeds: fuelBillingActive() ? -recallFuel : 0,
+  });
   ship.status = "idle";
   ship.at = recallNodeId;
   ship.destination = undefined;
@@ -1892,12 +1946,29 @@ function finalizeContractDelivery(contractId) {
   const isScenario4Qualifying = state.currentScenario === 4 && contract.client === "UFP" && String(contract.cargoType || "").toLowerCase() === "deuterium";
   const appliedPayout = isScenario4Qualifying ? 0 : contract.payout;
   state.cash += appliedPayout - missionFuelCost - (state.escort ? 60 : 0);
+  const netProceeds = appliedPayout - missionFuelCost - (state.escort ? 60 : 0);
   state.rep = Math.min(100, state.rep + 2);
   state.risk = Math.max(8, state.risk - 1);
   const countsForProgress = state.currentScenario === 4
     ? isScenario4Qualifying
     : state.currentScenario === 1 || state.currentScenario >= 3 || Boolean(contract.client);
   if (countsForProgress) state.completedContracts += 1;
+  const deliveryShip = state.ships.find((ship) => ship.activeContractId === contractId) || state.ships.find((ship) => ship.id === contract.assignedShipId);
+  if (deliveryShip) {
+    const plan = deliveryShip.travelPlan || {};
+    postTripReportToInbox(deliveryShip, {
+      outcome: "Delivery completed",
+      contractLabel: contract.id,
+      distanceText: plan.mode === "contract"
+        ? `${plan.firstLegTo ? `${nodeLabel(deliveryShip.lastKnownAt || deliveryShip.at)} -> ${nodeLabel(plan.firstLegTo)}` : "Leg 1"}; ${plan.firstLegTo && plan.secondLegTo ? `${nodeLabel(plan.firstLegTo)} -> ${nodeLabel(plan.secondLegTo)}` : "Leg 2"}`
+        : "Contract route complete",
+      fuelSpent: `${missionFuelCost}`,
+      earnings: appliedPayout,
+      hazards: plan.hazards || [],
+      damage: "None reported",
+      netProceeds,
+    });
+  }
   maybeTriggerScenario2VennDetainment();
   checkScenarioCompletion();
 }
@@ -1954,6 +2025,7 @@ function updateSimulation() {
         ship.status = "idle";
         ship.lastKnownAt = ship.at;
         ship.lastContactTick = state.tick;
+        ship.travelPlan = null;
         return null;
       }, "sys");
     }
