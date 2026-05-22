@@ -70,7 +70,7 @@ const SHIP_FIRST_MATES = {
   "hauler-1": "First Mate Elara Quill",
   "hauler-2": "First Mate Bren Talvik",
   "hauler-3": "First Mate Nia Varr",
-  "courier-1": "First Mate Juno Pike",
+  "courier-1": "First Mate Juno Thorne",
   "shuttle-1": "First Mate Corin Hale",
   [TUG_ID]: "First Mate Sela Dorn",
   "tug-2": "First Mate Oren Myles",
