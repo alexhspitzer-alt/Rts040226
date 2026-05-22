@@ -67,11 +67,11 @@ const SHIP_CAPTAINS = {
   "tug-2": "Capt. Mara Ibarra",
 };
 const SHIP_FIRST_MATES = {
-  "hauler-1": "First Mate Elara Vos",
+  "hauler-1": "First Mate Elara Finch",
   "hauler-2": "First Mate Bren Talvik",
   "hauler-3": "First Mate Nia Varr",
-  "courier-1": "First Mate Juno Velis",
-  "shuttle-1": "First Mate Corin Vossen",
+  "courier-1": "First Mate Juno Marsh",
+  "shuttle-1": "First Mate Corin Slate",
   [TUG_ID]: "First Mate Sela Dorn",
   "tug-2": "First Mate Oren Myles",
 };
