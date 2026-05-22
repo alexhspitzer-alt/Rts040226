@@ -10,6 +10,7 @@ export function createCommandRuntime({
   contractNumber,
   assignContract,
   sendShip,
+  recallShip,
   dockUtilityShip,
   undockUtilityShip,
   shipReport,
@@ -246,8 +247,13 @@ export function createCommandRuntime({
       showShipMenu(shipId);
       return true;
     }
-    if (letter === "i" || letter === "r") {
+    if (letter === "i") {
       shipReport(shipId);
+      showShipMenu(shipId);
+      return true;
+    }
+    if (letter === "r") {
+      recallShip(shipId);
       showShipMenu(shipId);
       return true;
     }

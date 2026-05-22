@@ -1271,11 +1271,11 @@ function showShipMenu(shipId) {
       if (flags) flags.budde_first_shuttle_explainer = true;
     }
   }
-  let menuOptions = "A assign, S send, I information, B back to ship list.";
+  let menuOptions = "A assign, S send, I information, R recall, B back to ship list.";
   if (ship.utility && ship.status === "docked") {
     menuOptions = "U undock.";
   } else if (ship.utility) {
-    menuOptions = "D dock, S send, I information, B back to ship list.";
+    menuOptions = "D dock, S send, I information, R recall, B back to ship list.";
   }
   logLine(`${shipId} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
 }
@@ -1623,6 +1623,13 @@ function sendShip(shipId, destination) {
   ship.busyUntil = ship.departAt + transitTime;
   ship.destination = normalizedDestination;
   ship.lastContactTick = state.tick;
+  ship.travelPlan = {
+    mode: "reposition",
+    startedAt: ship.departAt,
+    currentLegTransit: transitTime,
+    currentLegFuel: shipFuelCost,
+    recallNodeId: ship.at,
+  };
 
   const effectiveRisk = state.risk + (state.escort ? -10 : 8);
   if (Math.random() * 100 < effectiveRisk * 0.3) {
@@ -1738,6 +1745,17 @@ function assignContract(contractId, shipId) {
   contract.status = "assigned";
   ship.activeContractId = contract.id;
   contract.fuelCost = fuelCost;
+  const firstLegTransit = travelTimeForRoute(driveShipId, toPickupSpan);
+  ship.travelPlan = {
+    mode: "contract",
+    startedAt: ship.departAt,
+    firstLegTransit,
+    secondLegTransit: Math.max(0, total - firstLegTransit),
+    firstLegFuel: fuelCostForRoute(ship.at, contract.from, driveShipId),
+    secondLegFuel: fuelCostForRoute(contract.from, contract.to, driveShipId),
+    firstLegTo: contract.from,
+    secondLegTo: contract.to,
+  };
 
   const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
   logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
@@ -1783,7 +1801,6 @@ function assignContract(contractId, shipId) {
     }
   }
   if (captain) {
-    const firstLegTransit = travelTimeForRoute(driveShipId, toPickupSpan);
     const finalLegTransit = Math.max(1, total - firstLegTransit);
     const finalLegDepartureOffset = ship.at === contract.from ? 0 : firstLegTransit;
     scheduleFinalApproachDockingCall(ship, {
@@ -1813,6 +1830,50 @@ function assignContract(contractId, shipId) {
   }
 
   maybeIntroduceBudde();
+  return true;
+}
+
+function recallShip(shipId) {
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return logLine("Selected ship is unavailable.", "error");
+  if (ship.status !== "tasked" && ship.status !== "enroute") return logLine(`${ship.id} is not currently in transit.`, "error");
+  const driveShipId = effectiveDriveShipId(ship.id);
+  const plan = ship.travelPlan || {};
+  const elapsed = Math.max(0, state.tick - (ship.departAt || state.tick));
+  let recallNodeId = plan.recallNodeId || ship.lastKnownAt || ship.at;
+  let currentLegTransit = Number.isFinite(plan.currentLegTransit) ? plan.currentLegTransit : Math.max(1, ship.busyUntil - ship.departAt);
+  let currentLegFuel = Number.isFinite(plan.currentLegFuel) ? plan.currentLegFuel : fuelCostForRoute(recallNodeId, ship.destination || recallNodeId, driveShipId);
+  if (plan.mode === "contract") {
+    const firstLegTransit = Number.isFinite(plan.firstLegTransit) ? plan.firstLegTransit : 0;
+    if (elapsed > firstLegTransit) {
+      recallNodeId = plan.firstLegTo || recallNodeId;
+      currentLegTransit = Number.isFinite(plan.secondLegTransit) ? plan.secondLegTransit : currentLegTransit;
+      currentLegFuel = Number.isFinite(plan.secondLegFuel) ? plan.secondLegFuel : currentLegFuel;
+    } else {
+      recallNodeId = ship.lastKnownAt || ship.at;
+      currentLegTransit = Math.max(1, firstLegTransit || currentLegTransit);
+      currentLegFuel = Number.isFinite(plan.firstLegFuel) ? plan.firstLegFuel : currentLegFuel;
+    }
+  }
+  const legProgress = Math.min(1, currentLegTransit > 0 ? elapsed / currentLegTransit : 0);
+  const proratedFuelSpent = Math.round(Math.max(0, currentLegFuel * legProgress));
+  const returnFuel = Math.max(0, fuelCostForRoute(ship.destination || recallNodeId, recallNodeId, driveShipId));
+  const recallFuel = proratedFuelSpent + returnFuel;
+  if (fuelBillingActive()) state.cash -= recallFuel;
+  if (ship.activeContractId) {
+    const contract = state.contracts.find((c) => c.id === ship.activeContractId && c.status === "assigned");
+    if (contract) contract.status = "open";
+  }
+  ship.status = "idle";
+  ship.at = recallNodeId;
+  ship.destination = undefined;
+  ship.activeContractId = undefined;
+  ship.departAt = 0;
+  ship.busyUntil = 0;
+  ship.lastKnownAt = recallNodeId;
+  ship.lastContactTick = state.tick;
+  ship.travelPlan = null;
+  logLine(`${ship.id} recalled to ${nodeLabel(recallNodeId)}. ${fuelBillingActive() ? `Fuel billed: ${recallFuel}.` : `Fuel estimate: ${recallFuel} (training waiver in effect).`}`, "dispatch");
   return true;
 }
 
@@ -1981,6 +2042,7 @@ commandRuntime = createCommandRuntime({
   contractNumber,
   assignContract,
   sendShip,
+  recallShip,
   dockUtilityShip,
   undockUtilityShip,
   shipReport,
