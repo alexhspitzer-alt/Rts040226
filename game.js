@@ -1669,6 +1669,8 @@ function sendShip(shipId, destination) {
     destination: normalizedDestination,
     routeSpan,
     hazards: [],
+    currentLegFrom: ship.at,
+    currentLegTo: normalizedDestination,
   };
 
   const effectiveRisk = state.risk + (state.escort ? -10 : 8);
@@ -1799,6 +1801,8 @@ function assignContract(contractId, shipId) {
     secondLegTo: contract.to,
     totalRouteSpan,
     hazards: inspectionDelay > 0 ? ["Inspection delay on contested route"] : [],
+    firstLegFrom: ship.at,
+    secondLegFrom: contract.from,
   };
 
   const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
@@ -1884,24 +1888,34 @@ function recallShip(shipId) {
   const driveShipId = effectiveDriveShipId(ship.id);
   const plan = ship.travelPlan || {};
   const elapsed = Math.max(0, state.tick - (ship.departAt || state.tick));
+  let legElapsed = elapsed;
   let recallNodeId = plan.recallNodeId || ship.lastKnownAt || ship.at;
   let currentLegTransit = Number.isFinite(plan.currentLegTransit) ? plan.currentLegTransit : Math.max(1, ship.busyUntil - ship.departAt);
   let currentLegFuel = Number.isFinite(plan.currentLegFuel) ? plan.currentLegFuel : fuelCostForRoute(recallNodeId, ship.destination || recallNodeId, driveShipId);
+  let currentLegFrom = plan.currentLegFrom || recallNodeId;
+  let currentLegTo = plan.currentLegTo || ship.destination || recallNodeId;
   if (plan.mode === "contract") {
     const firstLegTransit = Number.isFinite(plan.firstLegTransit) ? plan.firstLegTransit : 0;
     if (elapsed > firstLegTransit) {
       recallNodeId = plan.firstLegTo || recallNodeId;
       currentLegTransit = Number.isFinite(plan.secondLegTransit) ? plan.secondLegTransit : currentLegTransit;
       currentLegFuel = Number.isFinite(plan.secondLegFuel) ? plan.secondLegFuel : currentLegFuel;
+      currentLegFrom = plan.secondLegFrom || recallNodeId;
+      currentLegTo = plan.secondLegTo || ship.destination || recallNodeId;
+      legElapsed = elapsed - firstLegTransit;
     } else {
       recallNodeId = ship.lastKnownAt || ship.at;
       currentLegTransit = Math.max(1, firstLegTransit || currentLegTransit);
       currentLegFuel = Number.isFinite(plan.firstLegFuel) ? plan.firstLegFuel : currentLegFuel;
+      currentLegFrom = plan.firstLegFrom || recallNodeId;
+      currentLegTo = plan.firstLegTo || ship.destination || recallNodeId;
+      legElapsed = elapsed;
     }
   }
-  const legProgress = Math.min(1, currentLegTransit > 0 ? elapsed / currentLegTransit : 0);
+  const legProgress = Math.min(1, Math.max(0, currentLegTransit > 0 ? legElapsed / currentLegTransit : 0));
   const proratedFuelSpent = Math.round(Math.max(0, currentLegFuel * legProgress));
-  const returnFuel = Math.max(0, fuelCostForRoute(ship.destination || recallNodeId, recallNodeId, driveShipId));
+  const reverseLegFuelFull = Math.max(0, fuelCostForRoute(currentLegTo, currentLegFrom, driveShipId));
+  const returnFuel = Math.round(reverseLegFuelFull * legProgress);
   const recallFuel = proratedFuelSpent + returnFuel;
   if (fuelBillingActive()) state.cash -= recallFuel;
   if (ship.activeContractId) {
