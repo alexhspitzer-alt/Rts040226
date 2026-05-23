@@ -1210,7 +1210,7 @@ function postTripReportToInbox(ship, report) {
 function showShipsList() {
   state.ships.forEach((s, idx) => {
     const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
-    const displayStatus = s.status === "arrived_pending_report" ? "arrived" : s.status;
+    const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
     const dockedSuffix = s.dockedTo ? ` -> docked to ${s.dockedTo}` : s.utilityDockedBy ? ` <- utility ${s.utilityDockedBy}` : "";
     const capacityLabel = state.currentScenario >= 3 && !s.utility
       ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
