@@ -1861,18 +1861,28 @@ function assignContract(contractId, shipId) {
   }
   scheduleMessage(
     uplink + total + oneWaySignalToNode(contract.to),
-    `${ship.id} delivered ${contract.id} at ${nodeLabel(contract.to)}.`,
+    () => {
+      const liveContract = state.contracts.find((c) => c.id === contract.id);
+      const liveShip = state.ships.find((s) => s.id === ship.id);
+      if (!liveContract || !liveShip) return null;
+      const contractStillDelivering = ["assigned", "delivered_pending_report", "completed"].includes(liveContract.status);
+      const shipConsistent = liveShip.activeContractId === contract.id || liveShip.at === contract.to;
+      if (!contractStillDelivering || !shipConsistent) return null;
+      return `${ship.id} delivered ${contract.id} at ${nodeLabel(contract.to)}.`;
+    },
     "report"
   );
   if (captain) {
     const completionLine = inspectionDelay >= 180
       ? "Delivery complete, but inspection delays burned the schedule."
       : "Delivery complete.";
-    scheduleCharacterMessage(
+    scheduleMessage(
       uplink + total + oneWaySignalToNode(contract.to),
-      captain,
-      completionLine,
-      null,
+      () => {
+        const liveContract = state.contracts.find((c) => c.id === contract.id);
+        if (!liveContract || (liveContract.status !== "delivered_pending_report" && liveContract.status !== "completed")) return null;
+        return `${captain} ${speakerContext(captain)}: ${completionLine}`;
+      },
       "comms"
     );
   }
@@ -1884,7 +1894,17 @@ function assignContract(contractId, shipId) {
 function recallShip(shipId) {
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return logLine("Selected ship is unavailable.", "error");
-  if (ship.status !== "tasked" && ship.status !== "enroute") return logLine(`${ship.id} is not currently in transit.`, "error");
+  if (ship.status !== "tasked" && ship.status !== "enroute") {
+    const uplink = oneWaySignalToShip(ship);
+    const rtt = uplink * 2;
+    basilInform(`Recall request queued for ${ship.id}. Expected confirmation in ~${rtt}s.`);
+    scheduleMessage(
+      rtt,
+      `${ship.id} recall response: impossible. Ship has already completed the active leg.`,
+      "report"
+    );
+    return true;
+  }
   const driveShipId = effectiveDriveShipId(ship.id);
   const plan = ship.travelPlan || {};
   const elapsed = Math.max(0, state.tick - (ship.departAt || state.tick));
