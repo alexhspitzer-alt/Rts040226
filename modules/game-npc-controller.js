@@ -28,6 +28,13 @@ function randomLoiterSeconds() {
   return Math.round(max - Math.sqrt((1 - u) * (max - min) * (max - mode)));
 }
 
+function titleCase(value) {
+  return String(value || "")
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 
 const NPC_APPROACH_FACTORS = {
@@ -127,6 +134,16 @@ export function createNpcController({
     return 0.1;
   }
 
+  function chooseAggressor(a, b) {
+    const ab = factionHostility(a.faction, b.faction);
+    const ba = factionHostility(b.faction, a.faction);
+    if (ab > ba) return { aggressor: a, responder: b, hostility: ab };
+    if (ba > ab) return { aggressor: b, responder: a, hostility: ba };
+    return String(a.id) <= String(b.id)
+      ? { aggressor: a, responder: b, hostility: ab }
+      : { aggressor: b, responder: a, hostility: ba };
+  }
+
   function conflictStageForStress(stress) {
     if (stress >= 0.88) return "fire";
     if (stress >= 0.62) return "intercept";
@@ -139,19 +156,21 @@ export function createNpcController({
   }
 
   function emitConflictLine(encounter, npcById) {
-    const a = npcById.get(encounter.aId);
-    const b = npcById.get(encounter.bId);
-    if (!a || !b) return;
+    const aggressor = npcById.get(encounter.aggressorId || encounter.aId);
+    const responder = npcById.get(encounter.responderId || encounter.bId);
+    if (!aggressor || !responder) return;
+    const location = titleCase(nodeLabel(encounter.nodeId));
+    const stageLabel = titleCase(encounter.stage);
     const linesByStage = {
-      notice: `${a.captainName}: Contact noted with ${b.callsign}.`,
-      verbal: `${a.captainName}: ${b.callsign}, maintain your lane and keep your profile clean.`,
-      intercept: `${a.captainName}: ${b.callsign}, reduce burn and prepare to be checked.`,
-      fire: `${a.captainName}: Weapons discharge reported! Breaking hard.`,
-      resolve: `${a.captainName}: Contact with ${b.callsign} is disengaging.`,
+      notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: Contact noted. Keep your vector predictable.`,
+      verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: Maintain your lane and keep your profile clean.`,
+      intercept: `[${stageLabel}] to ${responder.callsign} @ ${location}: Reduce burn and prepare to be checked.`,
+      fire: `[${stageLabel}] to ${responder.callsign} @ ${location}: Weapons discharge reported. Breaking hard.`,
+      resolved: `[Resolved] to ${responder.callsign} @ ${location}: Contact is disengaging.`,
     };
     scheduleCharacterMessage(
       1,
-      a.captainName || a.callsign,
+      aggressor.captainName || aggressor.callsign,
       linesByStage[encounter.stage] || linesByStage.notice,
       encounter.stage === "fire" ? "interdicting" : "arriving",
       "comms"
@@ -184,15 +203,28 @@ export function createNpcController({
           const a = nodeNpcs[i];
           const b = nodeNpcs[j];
           const key = encounterKey(a.id, b.id);
-          const hostility = factionHostility(a.faction, b.faction);
+          const pairing = chooseAggressor(a, b);
+          const hostility = pairing.hostility;
           let encounter = conflictEncounters.get(key);
           if (!encounter) {
-            encounter = { key, aId: a.id, bId: b.id, nodeId, stress: 0, stage: "notice", lastSeenTick: state.tick };
+            encounter = {
+              key,
+              aId: a.id,
+              bId: b.id,
+              aggressorId: pairing.aggressor.id,
+              responderId: pairing.responder.id,
+              nodeId,
+              stress: 0,
+              stage: "notice",
+              lastSeenTick: state.tick,
+            };
             conflictEncounters.set(key, encounter);
           }
           const riskFactor = Math.max(0.5, (state.risk || 20) / 30);
           encounter.nodeId = nodeId;
           encounter.lastSeenTick = state.tick;
+          encounter.aggressorId = pairing.aggressor.id;
+          encounter.responderId = pairing.responder.id;
           encounter.stress = Math.min(1, encounter.stress + (CONFLICT_GAIN_BASE * hostility * riskFactor));
           const nextStage = conflictStageForStress(encounter.stress);
           if (nextStage !== encounter.stage && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
@@ -418,7 +450,7 @@ export function createNpcController({
       if (!entries.length) return ["dbConflict: no active NPC conflicts."];
       return entries
         .sort((a, b) => b.stress - a.stress)
-        .map((entry, idx) => `${idx + 1}. ${entry.aId} <-> ${entry.bId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}`);
+        .map((entry, idx) => `${idx + 1}. ${entry.aggressorId} -> ${entry.responderId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}`);
     },
   };
 }
