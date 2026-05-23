@@ -1,0 +1,357 @@
+{
+  "metadata": {
+    "version": 1,
+    "description": "Faction-vs-faction conflict outcome line sets for staged escalation.",
+    "stages": ["notice", "verbal", "intercept", "fire", "resolve"]
+  },
+  "pairs": [
+    {
+      "id": "ufp_vs_blister",
+      "aggressorFaction": "ufp",
+      "responderFaction": "blister",
+      "territoryBias": "ufp_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "UFP patrol has positive ID on Blister signature. Maintain vector and report intent.",
+            "Blister hull flagged on patrol scope. We are watching your burn profile."
+          ],
+          "response": [
+            "Copy your signal, patrol. Keep your watch and we'll keep our lane.",
+            "You see us. Good. Try not to confuse seeing with controlling."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Blister vessel, reduce profile and declare cargo now.",
+            "You're crossing too close to controlled traffic. Explain your route."
+          ],
+          "response": [
+            "Our cargo is none of your parade business.",
+            "You can ask questions all day. Answers are extra."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Course correction ordered. Drift to inspection vector immediately.",
+            "Patrol authority invoked. Cut thrust and prepare boarding posture."
+          ],
+          "response": [
+            "Negative on boarding posture. We are not surrendering schedule.",
+            "Inspection vector denied. You'll have to chase."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Warning shots away. Next spread lands center mass.",
+            "Weapons free on engines only. Disable and contain."
+          ],
+          "response": [
+            "Contact! Returning fire and breaking hard.",
+            "You opened the dance. We're not standing still."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Target disengaging. Hold perimeter and log incident.",
+            "Interception complete. Traffic lane secure for now."
+          ],
+          "response": [
+            "We're clear of your box. This isn't finished.",
+            "Breaking contact. Keep your medals; we'll keep flying."
+          ]
+        }
+      }
+    },
+    {
+      "id": "arcworks_vs_blister",
+      "aggressorFaction": "arcworks",
+      "responderFaction": "blister",
+      "territoryBias": "arcworks_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Arcworks control tags Blister transponder near regulated assets.",
+            "Unknown raider profile near Arcworks corridor. Signal acknowledged."
+          ],
+          "response": [
+            "You don't own the vacuum, supervisor.",
+            "We are passing through. Try not to panic publicly."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Blister craft, this corridor is under industrial security jurisdiction.",
+            "Declare intent near Condenser Columns or exit the lane."
+          ],
+          "response": [
+            "Our intent is profit. Your jurisdiction is a bedtime story.",
+            "We'll leave when leaving is efficient, not when told."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Security tugs moving to pin your vector. Stand by for scan.",
+            "Arcworks inspection hold initiated. Cancel burn now."
+          ],
+          "response": [
+            "Inspection hold refused. We are maneuvering free.",
+            "Pin this vector if you can catch it."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Engine block engaged. Arcworks batteries firing containment pattern.",
+            "You ignored lawful hold. Weapons release authorized."
+          ],
+          "response": [
+            "Containment my hull—returning fire.",
+            "Arcworks shots on us. Breaking and punching back."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Contact dispersed. Resume industrial traffic protocol.",
+            "Hostile profile pushed off asset ring. Log damage and reset watch."
+          ],
+          "response": [
+            "We're off your metal pile. Count that as mercy.",
+            "Disengaging. We'll invoice you later in another lane."
+          ]
+        }
+      }
+    },
+    {
+      "id": "blister_vs_civilian",
+      "aggressorFaction": "blister",
+      "responderFaction": "civilian",
+      "territoryBias": "blister_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Civilian freighter marked. Keep your channel open and your speed honest.",
+            "Slow boat on our scope. Don't do anything heroic."
+          ],
+          "response": [
+            "We're civilian freight on contract schedule. Passing through.",
+            "Acknowledged. We are not looking for trouble."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Dump your manifest to channel. Now.",
+            "Who paid you to move that cargo? Answer carefully."
+          ],
+          "response": [
+            "Manifest is sealed to client and insurer.",
+            "We carry food and meds, not politics."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Civilian, cut thrust and drift for inspection.",
+            "You are being boarded for contribution review."
+          ],
+          "response": [
+            "Unable to comply safely—request neutral corridor escort.",
+            "This is a civilian distress declaration."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Shots across bow. Next burst takes your drives.",
+            "Disable fire pattern live. Don't make us waste ammo."
+          ],
+          "response": [
+            "Mayday! Taking fire, engines hit.",
+            "Distress, distress—civilian vessel under raid attack."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Collection complete. Move along if you can still move.",
+            "Raid window closed. Break contact."
+          ],
+          "response": [
+            "We're limping out. Requesting aid at nearest station.",
+            "Disengaging under protest and emergency claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "ufp_vs_civilian",
+      "aggressorFaction": "ufp",
+      "responderFaction": "civilian",
+      "territoryBias": "ufp_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Civilian contact, this is UFP patrol requesting routine identity ping.",
+            "Freighter profile detected near patrol zone. Maintain lane and report flag."
+          ],
+          "response": [
+            "Identity ping sent. Civilian registry and insurance attached.",
+            "Copy patrol. We are on a contracted delivery run."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Your route overlaps restricted traffic. State cargo class.",
+            "We have supply-diversion indicators. Clarify destination."
+          ],
+          "response": [
+            "Cargo class is humanitarian dry goods.",
+            "Destination is lawful port; we can provide paperwork."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Civilian vessel, shift to inspection hold for scan verification.",
+            "Patrol intercept initiated. Reduce burn and stand by."
+          ],
+          "response": [
+            "Complying with hold; requesting delay waiver filing.",
+            "Under protest, we are reducing burn for inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Non-compliance escalated. Warning fire authorized.",
+            "Disable profile only—do not core the hull."
+          ],
+          "response": [
+            "We are civilian and unarmed! Cease fire!",
+            "Taking warning impacts—drives unstable."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Inspection concluded. Civilian released with caution flag.",
+            "Contact cleared to depart. Incident logged."
+          ],
+          "response": [
+            "Resuming route with loss claim pending.",
+            "Departure acknowledged. Filing complaint through station authority."
+          ]
+        }
+      }
+    },
+    {
+      "id": "arcworks_vs_civilian",
+      "aggressorFaction": "arcworks",
+      "responderFaction": "civilian",
+      "territoryBias": "arcworks_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Arcworks control requesting civilian transponder handshake.",
+            "Civilian contact near industrial lane, identify cargo safety class."
+          ],
+          "response": [
+            "Handshake sent; cargo is stable and declared.",
+            "We are civilian transit with no hazardous intent."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Your docking priority is suspended pending Arcworks review.",
+            "We suspect embargo leakage through this lane. Explain manifest."
+          ],
+          "response": [
+            "Suspending us jeopardizes perishables and contract terms.",
+            "Manifest is legal commercial cargo under station seal."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Industrial security intercept in progress. Hold position.",
+            "You are ordered to submit for close scan at Onion Skin control."
+          ],
+          "response": [
+            "Holding under protest. This delay is billable.",
+            "Complying with scan. Recording all channels for arbitration."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Warning burst issued for safety compliance failure.",
+            "Arcworks defense firing non-lethal disable pattern."
+          ],
+          "response": [
+            "Civilian distress! We are taking rounds from Arcworks control.",
+            "Drive section hit—request emergency tugs."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Review complete. Civilian traffic may resume under flag.",
+            "Interception closed. Return to standard approach queue."
+          ],
+          "response": [
+            "Resuming queue, with this delay noted for claims.",
+            "Understood. Continuing route at reduced confidence."
+          ]
+        }
+      }
+    },
+    {
+      "id": "blister_vs_blister",
+      "aggressorFaction": "blister",
+      "responderFaction": "blister",
+      "territoryBias": "blister_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Unknown Blister tag on local channel. State crew mark.",
+            "Dragoon contact, your transponder smells wrong."
+          ],
+          "response": [
+            "Crew mark is valid. Keep your paranoia in check.",
+            "Tag is ours. Your scope is twitchy today."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "You're cutting into our collection lane.",
+            "Back off the bounty trail before this gets expensive."
+          ],
+          "response": [
+            "Lane isn't yours unless you can hold it.",
+            "If you wanted exclusivity you should've flown faster."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Cut thrust and settle this share split now.",
+            "Intercepting. You owe us a percentage and patience."
+          ],
+          "response": [
+            "Not paying. Catch us if you're serious.",
+            "Share split denied. Take your grievance to vacuum court."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Fine. We settle this with burn marks.",
+            "Weapons hot. Keep your nose if you can."
+          ],
+          "response": [
+            "Friendly fire my hull—returning in kind.",
+            "You picked the dumb option. Firing back."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Enough. We're done bleeding margins here.",
+            "Break contact. Next dispute gets settled in person."
+          ],
+          "response": [
+            "Copy break. Keep your lane and your temper.",
+            "Disengaging. This debt isn't forgotten."
+          ]
+        }
+      }
+    }
+  ]
+}
