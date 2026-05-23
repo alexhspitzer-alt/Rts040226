@@ -159,6 +159,7 @@ export function createNpcController({
   }
 
   function playerLocalToNode(nodeId) {
+    if (nodeId === "anchor_station") return true;
     return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "enroute"));
   }
 
@@ -169,7 +170,7 @@ export function createNpcController({
     const location = titleCase(nodeLabel(encounter.nodeId));
     const stageLabel = titleCase(encounter.stage);
     const aggressorFaction = aggressor.faction || "civilian";
-    const linesByStage = aggressorFaction === "civilian"
+    const aggressorLinesByStage = aggressorFaction === "civilian"
       ? {
           notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: Civilian traffic advisory. Keep separation and confirm lane intent.`,
           verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: Logging unsafe conduct and escalating to port authority review.`,
@@ -184,11 +185,25 @@ export function createNpcController({
           fire: `[${stageLabel}] to ${responder.callsign} @ ${location}: Weapons discharge reported. Breaking hard.`,
           resolved: `[Resolved] to ${responder.callsign} @ ${location}: Contact is disengaging.`,
         };
+    const responderLinesByStage = {
+      notice: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: Copy. Holding vector and monitoring separation.`,
+      verbal: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: Acknowledged. Your transmission is logged.`,
+      intercept: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: Complying under protest. Broadcasting this interaction to traffic control.`,
+      fire: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: Taking fire. Distress beacon active and evasive action underway.`,
+      resolved: `[Resolved] to ${aggressor.callsign} @ ${location}: Copy disengagement. Resuming planned route.`,
+    };
     scheduleCharacterMessage(
       1,
       aggressor.captainName || aggressor.callsign,
-      linesByStage[encounter.stage] || linesByStage.notice,
+      aggressorLinesByStage[encounter.stage] || aggressorLinesByStage.notice,
       encounter.stage === "fire" ? "interdicting" : "arriving",
+      "comms"
+    );
+    scheduleCharacterMessage(
+      2,
+      responder.captainName || responder.callsign,
+      responderLinesByStage[encounter.stage] || responderLinesByStage.notice,
+      encounter.stage === "fire" ? "evading" : "arriving",
       "comms"
     );
   }
