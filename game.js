@@ -1157,10 +1157,13 @@ function postOperatingExpenseReport() {
     ? shipDurations.map((entry) => `- ${formatShipId(entry.id)}: ${entry.secondsControlled}s controlled in-window`).join("\n")
     : "- No ships were under player control during this window.";
   state.inbox.push({
-    speaker: "Gregory Trundle, bluFreight Accounting",
-    from: "Gregory Trundle, bluFreight Accounting",
+    speaker: "Gregory Trundle",
+    from: "Gregory Trundle",
     subject: "Expense Report",
-    body: `Operating expenses assessed: -$${amount}.\n\nCoverage: ${fmtTime(windowStartTick)} to ${fmtTime(windowEndTick)} (${Math.max(0, windowEndTick - windowStartTick)}s).\nShips billed this window: ${shipDurations.length}.\n\nShip control durations:\n${durationLines}\n\nRate card: $${OPERATING_COST_PER_SHIP_PER_MINUTE}/ship/minute, billed in ${OPERATING_COST_INTERVAL_SECONDS}-second intervals.`,
+    body: `Operating expenses assessed: -$${amount}.\n\nCoverage: ${fmtTime(windowStartTick)} to ${fmtTime(windowEndTick)} (${Math.max(0, windowEndTick - windowStartTick)}s).\nShips billed this window: ${shipDurations.length}.\n\nShip control durations:\n${durationLines}\n\nRate card: $${OPERATING_COST_PER_SHIP_PER_MINUTE}/ship/minute, billed in ${OPERATING_COST_INTERVAL_SECONDS}-second intervals.
+
+— Gregory Trundle
+bluFreight Accounting.`,
     messageType: "sys",
     tick: state.tick,
     timestamp: fmtTime(state.tick),
@@ -1174,7 +1177,8 @@ function postOperatingExpenseReport() {
 }
 
 function postTripReportToInbox(ship, report) {
-  const from = SHIP_FIRST_MATES[ship.id] || `First Mate, ${formatShipId(ship.id)}`;
+  const firstMateRanked = SHIP_FIRST_MATES[ship.id] || `First Mate ${formatShipId(ship.id)}`;
+  const from = firstMateRanked.replace(/^First Mate\s+/i, "");
   const hazardsText = report.hazards?.length ? report.hazards.join("; ") : "None reported";
   const body = [
     `Vessel: ${formatShipId(ship.id)}`,
@@ -1186,6 +1190,8 @@ function postTripReportToInbox(ship, report) {
     `Hazards: ${hazardsText}`,
     `Damage: ${report.damage || "None reported"}`,
     `Net proceeds after expenses: $${report.netProceeds || 0}`,
+    "",
+    `— ${firstMateRanked}, ${formatShipId(ship.id)}`,
   ].join("\n");
   state.inbox.push({
     speaker: from,
