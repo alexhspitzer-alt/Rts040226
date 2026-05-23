@@ -151,6 +151,13 @@ export function createNpcController({
     return "notice";
   }
 
+  function capStageForAggressor(stage, aggressorFaction) {
+    if (aggressorFaction === "civilian") {
+      if (stage === "fire" || stage === "intercept") return "verbal";
+    }
+    return stage;
+  }
+
   function playerLocalToNode(nodeId) {
     return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "enroute"));
   }
@@ -161,13 +168,22 @@ export function createNpcController({
     if (!aggressor || !responder) return;
     const location = titleCase(nodeLabel(encounter.nodeId));
     const stageLabel = titleCase(encounter.stage);
-    const linesByStage = {
-      notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: Contact noted. Keep your vector predictable.`,
-      verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: Maintain your lane and keep your profile clean.`,
-      intercept: `[${stageLabel}] to ${responder.callsign} @ ${location}: Reduce burn and prepare to be checked.`,
-      fire: `[${stageLabel}] to ${responder.callsign} @ ${location}: Weapons discharge reported. Breaking hard.`,
-      resolved: `[Resolved] to ${responder.callsign} @ ${location}: Contact is disengaging.`,
-    };
+    const aggressorFaction = aggressor.faction || "civilian";
+    const linesByStage = aggressorFaction === "civilian"
+      ? {
+          notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: Civilian traffic advisory. Keep separation and confirm lane intent.`,
+          verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: Logging unsafe conduct and escalating to port authority review.`,
+          intercept: `[Verbal] to ${responder.callsign} @ ${location}: Filing emergency complaint. Stand clear of civilian corridor.`,
+          fire: `[Verbal] to ${responder.callsign} @ ${location}: Distress relay active. Authorities have been notified.`,
+          resolved: `[Resolved] to ${responder.callsign} @ ${location}: Civilian traffic is disengaging.`,
+        }
+      : {
+          notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: Contact noted. Keep your vector predictable.`,
+          verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: Maintain your lane and keep your profile clean.`,
+          intercept: `[${stageLabel}] to ${responder.callsign} @ ${location}: Reduce burn and prepare to be checked.`,
+          fire: `[${stageLabel}] to ${responder.callsign} @ ${location}: Weapons discharge reported. Breaking hard.`,
+          resolved: `[Resolved] to ${responder.callsign} @ ${location}: Contact is disengaging.`,
+        };
     scheduleCharacterMessage(
       1,
       aggressor.captainName || aggressor.callsign,
@@ -226,7 +242,7 @@ export function createNpcController({
           encounter.aggressorId = pairing.aggressor.id;
           encounter.responderId = pairing.responder.id;
           encounter.stress = Math.min(1, encounter.stress + (CONFLICT_GAIN_BASE * hostility * riskFactor));
-          const nextStage = conflictStageForStress(encounter.stress);
+          const nextStage = capStageForAggressor(conflictStageForStress(encounter.stress), pairing.aggressor.faction);
           if (nextStage !== encounter.stage && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
             encounter.stage = nextStage;
             transitions += 1;
