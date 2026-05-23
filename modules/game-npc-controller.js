@@ -2,6 +2,10 @@ const NPC_LOITER_MIN = 40;
 const NPC_LOITER_MAX = 360;
 const NPC_LOITER_MODE = 200;
 const NPC_LINE_REPEAT_WINDOW = 120;
+const CONFLICT_HEARTBEAT_SECONDS = 10;
+const CONFLICT_DECAY_PER_HEARTBEAT = 0.06;
+const CONFLICT_GAIN_BASE = 0.12;
+const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
 
 function randomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -107,6 +111,105 @@ export function createNpcController({
   scheduleCharacterMessage,
 }) {
   const recentNpcLineHistory = [];
+  const conflictEncounters = new Map();
+  let lastConflictHeartbeatTick = -Infinity;
+
+  function encounterKey(aId, bId) {
+    return [aId, bId].sort().join("|");
+  }
+
+  function factionHostility(aFaction, bFaction) {
+    if (aFaction === "blister" && bFaction !== "blister") return 1.25;
+    if (bFaction === "blister" && aFaction !== "blister") return 1.1;
+    if (aFaction === "blister" && bFaction === "blister") return 0.45;
+    if ((aFaction === "ufp" || aFaction === "arcworks") && bFaction === "civilian") return 0.4;
+    if ((bFaction === "ufp" || bFaction === "arcworks") && aFaction === "civilian") return 0.35;
+    return 0.1;
+  }
+
+  function conflictStageForStress(stress) {
+    if (stress >= 0.88) return "fire";
+    if (stress >= 0.62) return "intercept";
+    if (stress >= 0.34) return "verbal";
+    return "notice";
+  }
+
+  function playerLocalToNode(nodeId) {
+    return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "enroute"));
+  }
+
+  function emitConflictLine(encounter, npcById) {
+    const a = npcById.get(encounter.aId);
+    const b = npcById.get(encounter.bId);
+    if (!a || !b) return;
+    const linesByStage = {
+      notice: `${a.captainName}: Contact noted with ${b.callsign}.`,
+      verbal: `${a.captainName}: ${b.callsign}, maintain your lane and keep your profile clean.`,
+      intercept: `${a.captainName}: ${b.callsign}, reduce burn and prepare to be checked.`,
+      fire: `${a.captainName}: Weapons discharge reported! Breaking hard.`,
+      resolve: `${a.captainName}: Contact with ${b.callsign} is disengaging.`,
+    };
+    scheduleCharacterMessage(
+      1,
+      a.captainName || a.callsign,
+      linesByStage[encounter.stage] || linesByStage.notice,
+      encounter.stage === "fire" ? "interdicting" : "arriving",
+      "comms"
+    );
+  }
+
+  function updateConflictEncounters(npcs) {
+    if (state.tick - lastConflictHeartbeatTick < CONFLICT_HEARTBEAT_SECONDS) return;
+    lastConflictHeartbeatTick = state.tick;
+    const npcById = new Map(npcs.map((npc) => [npc.id, npc]));
+    const byNode = new Map();
+    npcs.forEach((npc) => {
+      if (!npc?.at) return;
+      if (!byNode.has(npc.at)) byNode.set(npc.at, []);
+      byNode.get(npc.at).push(npc);
+    });
+
+    // Decay existing encounters first.
+    for (const encounter of conflictEncounters.values()) {
+      encounter.stress = Math.max(0, encounter.stress - CONFLICT_DECAY_PER_HEARTBEAT);
+      if (encounter.stress <= 0.02 && state.tick - encounter.lastSeenTick > CONFLICT_HEARTBEAT_SECONDS * 3) {
+        encounter.stage = "resolved";
+      }
+    }
+
+    let transitions = 0;
+    for (const [nodeId, nodeNpcs] of byNode.entries()) {
+      for (let i = 0; i < nodeNpcs.length; i += 1) {
+        for (let j = i + 1; j < nodeNpcs.length; j += 1) {
+          const a = nodeNpcs[i];
+          const b = nodeNpcs[j];
+          const key = encounterKey(a.id, b.id);
+          const hostility = factionHostility(a.faction, b.faction);
+          let encounter = conflictEncounters.get(key);
+          if (!encounter) {
+            encounter = { key, aId: a.id, bId: b.id, nodeId, stress: 0, stage: "notice", lastSeenTick: state.tick };
+            conflictEncounters.set(key, encounter);
+          }
+          const riskFactor = Math.max(0.5, (state.risk || 20) / 30);
+          encounter.nodeId = nodeId;
+          encounter.lastSeenTick = state.tick;
+          encounter.stress = Math.min(1, encounter.stress + (CONFLICT_GAIN_BASE * hostility * riskFactor));
+          const nextStage = conflictStageForStress(encounter.stress);
+          if (nextStage !== encounter.stage && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
+            encounter.stage = nextStage;
+            transitions += 1;
+            if (playerLocalToNode(nodeId)) emitConflictLine(encounter, npcById);
+          }
+        }
+      }
+    }
+
+    for (const [key, encounter] of conflictEncounters.entries()) {
+      if (encounter.stage === "resolved" || (encounter.stress <= 0.02 && state.tick - encounter.lastSeenTick > CONFLICT_HEARTBEAT_SECONDS * 6)) {
+        conflictEncounters.delete(key);
+      }
+    }
+  }
 
   function pruneRecentLineHistory() {
     while (recentNpcLineHistory.length && (state.tick - recentNpcLineHistory[0].tick) > NPC_LINE_REPEAT_WINDOW) {
@@ -279,6 +382,7 @@ export function createNpcController({
     },
     update() {
       const npcs = state.civilianNpcs || [];
+      updateConflictEncounters(npcs);
       npcs.forEach((npc) => {
         if (npc.faction === "ufp" || npc.faction === "blister" || npc.faction === "arcworks") {
           const nodeIds = Object.keys(getNodes());
@@ -308,6 +412,13 @@ export function createNpcController({
           idleNpcAtNode(npc, npc.destination || npc.at);
         }
       });
+    },
+    getConflictDebugLines() {
+      const entries = [...conflictEncounters.values()];
+      if (!entries.length) return ["dbConflict: no active NPC conflicts."];
+      return entries
+        .sort((a, b) => b.stress - a.stress)
+        .map((entry, idx) => `${idx + 1}. ${entry.aId} <-> ${entry.bId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}`);
     },
   };
 }

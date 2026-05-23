@@ -2156,6 +2156,7 @@ commandRuntime = createCommandRuntime({
   buildBuddeRouteBrief,
   playerHailFlow: PlayerHailFlow,
   tutorialGoal: TUTORIAL_GOAL,
+  npcConflictDebugLines: () => NpcController.getConflictDebugLines(),
 });
 NpcController.bootstrap();
 

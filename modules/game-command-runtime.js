@@ -38,6 +38,7 @@ export function createCommandRuntime({
   buildBuddeRouteBrief,
   playerHailFlow,
   tutorialGoal,
+  npcConflictDebugLines,
 }) {
   function resolveShipToken(token) {
     const raw = String(token || "").trim();
@@ -446,6 +447,15 @@ export function createCommandRuntime({
         const captain = npc.captainName ? ` | ${npc.captainName}` : "";
         logLine(`${idx + 1}. ${npc.callsign}${captain} | ${npc.status} | ${atLabel}${destinationLabel}`, "sys");
       });
+      return true;
+    }
+    if (command === "dbconflict") {
+      const lines = typeof npcConflictDebugLines === "function" ? npcConflictDebugLines() : [];
+      if (!lines?.length) {
+        logLine("dbConflict: conflict debug feed unavailable.", "sys");
+        return true;
+      }
+      lines.forEach((line) => logLine(line, "sys"));
       return true;
     }
 
