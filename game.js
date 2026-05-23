@@ -1210,13 +1210,14 @@ function postTripReportToInbox(ship, report) {
 function showShipsList() {
   state.ships.forEach((s, idx) => {
     const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
+    const displayStatus = s.status === "arrived_pending_report" ? "arrived" : s.status;
     const dockedSuffix = s.dockedTo ? ` -> docked to ${s.dockedTo}` : s.utilityDockedBy ? ` <- utility ${s.utilityDockedBy}` : "";
     const capacityLabel = state.currentScenario >= 3 && !s.utility
       ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
       : "";
     const showLocation = s.status === "idle" || s.status === "tasked";
     const locationSegment = showLocation ? ` @ ${s.at}` : "";
-    logLine(`${idx + 1}. ${s.id} (${s.status}${dockedSuffix})${locationSegment} | ${captain}${capacityLabel}`, "sys");
+    logLine(`${idx + 1}. ${s.id} (${displayStatus}${dockedSuffix})${locationSegment} | ${captain}${capacityLabel}`, "sys");
   });
   logLine("Select ship by typing its number or ID.", "sys");
 }
@@ -1887,9 +1888,10 @@ function assignContract(contractId, shipId) {
       () => {
         const liveContract = state.contracts.find((c) => c.id === contract.id);
         if (!liveContract || (liveContract.status !== "delivered_pending_report" && liveContract.status !== "completed")) return null;
-        return `${captain} ${speakerContext(captain)}: ${completionLine}`;
+        scheduleCharacterMessage(0, captain, completionLine, null, "comms");
+        return null;
       },
-      "comms"
+      "sys"
     );
   }
 
