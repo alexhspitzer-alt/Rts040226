@@ -49,6 +49,7 @@
         </section>
         <section id="metrics-inbox" class="tab-panel" role="tabpanel" aria-labelledby="tab-inbox" hidden>
           <h3>Inbox</h3>
+          <ul id="inbox-list" class="list"></ul>
         </section>
       </article>
 
@@ -60,7 +61,7 @@
         <div id="feed" class="feed" aria-live="polite"></div>
         <form id="cmd-form" class="cmd-form">
           <label for="cmd" class="sr-only">Command</label>
-          <input id="cmd" autocomplete="off" placeholder="Type: help" />
+          <input id="cmd" autocomplete="off" placeholder="<Select a ship>" />
           <label for="hail-action" class="sr-only">Hail action</label>
           <select id="hail-action" hidden>
             <option value="request">request</option>
@@ -72,7 +73,7 @@
           </select>
           <button type="submit">Send</button>
         </form>
-        <p class="hint">Try: <code>ships</code>, then select ship by typing its number or ID.</p>
+        <p class="hint">Type <code>"Help"</code> to see available commands.</p>
       </article>
     </section>
   </main>

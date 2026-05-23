@@ -1,0 +1,943 @@
+{
+  "metadata": {
+    "version": 1,
+    "description": "Faction-vs-faction conflict outcome line sets for staged escalation.",
+    "stages": [
+      "notice",
+      "verbal",
+      "intercept",
+      "fire",
+      "resolve"
+    ]
+  },
+  "pairs": [
+    {
+      "id": "ufp_vs_ufp",
+      "aggressorFaction": "ufp",
+      "responderFaction": "ufp",
+      "territoryBias": "ufp_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "UFP contact on scope. Ufp traffic, maintain vector and identify.",
+            "UFP acknowledges ufp transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Ufp acknowledges ufp watch.",
+            "Ufp confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Ufp vessel, your profile raises concern. Clarify cargo and destination.",
+            "UFP requests immediate route declaration from ufp traffic."
+          ],
+          "response": [
+            "Ufp provides declared route and cargo class.",
+            "Ufp disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by UFP. Reduce burn and submit to hold.",
+            "UFP orders ufp contact to inspection vector."
+          ],
+          "response": [
+            "Ufp acknowledges hold under protest.",
+            "Ufp attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "UFP warning fire pattern active. Comply now.",
+            "UFP weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Ufp reports incoming fire and evasive maneuvering.",
+            "Ufp declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "UFP disengages and logs incident for review.",
+            "UFP clears lane after contact resolution."
+          ],
+          "response": [
+            "Ufp breaks contact and resumes safer routing.",
+            "Ufp confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "ufp_vs_arcworks",
+      "aggressorFaction": "ufp",
+      "responderFaction": "arcworks",
+      "territoryBias": "ufp_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "UFP contact on scope. Arcworks traffic, maintain vector and identify.",
+            "UFP acknowledges arcworks transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Arcworks acknowledges ufp watch.",
+            "Arcworks confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Arcworks vessel, your profile raises concern. Clarify cargo and destination.",
+            "UFP requests immediate route declaration from arcworks traffic."
+          ],
+          "response": [
+            "Arcworks provides declared route and cargo class.",
+            "Arcworks disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by UFP. Reduce burn and submit to hold.",
+            "UFP orders arcworks contact to inspection vector."
+          ],
+          "response": [
+            "Arcworks acknowledges hold under protest.",
+            "Arcworks attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "UFP warning fire pattern active. Comply now.",
+            "UFP weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Arcworks reports incoming fire and evasive maneuvering.",
+            "Arcworks declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "UFP disengages and logs incident for review.",
+            "UFP clears lane after contact resolution."
+          ],
+          "response": [
+            "Arcworks breaks contact and resumes safer routing.",
+            "Arcworks confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "ufp_vs_blister",
+      "aggressorFaction": "ufp",
+      "responderFaction": "blister",
+      "territoryBias": "ufp_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "UFP contact on scope. Blister traffic, maintain vector and identify.",
+            "UFP acknowledges blister transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Blister acknowledges ufp watch.",
+            "Blister confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Blister vessel, your profile raises concern. Clarify cargo and destination.",
+            "UFP requests immediate route declaration from blister traffic."
+          ],
+          "response": [
+            "Blister provides declared route and cargo class.",
+            "Blister disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by UFP. Reduce burn and submit to hold.",
+            "UFP orders blister contact to inspection vector."
+          ],
+          "response": [
+            "Blister acknowledges hold under protest.",
+            "Blister attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "UFP warning fire pattern active. Comply now.",
+            "UFP weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Blister reports incoming fire and evasive maneuvering.",
+            "Blister declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "UFP disengages and logs incident for review.",
+            "UFP clears lane after contact resolution."
+          ],
+          "response": [
+            "Blister breaks contact and resumes safer routing.",
+            "Blister confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "ufp_vs_civilian",
+      "aggressorFaction": "ufp",
+      "responderFaction": "civilian",
+      "territoryBias": "ufp_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "UFP contact on scope. Civilian traffic, maintain vector and identify.",
+            "UFP acknowledges civilian transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Civilian acknowledges ufp watch.",
+            "Civilian confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Civilian vessel, your profile raises concern. Clarify cargo and destination.",
+            "UFP requests immediate route declaration from civilian traffic."
+          ],
+          "response": [
+            "Civilian provides declared route and cargo class.",
+            "Civilian disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by UFP. Reduce burn and submit to hold.",
+            "UFP orders civilian contact to inspection vector."
+          ],
+          "response": [
+            "Civilian acknowledges hold under protest.",
+            "Civilian attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "UFP warning fire pattern active. Comply now.",
+            "UFP weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Civilian reports incoming fire and evasive maneuvering.",
+            "Civilian declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "UFP disengages and logs incident for review.",
+            "UFP clears lane after contact resolution."
+          ],
+          "response": [
+            "Civilian breaks contact and resumes safer routing.",
+            "Civilian confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "arcworks_vs_ufp",
+      "aggressorFaction": "arcworks",
+      "responderFaction": "ufp",
+      "territoryBias": "arcworks_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "ARCWORKS contact on scope. Ufp traffic, maintain vector and identify.",
+            "ARCWORKS acknowledges ufp transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Ufp acknowledges arcworks watch.",
+            "Ufp confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Ufp vessel, your profile raises concern. Clarify cargo and destination.",
+            "ARCWORKS requests immediate route declaration from ufp traffic."
+          ],
+          "response": [
+            "Ufp provides declared route and cargo class.",
+            "Ufp disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by ARCWORKS. Reduce burn and submit to hold.",
+            "ARCWORKS orders ufp contact to inspection vector."
+          ],
+          "response": [
+            "Ufp acknowledges hold under protest.",
+            "Ufp attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "ARCWORKS warning fire pattern active. Comply now.",
+            "ARCWORKS weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Ufp reports incoming fire and evasive maneuvering.",
+            "Ufp declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "ARCWORKS disengages and logs incident for review.",
+            "ARCWORKS clears lane after contact resolution."
+          ],
+          "response": [
+            "Ufp breaks contact and resumes safer routing.",
+            "Ufp confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "arcworks_vs_arcworks",
+      "aggressorFaction": "arcworks",
+      "responderFaction": "arcworks",
+      "territoryBias": "arcworks_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "ARCWORKS contact on scope. Arcworks traffic, maintain vector and identify.",
+            "ARCWORKS acknowledges arcworks transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Arcworks acknowledges arcworks watch.",
+            "Arcworks confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Arcworks vessel, your profile raises concern. Clarify cargo and destination.",
+            "ARCWORKS requests immediate route declaration from arcworks traffic."
+          ],
+          "response": [
+            "Arcworks provides declared route and cargo class.",
+            "Arcworks disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by ARCWORKS. Reduce burn and submit to hold.",
+            "ARCWORKS orders arcworks contact to inspection vector."
+          ],
+          "response": [
+            "Arcworks acknowledges hold under protest.",
+            "Arcworks attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "ARCWORKS warning fire pattern active. Comply now.",
+            "ARCWORKS weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Arcworks reports incoming fire and evasive maneuvering.",
+            "Arcworks declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "ARCWORKS disengages and logs incident for review.",
+            "ARCWORKS clears lane after contact resolution."
+          ],
+          "response": [
+            "Arcworks breaks contact and resumes safer routing.",
+            "Arcworks confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "arcworks_vs_blister",
+      "aggressorFaction": "arcworks",
+      "responderFaction": "blister",
+      "territoryBias": "arcworks_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "ARCWORKS contact on scope. Blister traffic, maintain vector and identify.",
+            "ARCWORKS acknowledges blister transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Blister acknowledges arcworks watch.",
+            "Blister confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Blister vessel, your profile raises concern. Clarify cargo and destination.",
+            "ARCWORKS requests immediate route declaration from blister traffic."
+          ],
+          "response": [
+            "Blister provides declared route and cargo class.",
+            "Blister disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by ARCWORKS. Reduce burn and submit to hold.",
+            "ARCWORKS orders blister contact to inspection vector."
+          ],
+          "response": [
+            "Blister acknowledges hold under protest.",
+            "Blister attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "ARCWORKS warning fire pattern active. Comply now.",
+            "ARCWORKS weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Blister reports incoming fire and evasive maneuvering.",
+            "Blister declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "ARCWORKS disengages and logs incident for review.",
+            "ARCWORKS clears lane after contact resolution."
+          ],
+          "response": [
+            "Blister breaks contact and resumes safer routing.",
+            "Blister confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "arcworks_vs_civilian",
+      "aggressorFaction": "arcworks",
+      "responderFaction": "civilian",
+      "territoryBias": "arcworks_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "ARCWORKS contact on scope. Civilian traffic, maintain vector and identify.",
+            "ARCWORKS acknowledges civilian transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Civilian acknowledges arcworks watch.",
+            "Civilian confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Civilian vessel, your profile raises concern. Clarify cargo and destination.",
+            "ARCWORKS requests immediate route declaration from civilian traffic."
+          ],
+          "response": [
+            "Civilian provides declared route and cargo class.",
+            "Civilian disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by ARCWORKS. Reduce burn and submit to hold.",
+            "ARCWORKS orders civilian contact to inspection vector."
+          ],
+          "response": [
+            "Civilian acknowledges hold under protest.",
+            "Civilian attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "ARCWORKS warning fire pattern active. Comply now.",
+            "ARCWORKS weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Civilian reports incoming fire and evasive maneuvering.",
+            "Civilian declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "ARCWORKS disengages and logs incident for review.",
+            "ARCWORKS clears lane after contact resolution."
+          ],
+          "response": [
+            "Civilian breaks contact and resumes safer routing.",
+            "Civilian confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "blister_vs_ufp",
+      "aggressorFaction": "blister",
+      "responderFaction": "ufp",
+      "territoryBias": "blister_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "BLISTER contact on scope. Ufp traffic, maintain vector and identify.",
+            "BLISTER acknowledges ufp transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Ufp acknowledges blister watch.",
+            "Ufp confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Ufp vessel, your profile raises concern. Clarify cargo and destination.",
+            "BLISTER requests immediate route declaration from ufp traffic."
+          ],
+          "response": [
+            "Ufp provides declared route and cargo class.",
+            "Ufp disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by BLISTER. Reduce burn and submit to hold.",
+            "BLISTER orders ufp contact to inspection vector."
+          ],
+          "response": [
+            "Ufp acknowledges hold under protest.",
+            "Ufp attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "BLISTER warning fire pattern active. Comply now.",
+            "BLISTER weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Ufp reports incoming fire and evasive maneuvering.",
+            "Ufp declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "BLISTER disengages and logs incident for review.",
+            "BLISTER clears lane after contact resolution."
+          ],
+          "response": [
+            "Ufp breaks contact and resumes safer routing.",
+            "Ufp confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "blister_vs_arcworks",
+      "aggressorFaction": "blister",
+      "responderFaction": "arcworks",
+      "territoryBias": "blister_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "BLISTER contact on scope. Arcworks traffic, maintain vector and identify.",
+            "BLISTER acknowledges arcworks transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Arcworks acknowledges blister watch.",
+            "Arcworks confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Arcworks vessel, your profile raises concern. Clarify cargo and destination.",
+            "BLISTER requests immediate route declaration from arcworks traffic."
+          ],
+          "response": [
+            "Arcworks provides declared route and cargo class.",
+            "Arcworks disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by BLISTER. Reduce burn and submit to hold.",
+            "BLISTER orders arcworks contact to inspection vector."
+          ],
+          "response": [
+            "Arcworks acknowledges hold under protest.",
+            "Arcworks attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "BLISTER warning fire pattern active. Comply now.",
+            "BLISTER weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Arcworks reports incoming fire and evasive maneuvering.",
+            "Arcworks declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "BLISTER disengages and logs incident for review.",
+            "BLISTER clears lane after contact resolution."
+          ],
+          "response": [
+            "Arcworks breaks contact and resumes safer routing.",
+            "Arcworks confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "blister_vs_blister",
+      "aggressorFaction": "blister",
+      "responderFaction": "blister",
+      "territoryBias": "blister_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "BLISTER contact on scope. Blister traffic, maintain vector and identify.",
+            "BLISTER acknowledges blister transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Blister acknowledges blister watch.",
+            "Blister confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Blister vessel, your profile raises concern. Clarify cargo and destination.",
+            "BLISTER requests immediate route declaration from blister traffic."
+          ],
+          "response": [
+            "Blister provides declared route and cargo class.",
+            "Blister disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by BLISTER. Reduce burn and submit to hold.",
+            "BLISTER orders blister contact to inspection vector."
+          ],
+          "response": [
+            "Blister acknowledges hold under protest.",
+            "Blister attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "BLISTER warning fire pattern active. Comply now.",
+            "BLISTER weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Blister reports incoming fire and evasive maneuvering.",
+            "Blister declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "BLISTER disengages and logs incident for review.",
+            "BLISTER clears lane after contact resolution."
+          ],
+          "response": [
+            "Blister breaks contact and resumes safer routing.",
+            "Blister confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "blister_vs_civilian",
+      "aggressorFaction": "blister",
+      "responderFaction": "civilian",
+      "territoryBias": "blister_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "BLISTER contact on scope. Civilian traffic, maintain vector and identify.",
+            "BLISTER acknowledges civilian transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Civilian acknowledges blister watch.",
+            "Civilian confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Civilian vessel, your profile raises concern. Clarify cargo and destination.",
+            "BLISTER requests immediate route declaration from civilian traffic."
+          ],
+          "response": [
+            "Civilian provides declared route and cargo class.",
+            "Civilian disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by BLISTER. Reduce burn and submit to hold.",
+            "BLISTER orders civilian contact to inspection vector."
+          ],
+          "response": [
+            "Civilian acknowledges hold under protest.",
+            "Civilian attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "BLISTER warning fire pattern active. Comply now.",
+            "BLISTER weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Civilian reports incoming fire and evasive maneuvering.",
+            "Civilian declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "BLISTER disengages and logs incident for review.",
+            "BLISTER clears lane after contact resolution."
+          ],
+          "response": [
+            "Civilian breaks contact and resumes safer routing.",
+            "Civilian confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "civilian_vs_ufp",
+      "aggressorFaction": "civilian",
+      "responderFaction": "ufp",
+      "territoryBias": "neutral",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "CIVILIAN contact on scope. Ufp traffic, maintain vector and identify.",
+            "CIVILIAN acknowledges ufp transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Ufp acknowledges civilian watch.",
+            "Ufp confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Ufp vessel, your profile raises concern. Clarify cargo and destination.",
+            "CIVILIAN requests immediate route declaration from ufp traffic."
+          ],
+          "response": [
+            "Ufp provides declared route and cargo class.",
+            "Ufp disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by CIVILIAN. Reduce burn and submit to hold.",
+            "CIVILIAN orders ufp contact to inspection vector."
+          ],
+          "response": [
+            "Ufp acknowledges hold under protest.",
+            "Ufp attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "CIVILIAN warning fire pattern active. Comply now.",
+            "CIVILIAN weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Ufp reports incoming fire and evasive maneuvering.",
+            "Ufp declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "CIVILIAN disengages and logs incident for review.",
+            "CIVILIAN clears lane after contact resolution."
+          ],
+          "response": [
+            "Ufp breaks contact and resumes safer routing.",
+            "Ufp confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "civilian_vs_arcworks",
+      "aggressorFaction": "civilian",
+      "responderFaction": "arcworks",
+      "territoryBias": "neutral",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "CIVILIAN contact on scope. Arcworks traffic, maintain vector and identify.",
+            "CIVILIAN acknowledges arcworks transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Arcworks acknowledges civilian watch.",
+            "Arcworks confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Arcworks vessel, your profile raises concern. Clarify cargo and destination.",
+            "CIVILIAN requests immediate route declaration from arcworks traffic."
+          ],
+          "response": [
+            "Arcworks provides declared route and cargo class.",
+            "Arcworks disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by CIVILIAN. Reduce burn and submit to hold.",
+            "CIVILIAN orders arcworks contact to inspection vector."
+          ],
+          "response": [
+            "Arcworks acknowledges hold under protest.",
+            "Arcworks attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "CIVILIAN warning fire pattern active. Comply now.",
+            "CIVILIAN weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Arcworks reports incoming fire and evasive maneuvering.",
+            "Arcworks declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "CIVILIAN disengages and logs incident for review.",
+            "CIVILIAN clears lane after contact resolution."
+          ],
+          "response": [
+            "Arcworks breaks contact and resumes safer routing.",
+            "Arcworks confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "civilian_vs_blister",
+      "aggressorFaction": "civilian",
+      "responderFaction": "blister",
+      "territoryBias": "neutral",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "CIVILIAN contact on scope. Blister traffic, maintain vector and identify.",
+            "CIVILIAN acknowledges blister transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Blister acknowledges civilian watch.",
+            "Blister confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Blister vessel, your profile raises concern. Clarify cargo and destination.",
+            "CIVILIAN requests immediate route declaration from blister traffic."
+          ],
+          "response": [
+            "Blister provides declared route and cargo class.",
+            "Blister disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by CIVILIAN. Reduce burn and submit to hold.",
+            "CIVILIAN orders blister contact to inspection vector."
+          ],
+          "response": [
+            "Blister acknowledges hold under protest.",
+            "Blister attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "CIVILIAN warning fire pattern active. Comply now.",
+            "CIVILIAN weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Blister reports incoming fire and evasive maneuvering.",
+            "Blister declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "CIVILIAN disengages and logs incident for review.",
+            "CIVILIAN clears lane after contact resolution."
+          ],
+          "response": [
+            "Blister breaks contact and resumes safer routing.",
+            "Blister confirms separation and files incident claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "civilian_vs_civilian",
+      "aggressorFaction": "civilian",
+      "responderFaction": "civilian",
+      "territoryBias": "neutral",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "CIVILIAN contact on scope. Civilian traffic, maintain vector and identify.",
+            "CIVILIAN acknowledges civilian transponder. Continue clean and predictable burns."
+          ],
+          "response": [
+            "Civilian acknowledges civilian watch.",
+            "Civilian confirms lane intent and traffic compliance."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Civilian vessel, your profile raises concern. Clarify cargo and destination.",
+            "CIVILIAN requests immediate route declaration from civilian traffic."
+          ],
+          "response": [
+            "Civilian provides declared route and cargo class.",
+            "Civilian disputes the concern but remains on channel."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept posture initiated by CIVILIAN. Reduce burn and submit to hold.",
+            "CIVILIAN orders civilian contact to inspection vector."
+          ],
+          "response": [
+            "Civilian acknowledges hold under protest.",
+            "Civilian attempts to negotiate delay before inspection."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "CIVILIAN warning fire pattern active. Comply now.",
+            "CIVILIAN weapons release authorized on propulsion only."
+          ],
+          "response": [
+            "Civilian reports incoming fire and evasive maneuvering.",
+            "Civilian declares emergency traffic incident."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "CIVILIAN disengages and logs incident for review.",
+            "CIVILIAN clears lane after contact resolution."
+          ],
+          "response": [
+            "Civilian breaks contact and resumes safer routing.",
+            "Civilian confirms separation and files incident claim."
+          ]
+        }
+      }
+    }
+  ]
+}
