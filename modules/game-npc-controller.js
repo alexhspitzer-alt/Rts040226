@@ -177,6 +177,24 @@ const CONFLICT_RESPONDER_LINES = {
     "Disengagement acknowledged. Returning to traffic pattern.",
   ],
 };
+
+
+const NPC_SHIP_REGISTRY = {
+  "npc-hauler-1": { guns: 0, armor: 1 },
+  "npc-hauler-2": { guns: 0, armor: 1 },
+  "npc-courier-1": { guns: 0, armor: 1 },
+  "npc-courier-2": { guns: 0, armor: 1 },
+  "npc-ufp-kestrel-1": { guns: 2, armor: 2 },
+  "npc-ufp-kestrel-2": { guns: 2, armor: 2 },
+  "npc-ufp-pelican-1": { guns: 1, armor: 3 },
+  "npc-blister-dragoon-1": { guns: 2, armor: 2 },
+  "npc-blister-dragoon-2": { guns: 2, armor: 2 },
+  "npc-arcworks-mk4-1": { guns: 1, armor: 2 },
+  "npc-arcworks-mm9-1": { guns: 1, armor: 2 },
+};
+
+const DEFAULT_NPC_COMBAT_PROFILE = { guns: 0, armor: 1 };
+
 export function createNpcController({
   state,
   getNodes,
@@ -223,15 +241,20 @@ export function createNpcController({
     return "notice";
   }
 
-  function capStageForAggressor(stage, aggressorFaction) {
-    if (aggressorFaction === "civilian") {
+  function shipCombatProfile(npc) {
+    if (!npc?.id) return DEFAULT_NPC_COMBAT_PROFILE;
+    return NPC_SHIP_REGISTRY[npc.id] || DEFAULT_NPC_COMBAT_PROFILE;
+  }
+
+  function hasGuns(npc) {
+    return (shipCombatProfile(npc).guns || 0) > 0;
+  }
+
+  function capStageForAggressor(stage, aggressorNpc) {
+    if (!hasGuns(aggressorNpc)) {
       if (stage === "fire" || stage === "intercept") return "verbal";
     }
     return stage;
-  }
-
-  function isArmedFaction(faction) {
-    return faction === "ufp" || faction === "blister" || faction === "arcworks";
   }
 
   function playerLocalToNode(nodeId) {
@@ -282,8 +305,7 @@ export function createNpcController({
       "comms"
     );
 
-    const responderFaction = responder.faction || "civilian";
-    if (encounter.stage === "fire" && isArmedFaction(responderFaction) && Math.random() < 0.55) {
+    if (encounter.stage === "fire" && hasGuns(responder) && Math.random() < 0.55) {
       const counterfireLines = [
         `[Fire] to ${aggressor.callsign} @ ${location}: Returning fire. Marking your drives and breaking across your bow.`,
         `[Fire] to ${aggressor.callsign} @ ${location}: Counterfire authorized. You fire again, you drift home in pieces.`,
@@ -348,7 +370,7 @@ export function createNpcController({
           encounter.aggressorId = pairing.aggressor.id;
           encounter.responderId = pairing.responder.id;
           encounter.stress = Math.min(1, encounter.stress + (CONFLICT_GAIN_BASE * hostility * riskFactor));
-          const nextStage = capStageForAggressor(conflictStageForStress(encounter.stress), pairing.aggressor.faction);
+          const nextStage = capStageForAggressor(conflictStageForStress(encounter.stress), pairing.aggressor);
           if (nextStage !== encounter.stage && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
             encounter.stage = nextStage;
             transitions += 1;
