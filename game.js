@@ -1667,9 +1667,6 @@ function sendShip(shipId, destination) {
   if (!normalizedDestination) return logLine(`Unknown destination: ${destination}.`, "error");
   if (ship.utility && ship.status === "docked") return logLine(`${ship.id} is docked. Undock before moving independently.`, "error");
   if (ship.status !== "idle") return logLine(`${ship.id} is busy.`, "error");
-  const stationLock = trafficLockRemaining(ship.at);
-  if (stationLock > 0) return logLine(`Traffic control hold at ${nodeLabel(ship.at)}: departures blocked for ${stationLock}s.`, "error");
-
   const driveShipId = effectiveDriveShipId(ship.id);
   const uplink = oneWaySignalToShip(ship);
   const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
@@ -1745,10 +1742,6 @@ function assignContract(contractId, shipId) {
   const requestedShip = state.ships.find((s) => s.id === shipId);
   if (requestedShip?.utility) return logLine(`${shipId} cannot be assigned to contracts. Use send/dock instead.`, "error");
   if (!idleShip(shipId)) return logLine(`${shipId} is not idle.`, "error");
-  const req = state.ships.find((ss) => ss.id === shipId);
-  const stationLock = trafficLockRemaining(req?.at);
-  if (stationLock > 0) return logLine(`Traffic control hold at ${nodeLabel(req.at)}: departures blocked for ${stationLock}s.`, "error");
-
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return logLine(`Unknown ship: ${shipId}.`, "error");
   if (state.currentScenario >= 3 && Number.isInteger(contract.cargoRequirement)) {
@@ -2047,9 +2040,15 @@ function updateSimulation() {
       const returnSignal = oneWaySignalToNode(arrivalNodeId);
       const arrivalLock = trafficLockRemaining(arrivalNodeId);
       if (arrivalLock > 0) {
+        if (isStationNode(arrivalNodeId) && ship.faction === "blufreight" && !ship.trafficHoldNotified) {
+          const holdSeconds = Math.max(1, arrivalLock);
+          scheduleMessage(returnSignal, `Port Control [${nodeLabel(arrivalNodeId)}]: ${formatShipId(ship.id)}, hold short of final docking corridor. Delay in effect for approximately ${holdSeconds}s while traffic hazards are cleared.`, "comms");
+          ship.trafficHoldNotified = true;
+        }
         ship.busyUntil += 1;
         return;
       }
+      ship.trafficHoldNotified = false;
       if (!isStationNode(arrivalNodeId) && Math.random() < (1 / 3)) {
         ship.travelPlan = ship.travelPlan || {};
         ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
