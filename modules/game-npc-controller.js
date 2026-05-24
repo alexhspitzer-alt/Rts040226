@@ -230,6 +230,10 @@ export function createNpcController({
     return stage;
   }
 
+  function isArmedFaction(faction) {
+    return faction === "ufp" || faction === "blister" || faction === "arcworks";
+  }
+
   function playerLocalToNode(nodeId) {
     if (nodeId === "anchor_station") return true;
     return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "enroute"));
@@ -277,6 +281,22 @@ export function createNpcController({
       encounter.stage === "fire" ? "evading" : "arriving",
       "comms"
     );
+
+    const responderFaction = responder.faction || "civilian";
+    if (encounter.stage === "fire" && isArmedFaction(responderFaction) && Math.random() < 0.55) {
+      const counterfireLines = [
+        `[Fire] to ${aggressor.callsign} @ ${location}: Returning fire. Marking your drives and breaking across your bow.`,
+        `[Fire] to ${aggressor.callsign} @ ${location}: Counterfire authorized. You fire again, you drift home in pieces.`,
+        `[Fire] to ${aggressor.callsign} @ ${location}: Defensive guns active. You wanted a duel—now finish it fast.`,
+      ];
+      scheduleCharacterMessage(
+        3,
+        responder.captainName || responder.callsign,
+        randomPick(counterfireLines),
+        "interdicting",
+        "comms"
+      );
+    }
   }
 
   function updateConflictEncounters(npcs) {
