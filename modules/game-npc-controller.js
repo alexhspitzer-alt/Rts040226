@@ -195,6 +195,20 @@ const NPC_SHIP_REGISTRY = {
 
 const DEFAULT_NPC_COMBAT_PROFILE = { guns: 0, armor: 1 };
 
+const NPC_SHIP_REGISTRY_KEYS = {
+  "npc-hauler-1": "hauler",
+  "npc-hauler-2": "hauler",
+  "npc-courier-1": "courier",
+  "npc-courier-2": "courier",
+  "npc-ufp-kestrel-1": "kestrel",
+  "npc-ufp-kestrel-2": "kestrel",
+  "npc-ufp-pelican-1": "pelican",
+  "npc-blister-dragoon-1": "dragoon",
+  "npc-blister-dragoon-2": "dragoon",
+  "npc-arcworks-mk4-1": "mk-iv",
+  "npc-arcworks-mm9-1": "mm-ix",
+};
+
 export function createNpcController({
   state,
   getNodes,
@@ -206,6 +220,7 @@ export function createNpcController({
   playerNodeId,
   nodeLabel,
   scheduleCharacterMessage,
+  getShipRegistry,
 }) {
   const recentNpcLineHistory = [];
   const conflictEncounters = new Map();
@@ -243,6 +258,14 @@ export function createNpcController({
 
   function shipCombatProfile(npc) {
     if (!npc?.id) return DEFAULT_NPC_COMBAT_PROFILE;
+    const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
+    const registryKey = NPC_SHIP_REGISTRY_KEYS[npc.id];
+    const registryProfile = registryKey ? registry?.[registryKey] : null;
+    const guns = Number.isFinite(registryProfile?.guns) ? registryProfile.guns : null;
+    const armor = Number.isFinite(registryProfile?.armor) ? registryProfile.armor : null;
+    if (guns !== null || armor !== null) {
+      return { guns: guns ?? DEFAULT_NPC_COMBAT_PROFILE.guns, armor: armor ?? DEFAULT_NPC_COMBAT_PROFILE.armor };
+    }
     return NPC_SHIP_REGISTRY[npc.id] || DEFAULT_NPC_COMBAT_PROFILE;
   }
 
