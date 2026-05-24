@@ -3,7 +3,7 @@ const NPC_LOITER_MAX = 360;
 const NPC_LOITER_MODE = 200;
 const NPC_LINE_REPEAT_WINDOW = 120;
 const CONFLICT_HEARTBEAT_SECONDS = 10;
-const CONFLICT_DECAY_PER_HEARTBEAT = 0.06;
+const CONFLICT_DECAY_PER_HEARTBEAT_BASE = 0.09;
 const CONFLICT_GAIN_BASE = 0.12;
 const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
 
@@ -105,6 +105,78 @@ function pickLineVariant(pool, excludeIndex = -1) {
   return { value: pool[idx], index: idx };
 }
 
+
+
+const CONFLICT_AGGRESSOR_LINES = {
+  civilian: {
+    notice: [
+      "Civilian traffic advisory. Keep separation and confirm lane intent.",
+      "Watch your wake. Civilian corridor is not your sparring ring.",
+      "You are crowding commercial traffic. Correct your vector now.",
+    ],
+    verbal: [
+      "Logging unsafe conduct and escalating to port authority review.",
+      "Cute intimidation routine. I am filing this whole exchange with the marshal.",
+      "Keep flexing on civilians and enjoy your hearing transcript.",
+      "You are one bad turn from becoming an insurance case file.",
+    ],
+  },
+  armed: {
+    notice: [
+      "Contact noted. Keep your vector predictable.",
+      "You are close enough to be a problem. Fly straight.",
+      "Reading your burn. Stay disciplined and this stays quiet.",
+    ],
+    verbal: [
+      "Maintain your lane and keep your profile clean.",
+      "That was a reckless line cut. Try that again and we escalate.",
+      "You are broadcasting panic with your throttle. Fix it.",
+      "If that attitude had a transponder code, it'd be contraband.",
+    ],
+    intercept: [
+      "Reduce burn and prepare to be checked.",
+      "Kill the swagger, hold vector, and submit to traffic inspection.",
+      "You are now under active challenge. Keep hands visible and drives low.",
+    ],
+    fire: [
+      "Weapons discharge reported. Breaking hard.",
+      "Shots fired. Defensive pattern active.",
+      "You wanted noise—now you have sirens.",
+    ],
+    resolved: [
+      "Contact is disengaging.",
+      "Disengaging. Keep your ego outside this lane.",
+    ],
+  },
+};
+
+const CONFLICT_RESPONDER_LINES = {
+  notice: [
+    "Copy. Holding vector and monitoring separation.",
+    "Acknowledged. Staying in lane.",
+    "Copy traffic call. Holding steady.",
+  ],
+  verbal: [
+    "Acknowledged. Your transmission is logged.",
+    "Heard you. Keep lecturing if it helps you steer better.",
+    "Message received. Maybe save the drama for debrief.",
+    "Copy your warning. Confidence noted; skill unconfirmed.",
+  ],
+  intercept: [
+    "Complying under protest. Broadcasting this interaction to traffic control.",
+    "Complying. This challenge is being recorded and forwarded.",
+    "Holding vector under protest. Do not push this further.",
+  ],
+  fire: [
+    "Taking fire. Distress beacon active and evasive action underway.",
+    "Weapons contact! Logging telemetry and breaking away.",
+    "You opened fire. Beacon hot, lane clear, we are gone.",
+  ],
+  resolved: [
+    "Copy disengagement. Resuming planned route.",
+    "Disengagement acknowledged. Returning to traffic pattern.",
+  ],
+};
 export function createNpcController({
   state,
   getNodes,
@@ -162,6 +234,12 @@ export function createNpcController({
     if (nodeId === "anchor_station") return true;
     return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "enroute"));
   }
+  function conflictDecayPerHeartbeat() {
+    const nodeCount = Object.keys(getNodes() || {}).length;
+    const mapFactor = Math.max(0.55, Math.min(1, 8 / Math.max(1, nodeCount)));
+    return CONFLICT_DECAY_PER_HEARTBEAT_BASE * mapFactor;
+  }
+
 
   function emitConflictLine(encounter, npcById) {
     const aggressor = npcById.get(encounter.aggressorId || encounter.aId);
@@ -170,27 +248,20 @@ export function createNpcController({
     const location = titleCase(nodeLabel(encounter.nodeId));
     const stageLabel = titleCase(encounter.stage);
     const aggressorFaction = aggressor.faction || "civilian";
-    const aggressorLinesByStage = aggressorFaction === "civilian"
-      ? {
-          notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: Civilian traffic advisory. Keep separation and confirm lane intent.`,
-          verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: Logging unsafe conduct and escalating to port authority review.`,
-          intercept: `[Verbal] to ${responder.callsign} @ ${location}: Filing emergency complaint. Stand clear of civilian corridor.`,
-          fire: `[Verbal] to ${responder.callsign} @ ${location}: Distress relay active. Authorities have been notified.`,
-          resolved: `[Resolved] to ${responder.callsign} @ ${location}: Civilian traffic is disengaging.`,
-        }
-      : {
-          notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: Contact noted. Keep your vector predictable.`,
-          verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: Maintain your lane and keep your profile clean.`,
-          intercept: `[${stageLabel}] to ${responder.callsign} @ ${location}: Reduce burn and prepare to be checked.`,
-          fire: `[${stageLabel}] to ${responder.callsign} @ ${location}: Weapons discharge reported. Breaking hard.`,
-          resolved: `[Resolved] to ${responder.callsign} @ ${location}: Contact is disengaging.`,
-        };
+    const aggressorPool = aggressorFaction === "civilian" ? CONFLICT_AGGRESSOR_LINES.civilian : CONFLICT_AGGRESSOR_LINES.armed;
+    const aggressorLinesByStage = {
+      notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick(aggressorPool.notice)}`,
+      verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick(aggressorPool.verbal)}`,
+      intercept: `[${aggressorFaction === "civilian" ? "Verbal" : stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick((aggressorPool.intercept || aggressorPool.verbal))}`,
+      fire: `[${aggressorFaction === "civilian" ? "Verbal" : stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick((aggressorPool.fire || aggressorPool.verbal))}`,
+      resolved: `[Resolved] to ${responder.callsign} @ ${location}: ${randomPick((aggressorPool.resolved || ["Contact is disengaging."]))}`,
+    };
     const responderLinesByStage = {
-      notice: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: Copy. Holding vector and monitoring separation.`,
-      verbal: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: Acknowledged. Your transmission is logged.`,
-      intercept: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: Complying under protest. Broadcasting this interaction to traffic control.`,
-      fire: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: Taking fire. Distress beacon active and evasive action underway.`,
-      resolved: `[Resolved] to ${aggressor.callsign} @ ${location}: Copy disengagement. Resuming planned route.`,
+      notice: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.notice)}`,
+      verbal: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.verbal)}`,
+      intercept: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.intercept)}`,
+      fire: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.fire)}`,
+      resolved: `[Resolved] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.resolved)}`,
     };
     scheduleCharacterMessage(
       1,
@@ -221,7 +292,7 @@ export function createNpcController({
 
     // Decay existing encounters first.
     for (const encounter of conflictEncounters.values()) {
-      encounter.stress = Math.max(0, encounter.stress - CONFLICT_DECAY_PER_HEARTBEAT);
+      encounter.stress = Math.max(0, encounter.stress - conflictDecayPerHeartbeat());
       if (encounter.stress <= 0.02 && state.tick - encounter.lastSeenTick > CONFLICT_HEARTBEAT_SECONDS * 3) {
         encounter.stage = "resolved";
       }
