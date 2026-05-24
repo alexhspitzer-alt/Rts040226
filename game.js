@@ -311,6 +311,7 @@ const state = {
   inboxOpenIndexes: [],
   operatingExpenseAccrued: 0,
   operatingExpenseWindowStartTick: 0,
+  trafficLocks: {},
 };
 
 function isPlayerBankrupt() {
@@ -845,6 +846,10 @@ const NpcController = createNpcController({
   nodeLabel,
   scheduleCharacterMessage,
   getShipRegistry: () => state.shipRegistry,
+  onConflictStage: ({ stage, nodeId }) => {
+    if (stage === "intercept") applyTrafficControlLock(nodeId, 30, "intercept in progress");
+    if (stage === "fire") applyTrafficControlLock(nodeId, 120, "hazard clearance following weapons discharge");
+  },
 });
 
 function moonForNode(nodeId) {
@@ -1637,6 +1642,24 @@ function scheduleFinalApproachDockingCall(ship, {
   );
 }
 
+
+
+function isStationNode(nodeId) {
+  return /station/i.test(String(nodeId || ""));
+}
+
+function applyTrafficControlLock(nodeId, seconds, reason) {
+  if (!nodeId || !isStationNode(nodeId)) return;
+  const until = state.tick + seconds;
+  const current = state.trafficLocks[nodeId] || 0;
+  state.trafficLocks[nodeId] = Math.max(current, until);
+  logLine(`Traffic control at ${nodeLabel(nodeId)}: ${reason} (${seconds}s hold).`, "alert");
+}
+
+function trafficLockRemaining(nodeId) {
+  const until = state.trafficLocks[nodeId] || 0;
+  return Math.max(0, until - state.tick);
+}
 function sendShip(shipId, destination) {
   const ship = state.ships.find((s) => s.id === shipId);
   const normalizedDestination = normalizeNodeInput(destination);
@@ -1644,6 +1667,8 @@ function sendShip(shipId, destination) {
   if (!normalizedDestination) return logLine(`Unknown destination: ${destination}.`, "error");
   if (ship.utility && ship.status === "docked") return logLine(`${ship.id} is docked. Undock before moving independently.`, "error");
   if (ship.status !== "idle") return logLine(`${ship.id} is busy.`, "error");
+  const stationLock = trafficLockRemaining(ship.at);
+  if (stationLock > 0) return logLine(`Traffic control hold at ${nodeLabel(ship.at)}: departures blocked for ${stationLock}s.`, "error");
 
   const driveShipId = effectiveDriveShipId(ship.id);
   const uplink = oneWaySignalToShip(ship);
@@ -1686,58 +1711,22 @@ function sendShip(shipId, destination) {
     currentLegTo: normalizedDestination,
   };
 
-  const effectiveRisk = state.risk + (state.escort ? -10 : 8);
-  if (Math.random() * 100 < effectiveRisk * 0.3) {
-    const detentionNoticeAt = uplink + transitTime + oneWaySignalToNode(normalizedDestination);
-    scheduleMessage(
-      detentionNoticeAt,
-      `${ship.id} detained briefly at ${nodeLabel(normalizedDestination)}. Cargo released after inspection.`,
-      "alert"
+  scheduleTransitComms(ship, normalizedDestination, transitTime, uplink);
+  state.rep = Math.min(100, state.rep + 1);
+  if (fuelBillingActive()) state.cash -= shipFuelCost;
+  const departureComms = buildDepartureComms(ship, {
+    fromNodeId: ship.at,
+    destinationNodeId: normalizedDestination,
+    actionType: "reposition",
+  });
+  if (departureComms) {
+    scheduleCharacterMessage(
+      uplink * 2,
+      departureComms.captain,
+      departureComms.message,
+      "departing",
+      "comms"
     );
-    ship.travelPlan?.hazards?.push("Brief detention inspection");
-    state.cash -= 70;
-    state.rep -= 1;
-    const arcworksInspector = ARCWORKS_EXEC_NAME;
-    scheduleMessage(
-      uplink + Math.max(1, transitTime - 1) + oneWaySignalToNode(normalizedDestination),
-      `${arcworksInspector} ${speakerContext(arcworksInspector, "interdicting")}: ${
-        pickLine(arcworksInspector, "neutral") || "Transit reviewed under local claim."
-      }`,
-      speakerMessageType(arcworksInspector),
-    );
-    scheduleMessage(
-      detentionNoticeAt,
-      `${BASIL_NAME} ${speakerContext(BASIL_NAME)}: Order logged. ${ship.id} risk profile elevated.`,
-      "basil"
-    );
-    const captain = SHIP_CAPTAINS[ship.id];
-    if (captain) {
-      scheduleCharacterMessage(
-        detentionNoticeAt,
-        captain,
-        "We're detained for inspection. This run just went sideways.",
-        null,
-        "comms"
-      );
-    }
-  } else {
-    scheduleTransitComms(ship, normalizedDestination, transitTime, uplink);
-    state.rep = Math.min(100, state.rep + 1);
-    if (fuelBillingActive()) state.cash -= shipFuelCost;
-    const departureComms = buildDepartureComms(ship, {
-      fromNodeId: ship.at,
-      destinationNodeId: normalizedDestination,
-      actionType: "reposition",
-    });
-    if (departureComms) {
-      scheduleCharacterMessage(
-        uplink * 2,
-        departureComms.captain,
-        departureComms.message,
-        "departing",
-        "comms"
-      );
-    }
   }
 
   const fuelBillingText = fuelBillingActive() ? `fuel ${shipFuelCost}` : `fuel ${shipFuelCost} (training waiver: not charged in Scenario 1)`;
@@ -1756,6 +1745,9 @@ function assignContract(contractId, shipId) {
   const requestedShip = state.ships.find((s) => s.id === shipId);
   if (requestedShip?.utility) return logLine(`${shipId} cannot be assigned to contracts. Use send/dock instead.`, "error");
   if (!idleShip(shipId)) return logLine(`${shipId} is not idle.`, "error");
+  const req = state.ships.find((ss) => ss.id === shipId);
+  const stationLock = trafficLockRemaining(req?.at);
+  if (stationLock > 0) return logLine(`Traffic control hold at ${nodeLabel(req.at)}: departures blocked for ${stationLock}s.`, "error");
 
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return logLine(`Unknown ship: ${shipId}.`, "error");
@@ -2017,7 +2009,6 @@ function finalizeContractDelivery(contractId) {
       netProceeds,
     });
   }
-  maybeTriggerScenario2VennDetainment();
   checkScenarioCompletion();
 }
 
@@ -2054,6 +2045,16 @@ function updateSimulation() {
     if (ship.status === "enroute" && state.tick >= ship.busyUntil) {
       const arrivalNodeId = ship.destination;
       const returnSignal = oneWaySignalToNode(arrivalNodeId);
+      const arrivalLock = trafficLockRemaining(arrivalNodeId);
+      if (arrivalLock > 0) {
+        ship.busyUntil += 1;
+        return;
+      }
+      if (!isStationNode(arrivalNodeId) && Math.random() < (1 / 3)) {
+        ship.travelPlan = ship.travelPlan || {};
+        ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
+        ship.travelPlan.hazards.push("Minor transit damage from local fire-zone traffic");
+      }
       if (ship.activeContractId) {
         const contract = state.contracts.find((c) => c.id === ship.activeContractId);
         if (contract && contract.status === "assigned") {

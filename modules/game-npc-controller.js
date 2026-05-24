@@ -221,6 +221,7 @@ export function createNpcController({
   nodeLabel,
   scheduleCharacterMessage,
   getShipRegistry,
+  onConflictStage,
 }) {
   const recentNpcLineHistory = [];
   const conflictEncounters = new Map();
@@ -397,6 +398,7 @@ export function createNpcController({
           if (nextStage !== encounter.stage && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
             encounter.stage = nextStage;
             transitions += 1;
+            if (typeof onConflictStage === "function") onConflictStage({ stage: encounter.stage, nodeId, aggressorId: encounter.aggressorId, responderId: encounter.responderId });
             if (playerLocalToNode(nodeId)) emitConflictLine(encounter, npcById);
           }
         }
