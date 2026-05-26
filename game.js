@@ -64,7 +64,7 @@ const SHIP_CAPTAINS = {
   "courier-1": "Capt. Laleh Mercer",
   "shuttle-1": "Capt. Mara Ibarra",
   [TUG_ID]: "Capt. Imani Voss",
-  "tug-2": "Capt. Imani Sato",
+  "tug-2": "Capt. Pavel Ortez",
 };
 const SHIP_FIRST_MATES = {
   "hauler-1": "First Mate Mira Finch",
@@ -1046,7 +1046,8 @@ function render() {
     const capacityLabel = state.currentScenario >= 3 && !s.utility
       ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
       : "";
-    li.textContent = `${idx + 1}. ${s.id} @ ${nodeLabel(s.at)} | ${s.status}${capacityLabel}`;
+    const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
+    li.textContent = `${idx + 1}. ${s.id} @ ${nodeLabel(s.at)} | ${displayStatus}${capacityLabel}`;
     ui.fleet.appendChild(li);
   });
   if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
@@ -2090,7 +2091,8 @@ function updateSimulation() {
   });
   state.delayedMessages = state.delayedMessages.filter((m) => m.at > state.tick);
 
-  if (!state.tutorialDone && openContracts().length < targetOpenContractCount() && state.tick % 10 === 0) generateContract();
+  const contractAutoSpawnEnabled = state.tutorialDone || state.currentScenario >= 2;
+  if (contractAutoSpawnEnabled && openContracts().length < targetOpenContractCount() && state.tick % 10 === 0) generateContract();
 
   if (state.tick % 30 === 0) {
     state.risk += Math.random() < 0.5 ? 1 : -1;
