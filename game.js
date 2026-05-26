@@ -64,7 +64,7 @@ const SHIP_CAPTAINS = {
   "courier-1": "Capt. Laleh Mercer",
   "shuttle-1": "Capt. Mara Ibarra",
   [TUG_ID]: "Capt. Imani Voss",
-  "tug-2": "Capt. Mara Ibarra",
+  "tug-2": "Capt. Imani Sato",
 };
 const SHIP_FIRST_MATES = {
   "hauler-1": "First Mate Mira Finch",
