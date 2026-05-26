@@ -1317,7 +1317,7 @@ function showShipMenu(shipId) {
     const flags = state.scenario4Dialogue?.oneTimeFlags;
     const shuttleGreeting = state.scenario4Dialogue?.shipSelectionGreetings?.find((entry) => entry.id === "shuttle_captain_first_selection");
     if (shuttleGreeting && !flags?.shuttle_captain_first_selection) {
-      scheduleMessage(1, `${shuttleGreeting.speaker} ${speakerContext(shuttleGreeting.speaker)}: ${shuttleGreeting.text}`, "comms");
+      scheduleCharacterMessage(1, shuttleGreeting.speaker, shuttleGreeting.text, null, "comms");
       if (flags) flags.shuttle_captain_first_selection = true;
     }
     const buddeNote = state.scenario4Dialogue?.buddeTutorialNotes?.find((entry) => entry.id === "budde_first_shuttle_explainer");
