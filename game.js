@@ -987,6 +987,9 @@ const generateContract = (...args) => contractTools.generateContract(...args);
 function openContracts() {
   return state.contracts.filter((c) => c.status === "open");
 }
+function targetOpenContractCount() {
+  return state.currentScenario >= 4 ? 6 : 4;
+}
 
 function idleShip(shipId) {
   const ship = state.ships.find((s) => s.id === shipId);
@@ -1385,7 +1388,7 @@ function checkScenarioCompletion() {
         syncShipLocationsToActiveMap();
       }
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
-      while (openContracts().length < 4) generateContract();
+      while (openContracts().length < targetOpenContractCount()) generateContract();
       logLine("Scenario 2 unlocked: Fuel, Gravity, and Actual Consequences.", "sys");
       playScenario2Intro();
     }
@@ -1413,7 +1416,7 @@ function checkScenarioCompletion() {
       }
       addScenario3Tug();
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
-      while (openContracts().length < 4) generateContract();
+      while (openContracts().length < targetOpenContractCount()) generateContract();
       logLine("Scenario 3 unlocked: Calibration Debt and Corrected Distances.", "sys");
       playScenario3Intro();
     }
@@ -1432,7 +1435,7 @@ function checkScenarioCompletion() {
       state.completedContracts = 0;
       setupScenario4Fleet();
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
-      while (openContracts().length < 4) generateContract();
+      while (openContracts().length < targetOpenContractCount()) generateContract();
       logLine("Scenario 4 unlocked: Exclusive Distribution.", "sys");
       playScenario4Intro();
     }
@@ -2087,7 +2090,7 @@ function updateSimulation() {
   });
   state.delayedMessages = state.delayedMessages.filter((m) => m.at > state.tick);
 
-  if (!state.tutorialDone && openContracts().length < 4 && state.tick % 10 === 0) generateContract();
+  if (!state.tutorialDone && openContracts().length < targetOpenContractCount() && state.tick % 10 === 0) generateContract();
 
   if (state.tick % 30 === 0) {
     state.risk += Math.random() < 0.5 ? 1 : -1;
