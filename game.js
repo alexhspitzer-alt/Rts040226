@@ -63,7 +63,7 @@ const SHIP_CAPTAINS = {
   "hauler-3": "Capt. Jonas Vale",
   "courier-1": "Capt. Laleh Mercer",
   "shuttle-1": "Capt. Mara Ibarra",
-  [TUG_ID]: "Capt. Imani Voss",
+  [TUG_ID]: "Capt. Ruth Bell",
   "tug-2": "Capt. Pavel Ortez",
 };
 const SHIP_FIRST_MATES = {
@@ -97,7 +97,7 @@ const BLUFREIGHT_APPROACH_LINES = {
     (dest) => `Final approach to ${dest}. Requesting dock clearance; tides look clean from here.`,
     (dest) => `On final into ${dest}. Requesting clearance and a steady hand on traffic.`,
   ],
-  "Capt. Imani Voss": [
+  "Capt. Ruth Bell": [
     (dest) => `Final approach to ${dest}. Tug inbound, requesting dock clearance.`,
     (dest) => `On final for ${dest}. Requesting clearance; bringing her in smooth.`,
   ],
@@ -1302,7 +1302,7 @@ function showShipMenu(shipId) {
   if (shipId === TUG_ID && !state.tugIntroPlayed) {
     state.tugIntroPlayed = true;
     const captain = SHIP_CAPTAINS[TUG_ID];
-    logLine(`${captain} ${speakerContext(captain)}: Captain Voss here. Freighters are built to cruise efficiently, but they are poor at climbing against Indigo’s gravity with a full load. Tugs are built for that job. We carry almost no cargo, but we do not take the same uphill fuel penalty a loaded freighter does, so using a tug for the climb is much more efficient than making the freighter do it alone.`, speakerMessageType(captain));
+    logLine(`${captain} ${speakerContext(captain)}: Captain Bell here. Freighters are built to cruise efficiently, but they are poor at climbing against Indigo’s gravity with a full load. Tugs are built for that job. We carry almost no cargo, but we do not take the same uphill fuel penalty a loaded freighter does, so using a tug for the climb is much more efficient than making the freighter do it alone.`, speakerMessageType(captain));
   }
   if (state.currentScenario === 2 && !state.scenario2OnionAdvisoryPlayed) {
     state.scenario2OnionAdvisoryPlayed = true;
