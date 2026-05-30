@@ -137,11 +137,14 @@ export function createContractTools({
       while (to === from) to = origins[Math.floor(Math.random() * origins.length)];
     }
 
+    const isScenario4DeuteriumExclusive = state.currentScenario >= 4
+      && String(client || "").toLowerCase() === "ufp"
+      && String(cargoType || "").toLowerCase() === "deuterium";
     state.contracts.push({
       id: `C-${state.nextContract++}`,
       from,
       to,
-      payout: 300 + Math.floor(Math.random() * 160),
+      payout: isScenario4DeuteriumExclusive ? 0 : 300 + Math.floor(Math.random() * 160),
       status: "open",
       client,
       cargoType,

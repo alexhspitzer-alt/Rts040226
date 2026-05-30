@@ -119,7 +119,7 @@
       ]
     }
   },
-  "Capt. Imani Voss": {
+  "Capt. Ruth Bell": {
     "player_request": {
       "positive": [
         "Sure. I can do that shove cleanly.",
@@ -330,7 +330,7 @@
     }
   },
   "byCharacter": {
-    "Capt. Imani Voss": {
+    "Capt. Ruth Bell": {
       "request": [
         "Understood. If this is an uphill haul, dock me and let me pull."
       ],

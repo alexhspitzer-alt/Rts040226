@@ -1,0 +1,943 @@
+{
+  "metadata": {
+    "version": 1,
+    "description": "Faction-vs-faction conflict outcome line sets for staged escalation.",
+    "stages": [
+      "notice",
+      "verbal",
+      "intercept",
+      "fire",
+      "resolve"
+    ]
+  },
+  "pairs": [
+    {
+      "id": "ufp_vs_ufp",
+      "aggressorFaction": "ufp",
+      "responderFaction": "ufp",
+      "territoryBias": "ufp_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "UFP patrol has contact. Hold vector and identify immediately.",
+            "UFP traffic control marks your signature; maintain disciplined burns."
+          ],
+          "response": [
+            "Acknowledged patrol, identity and route attached.",
+            "Copy UFP watch, staying in regulated lane."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "You are entering controlled traffic. Clarify cargo and destination now.",
+            "UFP requests compliance statement and inspection posture."
+          ],
+          "response": [
+            "Compliance details transmitted; requesting no-delay handling.",
+            "We dispute suspicion but remain on channel and compliant."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept protocol active. Shift to inspection hold.",
+            "Reduce thrust and submit to patrol scan corridor."
+          ],
+          "response": [
+            "Holding under protest; recording for claims.",
+            "Complying with intercept instructions."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Warning fire authorized. Disable profile only.",
+            "Weapons release: target propulsion, avoid hull kill."
+          ],
+          "response": [
+            "Taking patrol fire; declaring emergency.",
+            "We are hit and maneuvering defensively."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Contact resolved. Lane restored under UFP control.",
+            "Incident logged; patrol disengaging."
+          ],
+          "response": [
+            "Separation confirmed; resuming route.",
+            "Break contact acknowledged; filing claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "ufp_vs_arcworks",
+      "aggressorFaction": "ufp",
+      "responderFaction": "arcworks",
+      "territoryBias": "ufp_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "UFP patrol has contact. Hold vector and identify immediately.",
+            "UFP traffic control marks your signature; maintain disciplined burns."
+          ],
+          "response": [
+            "Acknowledged Arcworks channel; maintaining safe profile.",
+            "Copy control, transmitting manifest class."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "You are entering controlled traffic. Clarify cargo and destination now.",
+            "UFP requests compliance statement and inspection posture."
+          ],
+          "response": [
+            "Manifest provided; requesting fair queue treatment.",
+            "We contest the hold but remain cooperative."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept protocol active. Shift to inspection hold.",
+            "Reduce thrust and submit to patrol scan corridor."
+          ],
+          "response": [
+            "Holding under protest; delay is billable.",
+            "Complying with scan order."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Warning fire authorized. Disable profile only.",
+            "Weapons release: target propulsion, avoid hull kill."
+          ],
+          "response": [
+            "Taking Arcworks fire; requesting emergency support.",
+            "Drive section impacted; issuing distress call."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Contact resolved. Lane restored under UFP control.",
+            "Incident logged; patrol disengaging."
+          ],
+          "response": [
+            "Understood, resuming route with claim noted.",
+            "Disengaging and returning to queue."
+          ]
+        }
+      }
+    },
+    {
+      "id": "ufp_vs_blister",
+      "aggressorFaction": "ufp",
+      "responderFaction": "blister",
+      "territoryBias": "ufp_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "UFP patrol has contact. Hold vector and identify immediately.",
+            "UFP traffic control marks your signature; maintain disciplined burns."
+          ],
+          "response": [
+            "Copy contact. We're not looking for trouble.",
+            "Acknowledged. Maintaining separation."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "You are entering controlled traffic. Clarify cargo and destination now.",
+            "UFP requests compliance statement and inspection posture."
+          ],
+          "response": [
+            "Manifest is sealed and legal.",
+            "Route is commercial. We decline intimidation."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept protocol active. Shift to inspection hold.",
+            "Reduce thrust and submit to patrol scan corridor."
+          ],
+          "response": [
+            "Unable to comply safely; requesting neutral escort.",
+            "Under protest, reducing burn."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Warning fire authorized. Disable profile only.",
+            "Weapons release: target propulsion, avoid hull kill."
+          ],
+          "response": [
+            "Taking hostile fire! Distress on open channel.",
+            "We are hit and evading."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Contact resolved. Lane restored under UFP control.",
+            "Incident logged; patrol disengaging."
+          ],
+          "response": [
+            "Breaking contact and limping clear.",
+            "Disengaging with losses recorded."
+          ]
+        }
+      }
+    },
+    {
+      "id": "ufp_vs_civilian",
+      "aggressorFaction": "ufp",
+      "responderFaction": "civilian",
+      "territoryBias": "ufp_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "UFP patrol has contact. Hold vector and identify immediately.",
+            "UFP traffic control marks your signature; maintain disciplined burns."
+          ],
+          "response": [
+            "Copy civilian hail; maintaining separation.",
+            "Acknowledged, channel clear."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "You are entering controlled traffic. Clarify cargo and destination now.",
+            "UFP requests compliance statement and inspection posture."
+          ],
+          "response": [
+            "Complaint received; maintain order and distance.",
+            "Acknowledged protest; hold current lane."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Intercept protocol active. Shift to inspection hold.",
+            "Reduce thrust and submit to patrol scan corridor."
+          ],
+          "response": [
+            "Understood, awaiting marshal instruction.",
+            "Acknowledged, reducing approach speed."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Warning fire authorized. Disable profile only.",
+            "Weapons release: target propulsion, avoid hull kill."
+          ],
+          "response": [
+            "Received civilian distress; deconflicting lane.",
+            "Acknowledged emergency broadcast."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Contact resolved. Lane restored under UFP control.",
+            "Incident logged; patrol disengaging."
+          ],
+          "response": [
+            "Separation confirmed.",
+            "Channel closed; continuing route."
+          ]
+        }
+      }
+    },
+    {
+      "id": "arcworks_vs_ufp",
+      "aggressorFaction": "arcworks",
+      "responderFaction": "ufp",
+      "territoryBias": "arcworks_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Arcworks control flags this contact near industrial assets.",
+            "Industrial watch marks your transponder in restricted throughput."
+          ],
+          "response": [
+            "Acknowledged patrol, identity and route attached.",
+            "Copy UFP watch, staying in regulated lane."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Industrial priority supersedes your queue. Explain intent.",
+            "Arcworks suspects embargo leakage; provide cargo trace."
+          ],
+          "response": [
+            "Compliance details transmitted; requesting no-delay handling.",
+            "We dispute suspicion but remain on channel and compliant."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Security intercept initiated. Submit to close scan.",
+            "Hold position for Arcworks compliance review."
+          ],
+          "response": [
+            "Holding under protest; recording for claims.",
+            "Complying with intercept instructions."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Non-compliance forces defensive discharge.",
+            "Containment fire pattern active on drives."
+          ],
+          "response": [
+            "Taking patrol fire; declaring emergency.",
+            "We are hit and maneuvering defensively."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Inspection closed. Industrial traffic protocol resumes.",
+            "Contact cleared under caution flag."
+          ],
+          "response": [
+            "Separation confirmed; resuming route.",
+            "Break contact acknowledged; filing claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "arcworks_vs_arcworks",
+      "aggressorFaction": "arcworks",
+      "responderFaction": "arcworks",
+      "territoryBias": "arcworks_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Arcworks control flags this contact near industrial assets.",
+            "Industrial watch marks your transponder in restricted throughput."
+          ],
+          "response": [
+            "Acknowledged Arcworks channel; maintaining safe profile.",
+            "Copy control, transmitting manifest class."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Industrial priority supersedes your queue. Explain intent.",
+            "Arcworks suspects embargo leakage; provide cargo trace."
+          ],
+          "response": [
+            "Manifest provided; requesting fair queue treatment.",
+            "We contest the hold but remain cooperative."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Security intercept initiated. Submit to close scan.",
+            "Hold position for Arcworks compliance review."
+          ],
+          "response": [
+            "Holding under protest; delay is billable.",
+            "Complying with scan order."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Non-compliance forces defensive discharge.",
+            "Containment fire pattern active on drives."
+          ],
+          "response": [
+            "Taking Arcworks fire; requesting emergency support.",
+            "Drive section impacted; issuing distress call."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Inspection closed. Industrial traffic protocol resumes.",
+            "Contact cleared under caution flag."
+          ],
+          "response": [
+            "Understood, resuming route with claim noted.",
+            "Disengaging and returning to queue."
+          ]
+        }
+      }
+    },
+    {
+      "id": "arcworks_vs_blister",
+      "aggressorFaction": "arcworks",
+      "responderFaction": "blister",
+      "territoryBias": "arcworks_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Arcworks control flags this contact near industrial assets.",
+            "Industrial watch marks your transponder in restricted throughput."
+          ],
+          "response": [
+            "Copy contact. We're not looking for trouble.",
+            "Acknowledged. Maintaining separation."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Industrial priority supersedes your queue. Explain intent.",
+            "Arcworks suspects embargo leakage; provide cargo trace."
+          ],
+          "response": [
+            "Manifest is sealed and legal.",
+            "Route is commercial. We decline intimidation."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Security intercept initiated. Submit to close scan.",
+            "Hold position for Arcworks compliance review."
+          ],
+          "response": [
+            "Unable to comply safely; requesting neutral escort.",
+            "Under protest, reducing burn."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Non-compliance forces defensive discharge.",
+            "Containment fire pattern active on drives."
+          ],
+          "response": [
+            "Taking hostile fire! Distress on open channel.",
+            "We are hit and evading."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Inspection closed. Industrial traffic protocol resumes.",
+            "Contact cleared under caution flag."
+          ],
+          "response": [
+            "Breaking contact and limping clear.",
+            "Disengaging with losses recorded."
+          ]
+        }
+      }
+    },
+    {
+      "id": "arcworks_vs_civilian",
+      "aggressorFaction": "arcworks",
+      "responderFaction": "civilian",
+      "territoryBias": "arcworks_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Arcworks control flags this contact near industrial assets.",
+            "Industrial watch marks your transponder in restricted throughput."
+          ],
+          "response": [
+            "Copy civilian hail; maintaining separation.",
+            "Acknowledged, channel clear."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Industrial priority supersedes your queue. Explain intent.",
+            "Arcworks suspects embargo leakage; provide cargo trace."
+          ],
+          "response": [
+            "Complaint received; maintain order and distance.",
+            "Acknowledged protest; hold current lane."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Security intercept initiated. Submit to close scan.",
+            "Hold position for Arcworks compliance review."
+          ],
+          "response": [
+            "Understood, awaiting marshal instruction.",
+            "Acknowledged, reducing approach speed."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Non-compliance forces defensive discharge.",
+            "Containment fire pattern active on drives."
+          ],
+          "response": [
+            "Received civilian distress; deconflicting lane.",
+            "Acknowledged emergency broadcast."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Inspection closed. Industrial traffic protocol resumes.",
+            "Contact cleared under caution flag."
+          ],
+          "response": [
+            "Separation confirmed.",
+            "Channel closed; continuing route."
+          ]
+        }
+      }
+    },
+    {
+      "id": "blister_vs_ufp",
+      "aggressorFaction": "blister",
+      "responderFaction": "ufp",
+      "territoryBias": "blister_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Blister marks you on local channel. Fly careful.",
+            "Raider scope has your signature. Keep transmissions open."
+          ],
+          "response": [
+            "Acknowledged patrol, identity and route attached.",
+            "Copy UFP watch, staying in regulated lane."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Transmit manifest and sponsor now.",
+            "You're in our lane; answer before this gets expensive."
+          ],
+          "response": [
+            "Compliance details transmitted; requesting no-delay handling.",
+            "We dispute suspicion but remain on channel and compliant."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Cut thrust and drift for inspection.",
+            "Boarding posture demanded. Do not run."
+          ],
+          "response": [
+            "Holding under protest; recording for claims.",
+            "Complying with intercept instructions."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Warning shots out. Next spread disables engines.",
+            "Weapons hot. We'll force compliance."
+          ],
+          "response": [
+            "Taking patrol fire; declaring emergency.",
+            "We are hit and maneuvering defensively."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Collection window closed. Break contact.",
+            "Disengaging after compliance extraction."
+          ],
+          "response": [
+            "Separation confirmed; resuming route.",
+            "Break contact acknowledged; filing claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "blister_vs_arcworks",
+      "aggressorFaction": "blister",
+      "responderFaction": "arcworks",
+      "territoryBias": "blister_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Blister marks you on local channel. Fly careful.",
+            "Raider scope has your signature. Keep transmissions open."
+          ],
+          "response": [
+            "Acknowledged Arcworks channel; maintaining safe profile.",
+            "Copy control, transmitting manifest class."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Transmit manifest and sponsor now.",
+            "You're in our lane; answer before this gets expensive."
+          ],
+          "response": [
+            "Manifest provided; requesting fair queue treatment.",
+            "We contest the hold but remain cooperative."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Cut thrust and drift for inspection.",
+            "Boarding posture demanded. Do not run."
+          ],
+          "response": [
+            "Holding under protest; delay is billable.",
+            "Complying with scan order."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Warning shots out. Next spread disables engines.",
+            "Weapons hot. We'll force compliance."
+          ],
+          "response": [
+            "Taking Arcworks fire; requesting emergency support.",
+            "Drive section impacted; issuing distress call."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Collection window closed. Break contact.",
+            "Disengaging after compliance extraction."
+          ],
+          "response": [
+            "Understood, resuming route with claim noted.",
+            "Disengaging and returning to queue."
+          ]
+        }
+      }
+    },
+    {
+      "id": "blister_vs_blister",
+      "aggressorFaction": "blister",
+      "responderFaction": "blister",
+      "territoryBias": "blister_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Blister marks you on local channel. Fly careful.",
+            "Raider scope has your signature. Keep transmissions open."
+          ],
+          "response": [
+            "Copy contact. We're not looking for trouble.",
+            "Acknowledged. Maintaining separation."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Transmit manifest and sponsor now.",
+            "You're in our lane; answer before this gets expensive."
+          ],
+          "response": [
+            "Manifest is sealed and legal.",
+            "Route is commercial. We decline intimidation."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Cut thrust and drift for inspection.",
+            "Boarding posture demanded. Do not run."
+          ],
+          "response": [
+            "Unable to comply safely; requesting neutral escort.",
+            "Under protest, reducing burn."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Warning shots out. Next spread disables engines.",
+            "Weapons hot. We'll force compliance."
+          ],
+          "response": [
+            "Taking hostile fire! Distress on open channel.",
+            "We are hit and evading."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Collection window closed. Break contact.",
+            "Disengaging after compliance extraction."
+          ],
+          "response": [
+            "Breaking contact and limping clear.",
+            "Disengaging with losses recorded."
+          ]
+        }
+      }
+    },
+    {
+      "id": "blister_vs_civilian",
+      "aggressorFaction": "blister",
+      "responderFaction": "civilian",
+      "territoryBias": "blister_home",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Blister marks you on local channel. Fly careful.",
+            "Raider scope has your signature. Keep transmissions open."
+          ],
+          "response": [
+            "Copy civilian hail; maintaining separation.",
+            "Acknowledged, channel clear."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "Transmit manifest and sponsor now.",
+            "You're in our lane; answer before this gets expensive."
+          ],
+          "response": [
+            "Complaint received; maintain order and distance.",
+            "Acknowledged protest; hold current lane."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Cut thrust and drift for inspection.",
+            "Boarding posture demanded. Do not run."
+          ],
+          "response": [
+            "Understood, awaiting marshal instruction.",
+            "Acknowledged, reducing approach speed."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "Warning shots out. Next spread disables engines.",
+            "Weapons hot. We'll force compliance."
+          ],
+          "response": [
+            "Received civilian distress; deconflicting lane.",
+            "Acknowledged emergency broadcast."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Collection window closed. Break contact.",
+            "Disengaging after compliance extraction."
+          ],
+          "response": [
+            "Separation confirmed.",
+            "Channel closed; continuing route."
+          ]
+        }
+      }
+    },
+    {
+      "id": "civilian_vs_ufp",
+      "aggressorFaction": "civilian",
+      "responderFaction": "ufp",
+      "territoryBias": "neutral",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Civilian traffic requests channel courtesy and spacing.",
+            "Commercial vessel announcing approach and conflict avoidance."
+          ],
+          "response": [
+            "Acknowledged patrol, identity and route attached.",
+            "Copy UFP watch, staying in regulated lane."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "You're pushing us out of berth order\u2014this is noted.",
+            "Commercial protest logged over unsafe priority behavior."
+          ],
+          "response": [
+            "Compliance details transmitted; requesting no-delay handling.",
+            "We dispute suspicion but remain on channel and compliant."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Civilian block posture only\u2014requesting station marshal review.",
+            "Holding lane and requesting arbitration before movement."
+          ],
+          "response": [
+            "Holding under protest; recording for claims.",
+            "Complying with intercept instructions."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "We are unarmed\u2014issuing panic channel only.",
+            "No weapons available; broadcasting emergency."
+          ],
+          "response": [
+            "Taking patrol fire; declaring emergency.",
+            "We are hit and maneuvering defensively."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Dispute logged. Resuming commercial traffic.",
+            "Standing down and returning to schedule."
+          ],
+          "response": [
+            "Separation confirmed; resuming route.",
+            "Break contact acknowledged; filing claim."
+          ]
+        }
+      }
+    },
+    {
+      "id": "civilian_vs_arcworks",
+      "aggressorFaction": "civilian",
+      "responderFaction": "arcworks",
+      "territoryBias": "neutral",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Civilian traffic requests channel courtesy and spacing.",
+            "Commercial vessel announcing approach and conflict avoidance."
+          ],
+          "response": [
+            "Acknowledged Arcworks channel; maintaining safe profile.",
+            "Copy control, transmitting manifest class."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "You're pushing us out of berth order\u2014this is noted.",
+            "Commercial protest logged over unsafe priority behavior."
+          ],
+          "response": [
+            "Manifest provided; requesting fair queue treatment.",
+            "We contest the hold but remain cooperative."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Civilian block posture only\u2014requesting station marshal review.",
+            "Holding lane and requesting arbitration before movement."
+          ],
+          "response": [
+            "Holding under protest; delay is billable.",
+            "Complying with scan order."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "We are unarmed\u2014issuing panic channel only.",
+            "No weapons available; broadcasting emergency."
+          ],
+          "response": [
+            "Taking Arcworks fire; requesting emergency support.",
+            "Drive section impacted; issuing distress call."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Dispute logged. Resuming commercial traffic.",
+            "Standing down and returning to schedule."
+          ],
+          "response": [
+            "Understood, resuming route with claim noted.",
+            "Disengaging and returning to queue."
+          ]
+        }
+      }
+    },
+    {
+      "id": "civilian_vs_blister",
+      "aggressorFaction": "civilian",
+      "responderFaction": "blister",
+      "territoryBias": "neutral",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Civilian traffic requests channel courtesy and spacing.",
+            "Commercial vessel announcing approach and conflict avoidance."
+          ],
+          "response": [
+            "Copy contact. We're not looking for trouble.",
+            "Acknowledged. Maintaining separation."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "You're pushing us out of berth order\u2014this is noted.",
+            "Commercial protest logged over unsafe priority behavior."
+          ],
+          "response": [
+            "Manifest is sealed and legal.",
+            "Route is commercial. We decline intimidation."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Civilian block posture only\u2014requesting station marshal review.",
+            "Holding lane and requesting arbitration before movement."
+          ],
+          "response": [
+            "Unable to comply safely; requesting neutral escort.",
+            "Under protest, reducing burn."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "We are unarmed\u2014issuing panic channel only.",
+            "No weapons available; broadcasting emergency."
+          ],
+          "response": [
+            "Taking hostile fire! Distress on open channel.",
+            "We are hit and evading."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Dispute logged. Resuming commercial traffic.",
+            "Standing down and returning to schedule."
+          ],
+          "response": [
+            "Breaking contact and limping clear.",
+            "Disengaging with losses recorded."
+          ]
+        }
+      }
+    },
+    {
+      "id": "civilian_vs_civilian",
+      "aggressorFaction": "civilian",
+      "responderFaction": "civilian",
+      "territoryBias": "neutral",
+      "lines": {
+        "notice": {
+          "aggressor": [
+            "Civilian traffic requests channel courtesy and spacing.",
+            "Commercial vessel announcing approach and conflict avoidance."
+          ],
+          "response": [
+            "Copy civilian hail; maintaining separation.",
+            "Acknowledged, channel clear."
+          ]
+        },
+        "verbal": {
+          "aggressor": [
+            "You're pushing us out of berth order\u2014this is noted.",
+            "Commercial protest logged over unsafe priority behavior."
+          ],
+          "response": [
+            "Complaint received; maintain order and distance.",
+            "Acknowledged protest; hold current lane."
+          ]
+        },
+        "intercept": {
+          "aggressor": [
+            "Civilian block posture only\u2014requesting station marshal review.",
+            "Holding lane and requesting arbitration before movement."
+          ],
+          "response": [
+            "Understood, awaiting marshal instruction.",
+            "Acknowledged, reducing approach speed."
+          ]
+        },
+        "fire": {
+          "aggressor": [
+            "We are unarmed\u2014issuing panic channel only.",
+            "No weapons available; broadcasting emergency."
+          ],
+          "response": [
+            "Received civilian distress; deconflicting lane.",
+            "Acknowledged emergency broadcast."
+          ]
+        },
+        "resolve": {
+          "aggressor": [
+            "Dispute logged. Resuming commercial traffic.",
+            "Standing down and returning to schedule."
+          ],
+          "response": [
+            "Separation confirmed.",
+            "Channel closed; continuing route."
+          ]
+        }
+      }
+    }
+  ]
+}
