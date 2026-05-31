@@ -122,7 +122,7 @@
         },
         {
           "name": "Arcworks Militia Barracks",
-          "description": "Arcworks Militia Barracks on Onion Skin represent the point where corporate logistics and armed enforcement stop pretending to be separate. Barracks are rarely complicated in purpose, which is part of what makes them useful as setting texture. They tell you immediately what kind of authority expects to remain present. In a system like Indigo, militia facilities also imply escort culture, inspections, seizure capacity, and an institutional willingness to treat local conflict as part of ordinary operations. Even if players are not delivering directly to barracks often, their presence changes how nearby routes feel. A map node that includes a militia barracks is never merely industrial."
+          "description": "Arcworks Militia Barracks on Onion Skin represent the point where corporate logistics and armed enforcement stop pretending to be separate. Barracks are rarely complicated in purpose, which is part of what makes them useful as setting texture. They tell you immediately what kind of authority expects to remain present. In a system like Indigo, militia facilities also imply escort culture, route control, seizure capacity, and an institutional willingness to treat local conflict as part of ordinary operations. Even if players are not delivering directly to barracks often, their presence changes how nearby routes feel. A map node that includes a militia barracks is never merely industrial."
         },
         {
           "name": "UFP Indigo System Administration",
@@ -265,7 +265,7 @@
       },
       {
         "name": "VIP",
-        "description": "VIP cargo is the wonderfully dishonest term for people important enough to become freight. In your system it is always size one and can belong to any client type, which makes it mechanically distinct and narratively flexible. VIP contracts can represent diplomats, inspectors, executives, scientists, auditors, political officers, or anyone else whose body carries more strategic inconvenience than a crate does. They pair naturally with shuttles because the cargo is small, timing matters, and comfort is often implied whether deserved or not. VIP work helps a logistics game feel less purely industrial. Sometimes the thing being moved is not fuel or munitions. It is a person with rank, leverage, or an appointment they intend to survive."
+        "description": "VIP cargo is the wonderfully dishonest term for people important enough to become freight. In your system it is always size one and can belong to any client type, which makes it mechanically distinct and narratively flexible. VIP contracts can represent diplomats, executives, scientists, auditors, political officers, or anyone else whose body carries more strategic inconvenience than a crate does. They pair naturally with shuttles because the cargo is small, timing matters, and comfort is often implied whether deserved or not. VIP work helps a logistics game feel less purely industrial. Sometimes the thing being moved is not fuel or munitions. It is a person with rank, leverage, or an appointment they intend to survive."
       }
     ],
     "characters": [

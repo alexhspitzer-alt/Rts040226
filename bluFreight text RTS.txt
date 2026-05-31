@@ -32,7 +32,7 @@ Arcworks
 Arcworks is a small but locally influential mining corporation that had operated in Indigo before the UFP takeover and regarded Indigo’s rings and moons as effectively its own territory. From Arcworks’ point of view, it built infrastructure, accepted frontier risk, invested early, and established local control long before the UFP arrived to formalize ownership under distant rules. It sees the Union’s seizure as an illegitimate expropriation dressed up as market stabilization.
 
 
-Arcworks is hostile to UFP-backed logistics, including bluFreight, because they represent Union-backed legitimacy in a system Arcworks still considers partly its own. However, Arcworks is not nihilistic. It will often treat bluFreight shipping as a legitimate target for detention, seizure, inspection, or arrest rather than destruction. A commercial freighter carrying food or ordinary goods may be ignored, redirected, or impounded rather than blown apart. Arcworks still depends on the system functioning; miners need food, oxygen, and supply chains too.
+Arcworks is hostile to UFP-backed logistics, including bluFreight, because they represent Union-backed legitimacy in a system Arcworks still considers partly its own. However, Arcworks is not nihilistic. It will often treat bluFreight shipping as a pressure point for claims, delays, or legal threats rather than outright destruction. A commercial freighter carrying food or ordinary goods may be ignored or redirected rather than blown apart. Arcworks still depends on the system functioning; miners need food, oxygen, and supply chains too.
 
 
 Blister
@@ -47,7 +47,7 @@ Blister can be dangerous, but it is often more open to negotiation than its repu
 Nature of the War
 
 
-The conflict in Indigo is constrained violence rather than total war. All major players need the system to keep working at some level. No one truly benefits if ring infrastructure is destroyed, mining collapses, stations starve, or deuterium exports stop entirely. As a result, much of the fighting takes the form of seizure, embargo, detention, convoy harassment, dock denial, raids, and siege pressure. Cargo disappears. Ships are detained. Stations are surrounded. Legal language becomes a weapon. Insurance becomes strategy.
+The conflict in Indigo is constrained violence rather than total war. All major players need the system to keep working at some level. No one truly benefits if ring infrastructure is destroyed, mining collapses, stations starve, or deuterium exports stop entirely. As a result, much of the fighting takes the form of seizure, embargo, convoy harassment, dock denial, raids, and siege pressure. Cargo disappears. Stations are surrounded. Legal language becomes a weapon. Insurance becomes strategy.
 
 
 Because space is large and difficult to observe, the war also thrives on plausible deniability. A convoy can vanish and multiple factions can offer self-serving explanations. A raid may be blamed on pirates, a rogue warlord, a privateer, or a “security misunderstanding.” That ambiguity is part of the system.
@@ -89,7 +89,7 @@ Their work involves prioritizing deliveries, routing convoys, managing escort ex
 Tone
 
 
-Indigo is not a heroic frontier or a glamorous star empire. It is a cold, dim, bureaucratically violent system held together by fuel demand, commercial habit, and armed self-interest. Long stretches of darkness and silence are punctuated by probe detections, convoy losses, inspections, raids, and hurried contractual decisions. The setting’s mood is less “epic space opera” and more “war-zone commercial shipping under uncertain sovereignty.”
+Indigo is not a heroic frontier or a glamorous star empire. It is a cold, dim, bureaucratically violent system held together by fuel demand, commercial habit, and armed self-interest. Long stretches of darkness and silence are punctuated by probe detections, convoy losses, raids, and hurried contractual decisions. The setting’s mood is less “epic space opera” and more “war-zone commercial shipping under uncertain sovereignty.”
 
 
 If you want, I can turn this next into either a one-page setting bible, a faction dossier, or an in-universe corporate briefing.
@@ -272,7 +272,7 @@ The current design philosophy is to keep movement simple and only add complexity
 Combat and Threat Model
 
 
-The player is not expected to command tactical ship combat directly. Combat exists in the setting, but from the gameplay perspective it mostly appears as risk, route denial, interception, detention, siege, seizure, convoy loss, or station pressure.
+The player is not expected to command tactical ship combat directly. Combat exists in the setting, but from the gameplay perspective it mostly appears as risk, route denial, interception, siege, seizure, convoy loss, or station pressure.
 
 
 When violence occurs, it is usually because:
@@ -301,7 +301,7 @@ route risk
 insurance rates
 
 
-convoy detention
+convoy delay
 
 
 cargo seizure
@@ -356,7 +356,7 @@ Economic and Political Layer
 Logistics choices are not purely operational. They also affect and are constrained by faction politics, client obligations, and insurance.
 
 
-The player works for bluFreight, which leans explicitly toward UFP and often receives UFP patrol protection. That helps with some threats and increases others. Arcworks may consider bluFreight a legitimate target for detention or cargo seizure, while Blister may be more negotiable, especially if the convoy is well insured.
+The player works for bluFreight, which leans explicitly toward UFP and often receives UFP patrol protection. That helps with some threats and increases others. Arcworks may consider bluFreight a legitimate target for pressure or cargo seizure, while Blister may be more negotiable, especially if the convoy is well insured.
 
 
 This means many player decisions involve balancing:

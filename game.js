@@ -42,7 +42,6 @@ const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
 const SCENARIO_PATH = "./scenarioDat.json";
-const PLAYER_REQUESTS_PATH = "./indigo_dialogue_player_requests.json";
 const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
 const LEGACY_NODE_ALIASES = {
   anchor: "anchor_station",
@@ -53,7 +52,7 @@ const LEGACY_NODE_ALIASES = {
   driftbay: "deep_space_transfer_lane",
 };
 const DEFAULT_LORE_SUMMARY =
-  "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks inspections, Blister deals, and insurance-driven risk management.";
+  "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks claims, Blister deals, and insurance-driven risk management.";
 const SCENARIO3_CAPACITY_BRIEFING =
   "Scenario 3 routing now includes explicit cargo tonnage. Contract cargo is shown as T units (for example, 6T). Ship capability is shown as XT cap (for example, 3T cap). Yes, this is also where I confirm the Courier still cannot carry extra munitions in the lavatory, despite management's recurring optimism.";
 
@@ -294,17 +293,11 @@ const state = {
   playerRequestDialogue: null,
   almanacEntries: null,
   tugIntroPlayed: false,
-  scenario2VennDetainmentTriggered: false,
-  scenario2DetainedShipId: null,
-  scenario2DetainmentResolved: false,
-  scenario2VennRelocating: false,
   buddeIntroduced: false,
-  scenario2OnionAdvisoryPlayed: false,
   scenario3CapacityBriefed: false,
   scenario3Completed: false,
   scenario3TowRequestPlayed: false,
   scenario3TowRequestDeferred: false,
-  onionSkinInspectionWaived: false,
   lastLatencyReminderTick: -Infinity,
   consoleReadyAtMs: Date.now(),
   respondingToCommand: false,
@@ -533,13 +526,12 @@ let PlayerHailFlow;
 async function loadReferenceData() {
   try {
     const noCache = { cache: "no-store" };
-    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, playerRequestsResponse, almanacResponse, shipRegistryResponse] = await Promise.all([
+    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse] = await Promise.all([
       fetch("./bluFreight%20text%20RTS.txt", noCache),
       fetch("./indigo_dialogue_characters.json", noCache),
       fetch("./map.json", noCache),
       fetch("./budde.json", noCache),
       fetch(SCENARIO_PATH, noCache),
-      fetch(PLAYER_REQUESTS_PATH, noCache),
       fetch(ALMANAC_PATH, noCache),
       fetch("./ship_registry.json", noCache),
     ]);
@@ -551,7 +543,9 @@ async function loadReferenceData() {
     }
 
     if (dialogueResponse.ok) {
-      state.dialogueDb = await dialogueResponse.json();
+      const dialogueData = await dialogueResponse.json();
+      state.dialogueDb = dialogueData?.characters || dialogueData;
+      state.playerRequestDialogue = dialogueData?.hailResponses || {};
     }
 
     if (mapResponse.ok) {
@@ -586,9 +580,6 @@ async function loadReferenceData() {
       state.scenario4Dialogue = scenario?.scenario4_dialogue || null;
     }
 
-    if (playerRequestsResponse.ok) {
-      state.playerRequestDialogue = await playerRequestsResponse.json();
-    }
 
     if (almanacResponse.ok) {
       const parsedAlmanac = await almanacResponse.json();
@@ -1354,15 +1345,6 @@ function showShipMenu(shipId) {
     const captain = SHIP_CAPTAINS[TUG_ID];
     logLine(`${captain} ${speakerContext(captain)}: Captain Bell here. Freighters are built to cruise efficiently, but they are poor at climbing against Indigo’s gravity with a full load. Tugs are built for that job. We carry almost no cargo, but we do not take the same uphill fuel penalty a loaded freighter does, so using a tug for the climb is much more efficient than making the freighter do it alone.`, speakerMessageType(captain));
   }
-  if (state.currentScenario === 2 && !state.scenario2OnionAdvisoryPlayed) {
-    state.scenario2OnionAdvisoryPlayed = true;
-    const advisory = "Civilian advisory: Onion Skin is contested space. Traffic is advised to get docking permission before embarking.";
-    scheduleMessage(
-      1,
-      `Port Marshal Celia Wren ${speakerContext("Port Marshal Celia Wren")}: ${advisory}`,
-      "comms"
-    );
-  }
   if (state.currentScenario >= 3 && !state.scenario3CapacityBriefed) {
     state.scenario3CapacityBriefed = true;
     basilInform(SCENARIO3_CAPACITY_BRIEFING);
@@ -1387,16 +1369,6 @@ function showShipMenu(shipId) {
     menuOptions = "D dock, S send, I information, R recall, B back to ship list.";
   }
   logLine(`${shipId} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
-}
-
-function isOnionSkinLocation(nodeId) {
-  return state.currentScenario === 2 && nodes[nodeId]?.moon === "onion_skin";
-}
-
-function onionSkinInspectionDelay(destinations = []) {
-  if (state.currentScenario !== 2 || state.onionSkinInspectionWaived) return 0;
-  const onionStops = destinations.filter((nodeId) => isOnionSkinLocation(nodeId)).length;
-  return onionStops * 180;
 }
 
 function showContractsForSelectedShip() {
@@ -1494,111 +1466,9 @@ function checkScenarioCompletion() {
   }
 }
 
-function maybeTriggerScenario2VennDetainment() {
-  if (state.currentScenario !== 2) return;
-  if (state.scenario2VennDetainmentTriggered) return;
-  if (state.completedContracts < 2) return;
-
-  const detainedShip = state.ships.find((ship) => ship.status === "idle" && nodes[ship.at]?.moon === "oxblood");
-  if (!detainedShip) return;
-
-  state.scenario2VennDetainmentTriggered = true;
-  state.scenario2DetainedShipId = detainedShip.id;
-  detainedShip.status = "detained";
-  detainedShip.destination = undefined;
-  detainedShip.departAt = 0;
-  detainedShip.busyUntil = 0;
-  detainedShip.lastContactTick = state.tick;
-
-  const venn = VENN_NAME;
-  logLine(
-    `${venn} ${speakerContext(venn)}: Nice hull you left at Oxblood. I'm impounding ${detainedShip.id} under local claim. Consider it unavailable.`,
-    speakerMessageType(venn)
-  );
-  const detainedCaptain = SHIP_CAPTAINS[detainedShip.id];
-  if (detainedCaptain) {
-    logLine(
-      `${detainedCaptain} ${speakerContext(detainedCaptain)}: We've been pinned and boarded. This detainment is bad news.`,
-      speakerMessageType(detainedCaptain)
-    );
-  }
-  basilInform(`${formatShipId(detainedShip.id)} has been detained at Oxblood and is unavailable for dispatch.`);
-}
-
-function releaseScenario2DetainedShip(reasonText = null) {
-  if (state.scenario2DetainmentResolved) return;
-  const ship = state.ships.find((entry) => entry.id === state.scenario2DetainedShipId && entry.status === "detained");
-  if (!ship) return;
-  ship.status = "idle";
-  ship.departAt = 0;
-  ship.busyUntil = 0;
-  ship.destination = undefined;
-  ship.lastContactTick = state.tick;
-  state.scenario2DetainmentResolved = true;
-  if (reasonText) logLine(reasonText, speakerMessageType(VENN_NAME));
-  basilInform(`${formatShipId(ship.id)} has been released and is available for dispatch.`);
-  beginVennMoveToEndOfDay();
-}
-
-function beginVennMoveToEndOfDay() {
-  if (state.scenario2VennRelocating) return;
-  if (state.currentScenario !== 2) return;
-  const destinationNode = Object.keys(nodes).find((nodeId) => nodes[nodeId]?.moon === "end_of_day");
-  const currentNode = CONTACT_PROFILES[VENN_NAME]?.nodeId;
-  if (!destinationNode || !currentNode) return;
-  state.scenario2VennRelocating = true;
-  const routeSpan = safeRouteDistance(currentNode, destinationNode);
-  const transit = travelTimeForRoute(VENN_NAME, routeSpan);
-  logLine(`${VENN_NAME} ${speakerContext(VENN_NAME)}: Payment received. We are departing for End-of-Day.`, speakerMessageType(VENN_NAME));
-  scheduleMessage(
-    transit,
-    () => {
-      CONTACT_PROFILES[VENN_NAME].nodeId = destinationNode;
-      return `${VENN_NAME} ${speakerContext(VENN_NAME)}: End-of-Day reached.`;
-    },
-    speakerMessageType(VENN_NAME)
-  );
-}
-
-function handleScenario2DetainmentHailResolution(targetName, action) {
-  if (state.currentScenario !== 2) return false;
-  if (!state.scenario2DetainedShipId || state.scenario2DetainmentResolved) return false;
-
-  if (targetName === THORNE_NAME && action === "request") {
-    const oxbloodNode = Object.keys(nodes).find((nodeId) => nodes[nodeId]?.moon === "oxblood");
-    const currentNode = CONTACT_PROFILES[THORNE_NAME]?.nodeId;
-    if (oxbloodNode && currentNode) {
-      const routeSpan = safeRouteDistance(currentNode, oxbloodNode);
-      const transit = travelTimeForRoute(THORNE_NAME, routeSpan);
-      logLine(`${THORNE_NAME} ${speakerContext(THORNE_NAME)}: Request accepted. We'll lean on these Blister thugs until they let your ship go. Kestrel is burning for Oxblood now.`, speakerMessageType(THORNE_NAME));
-      scheduleMessage(
-        transit,
-        () => {
-          CONTACT_PROFILES[THORNE_NAME].nodeId = oxbloodNode;
-          releaseScenario2DetainedShip(`${VENN_NAME} ${speakerContext(VENN_NAME)}: Fine. I'm leaving on an important resupply for Blister colonists, entirely unrelated to those UFP warships suddenly overhead.`);
-          return `${THORNE_NAME} ${speakerContext(THORNE_NAME)}: Arrived Oxblood. Detainment dispute resolved.`;
-        },
-        speakerMessageType(THORNE_NAME)
-      );
-      return true;
-    }
-  }
-
-  if (targetName === VENN_NAME && action === "negotiate") {
-    state.cash -= 1000;
-    releaseScenario2DetainedShip(`${VENN_NAME} ${speakerContext(VENN_NAME)}: Duties, licensing, and necessary restitution collected: $1000. Your ship is released.`);
-    return true;
-  }
-
-  return false;
-}
 
 PlayerHailFlow = createPlayerHailFlow({
-  state,
   ui,
-  arcworksExecName: ARCWORKS_EXEC_NAME,
-  handleScenario2DetainmentHailResolution,
-  basilInform,
   logLine,
   speakerContext,
   speakerMessageType,
@@ -1725,8 +1595,7 @@ function sendShip(shipId, destination) {
   const driveShipId = effectiveDriveShipId(ship.id);
   const uplink = oneWaySignalToShip(ship);
   const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
-  const inspectionDelay = onionSkinInspectionDelay([normalizedDestination]);
-  const transitTime = travelTimeForRoute(driveShipId, routeSpan) + inspectionDelay;
+  const transitTime = travelTimeForRoute(driveShipId, routeSpan);
   const shipFuelCost = fuelCostForRoute(ship.at, normalizedDestination, driveShipId);
   const allChoices = candidateDestinationsForShip(ship.id)
     .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId, driveShipId) }))
@@ -1740,9 +1609,6 @@ function sendShip(shipId, destination) {
     } else {
       buddeSpeak("wiseChoice", "Wise and efficient choice. Your selection matches my recommendation.");
     }
-  }
-  if (inspectionDelay > 0) {
-    basilInform(`Arcworks traffic control adds mandatory inspection delay: +${inspectionDelay}s for Onion Skin arrival clearance.`);
   }
   basilCommsLatencyLine(ship, "orders");
   ship.status = "tasked";
@@ -1813,12 +1679,8 @@ function assignContract(contractId, shipId) {
   basilCommsLatencyLine(ship, "orders");
   const toPickupSpan = safeRouteDistance(ship.at, contract.from);
   const toDropSpan = safeRouteDistance(contract.from, contract.to);
-  const inspectionTargets = [];
-  if (ship.at !== contract.from) inspectionTargets.push(contract.from);
-  inspectionTargets.push(contract.to);
-  const inspectionDelay = onionSkinInspectionDelay(inspectionTargets);
   const totalRouteSpan = toPickupSpan + toDropSpan;
-  const total = travelTimeForRoute(driveShipId, totalRouteSpan) + inspectionDelay;
+  const total = travelTimeForRoute(driveShipId, totalRouteSpan);
   const fuelCost = fuelCostForRoute(ship.at, contract.from, driveShipId) + fuelCostForRoute(contract.from, contract.to, driveShipId);
   const contractOptions = openContracts().map((c) => ({
     id: c.id,
@@ -1853,7 +1715,7 @@ function assignContract(contractId, shipId) {
     firstLegTo: contract.from,
     secondLegTo: contract.to,
     totalRouteSpan,
-    hazards: inspectionDelay > 0 ? ["Inspection delay on contested route"] : [],
+    hazards: [],
     firstLegFrom: ship.at,
     secondLegFrom: contract.from,
   };
@@ -1861,9 +1723,6 @@ function assignContract(contractId, shipId) {
   const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
   logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
   maybePromptScenario3AssignedTowSupport(ship, contract, uplink);
-  if (inspectionDelay > 0) {
-    basilInform(`Arcworks traffic control adds mandatory inspection delay: +${inspectionDelay}s for Onion Skin stop clearance.`);
-  }
   const returnSignal = oneWaySignalToNode(contract.to);
   basilInform(
     `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, transit ${total}s (speed ${shipSpeed(driveShipId)}), route span ${toPickupSpan + toDropSpan}, fuel ${fuelCost}, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
@@ -1927,9 +1786,7 @@ function assignContract(contractId, shipId) {
     "report"
   );
   if (captain) {
-    const completionLine = inspectionDelay >= 180
-      ? "Delivery complete, but inspection delays burned the schedule."
-      : "Delivery complete.";
+    const completionLine = "Delivery complete.";
     scheduleMessage(
       uplink + total + oneWaySignalToNode(contract.to),
       () => {

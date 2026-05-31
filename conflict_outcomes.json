@@ -30,7 +30,7 @@
         "verbal": {
           "aggressor": [
             "You are entering controlled traffic. Clarify cargo and destination now.",
-            "UFP requests compliance statement and inspection posture."
+            "UFP requests compliance statement and safe-vector posture."
           ],
           "response": [
             "Compliance details transmitted; requesting no-delay handling.",
@@ -39,7 +39,7 @@
         },
         "intercept": {
           "aggressor": [
-            "Intercept protocol active. Shift to inspection hold.",
+            "Intercept protocol active. Shift to traffic hold.",
             "Reduce thrust and submit to patrol scan corridor."
           ],
           "response": [
@@ -88,7 +88,7 @@
         "verbal": {
           "aggressor": [
             "You are entering controlled traffic. Clarify cargo and destination now.",
-            "UFP requests compliance statement and inspection posture."
+            "UFP requests compliance statement and safe-vector posture."
           ],
           "response": [
             "Manifest provided; requesting fair queue treatment.",
@@ -97,7 +97,7 @@
         },
         "intercept": {
           "aggressor": [
-            "Intercept protocol active. Shift to inspection hold.",
+            "Intercept protocol active. Shift to traffic hold.",
             "Reduce thrust and submit to patrol scan corridor."
           ],
           "response": [
@@ -146,7 +146,7 @@
         "verbal": {
           "aggressor": [
             "You are entering controlled traffic. Clarify cargo and destination now.",
-            "UFP requests compliance statement and inspection posture."
+            "UFP requests compliance statement and safe-vector posture."
           ],
           "response": [
             "Manifest is sealed and legal.",
@@ -155,7 +155,7 @@
         },
         "intercept": {
           "aggressor": [
-            "Intercept protocol active. Shift to inspection hold.",
+            "Intercept protocol active. Shift to traffic hold.",
             "Reduce thrust and submit to patrol scan corridor."
           ],
           "response": [
@@ -204,7 +204,7 @@
         "verbal": {
           "aggressor": [
             "You are entering controlled traffic. Clarify cargo and destination now.",
-            "UFP requests compliance statement and inspection posture."
+            "UFP requests compliance statement and safe-vector posture."
           ],
           "response": [
             "Complaint received; maintain order and distance.",
@@ -213,7 +213,7 @@
         },
         "intercept": {
           "aggressor": [
-            "Intercept protocol active. Shift to inspection hold.",
+            "Intercept protocol active. Shift to traffic hold.",
             "Reduce thrust and submit to patrol scan corridor."
           ],
           "response": [
@@ -291,7 +291,7 @@
         },
         "resolve": {
           "aggressor": [
-            "Inspection closed. Industrial traffic protocol resumes.",
+            "Traffic hold closed. Industrial traffic protocol resumes.",
             "Contact cleared under caution flag."
           ],
           "response": [
@@ -349,7 +349,7 @@
         },
         "resolve": {
           "aggressor": [
-            "Inspection closed. Industrial traffic protocol resumes.",
+            "Traffic hold closed. Industrial traffic protocol resumes.",
             "Contact cleared under caution flag."
           ],
           "response": [
@@ -407,7 +407,7 @@
         },
         "resolve": {
           "aggressor": [
-            "Inspection closed. Industrial traffic protocol resumes.",
+            "Traffic hold closed. Industrial traffic protocol resumes.",
             "Contact cleared under caution flag."
           ],
           "response": [
@@ -465,7 +465,7 @@
         },
         "resolve": {
           "aggressor": [
-            "Inspection closed. Industrial traffic protocol resumes.",
+            "Traffic hold closed. Industrial traffic protocol resumes.",
             "Contact cleared under caution flag."
           ],
           "response": [
@@ -503,7 +503,7 @@
         },
         "intercept": {
           "aggressor": [
-            "Cut thrust and drift for inspection.",
+            "Cut thrust and drift for traffic control.",
             "Boarding posture demanded. Do not run."
           ],
           "response": [
@@ -561,7 +561,7 @@
         },
         "intercept": {
           "aggressor": [
-            "Cut thrust and drift for inspection.",
+            "Cut thrust and drift for traffic control.",
             "Boarding posture demanded. Do not run."
           ],
           "response": [
@@ -619,7 +619,7 @@
         },
         "intercept": {
           "aggressor": [
-            "Cut thrust and drift for inspection.",
+            "Cut thrust and drift for traffic control.",
             "Boarding posture demanded. Do not run."
           ],
           "response": [
@@ -677,7 +677,7 @@
         },
         "intercept": {
           "aggressor": [
-            "Cut thrust and drift for inspection.",
+            "Cut thrust and drift for traffic control.",
             "Boarding posture demanded. Do not run."
           ],
           "response": [

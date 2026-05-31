@@ -160,7 +160,7 @@
     "utility": "no"
   },
   "trawler": {
-    "description": "Trawler-class civilian workhorse. Slow but versatile, used for hauling, salvage, inspection, repair, and prospecting.",
+    "description": "Trawler-class civilian workhorse. Slow but versatile, used for hauling, salvage, survey, repair, and prospecting.",
     "faction": "civilian",
     "role": "versatile civilian workhorse",
     "speed": 1,
