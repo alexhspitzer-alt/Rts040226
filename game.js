@@ -52,7 +52,7 @@ const LEGACY_NODE_ALIASES = {
   driftbay: "deep_space_transfer_lane",
 };
 const DEFAULT_LORE_SUMMARY =
-  "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks inspections, Blister deals, and insurance-driven risk management.";
+  "Indigo is a deuterium-rich war-zone logistics system. bluFreight profits from stable volatility while juggling UFP pressure, Arcworks claims, Blister deals, and insurance-driven risk management.";
 const SCENARIO3_CAPACITY_BRIEFING =
   "Scenario 3 routing now includes explicit cargo tonnage. Contract cargo is shown as T units (for example, 6T). Ship capability is shown as XT cap (for example, 3T cap). Yes, this is also where I confirm the Courier still cannot carry extra munitions in the lavatory, despite management's recurring optimism.";
 
@@ -294,7 +294,6 @@ const state = {
   almanacEntries: null,
   tugIntroPlayed: false,
   buddeIntroduced: false,
-  scenario2OnionAdvisoryPlayed: false,
   scenario3CapacityBriefed: false,
   scenario3Completed: false,
   scenario3TowRequestPlayed: false,
@@ -1346,15 +1345,6 @@ function showShipMenu(shipId) {
     const captain = SHIP_CAPTAINS[TUG_ID];
     logLine(`${captain} ${speakerContext(captain)}: Captain Bell here. Freighters are built to cruise efficiently, but they are poor at climbing against Indigo’s gravity with a full load. Tugs are built for that job. We carry almost no cargo, but we do not take the same uphill fuel penalty a loaded freighter does, so using a tug for the climb is much more efficient than making the freighter do it alone.`, speakerMessageType(captain));
   }
-  if (state.currentScenario === 2 && !state.scenario2OnionAdvisoryPlayed) {
-    state.scenario2OnionAdvisoryPlayed = true;
-    const advisory = "Civilian advisory: Onion Skin is contested space. Traffic is advised to get docking permission before embarking.";
-    scheduleMessage(
-      1,
-      `Port Marshal Celia Wren ${speakerContext("Port Marshal Celia Wren")}: ${advisory}`,
-      "comms"
-    );
-  }
   if (state.currentScenario >= 3 && !state.scenario3CapacityBriefed) {
     state.scenario3CapacityBriefed = true;
     basilInform(SCENARIO3_CAPACITY_BRIEFING);
@@ -1379,16 +1369,6 @@ function showShipMenu(shipId) {
     menuOptions = "D dock, S send, I information, R recall, B back to ship list.";
   }
   logLine(`${shipId} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
-}
-
-function isOnionSkinLocation(nodeId) {
-  return state.currentScenario === 2 && nodes[nodeId]?.moon === "onion_skin";
-}
-
-function onionSkinInspectionDelay(destinations = []) {
-  if (state.currentScenario !== 2) return 0;
-  const onionStops = destinations.filter((nodeId) => isOnionSkinLocation(nodeId)).length;
-  return onionStops * 180;
 }
 
 function showContractsForSelectedShip() {
@@ -1615,8 +1595,7 @@ function sendShip(shipId, destination) {
   const driveShipId = effectiveDriveShipId(ship.id);
   const uplink = oneWaySignalToShip(ship);
   const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
-  const inspectionDelay = onionSkinInspectionDelay([normalizedDestination]);
-  const transitTime = travelTimeForRoute(driveShipId, routeSpan) + inspectionDelay;
+  const transitTime = travelTimeForRoute(driveShipId, routeSpan);
   const shipFuelCost = fuelCostForRoute(ship.at, normalizedDestination, driveShipId);
   const allChoices = candidateDestinationsForShip(ship.id)
     .map((nodeId) => ({ nodeId, fuel: fuelCostForRoute(ship.at, nodeId, driveShipId) }))
@@ -1630,9 +1609,6 @@ function sendShip(shipId, destination) {
     } else {
       buddeSpeak("wiseChoice", "Wise and efficient choice. Your selection matches my recommendation.");
     }
-  }
-  if (inspectionDelay > 0) {
-    basilInform(`Arcworks traffic control adds mandatory inspection delay: +${inspectionDelay}s for Onion Skin arrival clearance.`);
   }
   basilCommsLatencyLine(ship, "orders");
   ship.status = "tasked";
@@ -1703,12 +1679,8 @@ function assignContract(contractId, shipId) {
   basilCommsLatencyLine(ship, "orders");
   const toPickupSpan = safeRouteDistance(ship.at, contract.from);
   const toDropSpan = safeRouteDistance(contract.from, contract.to);
-  const inspectionTargets = [];
-  if (ship.at !== contract.from) inspectionTargets.push(contract.from);
-  inspectionTargets.push(contract.to);
-  const inspectionDelay = onionSkinInspectionDelay(inspectionTargets);
   const totalRouteSpan = toPickupSpan + toDropSpan;
-  const total = travelTimeForRoute(driveShipId, totalRouteSpan) + inspectionDelay;
+  const total = travelTimeForRoute(driveShipId, totalRouteSpan);
   const fuelCost = fuelCostForRoute(ship.at, contract.from, driveShipId) + fuelCostForRoute(contract.from, contract.to, driveShipId);
   const contractOptions = openContracts().map((c) => ({
     id: c.id,
@@ -1743,7 +1715,7 @@ function assignContract(contractId, shipId) {
     firstLegTo: contract.from,
     secondLegTo: contract.to,
     totalRouteSpan,
-    hazards: inspectionDelay > 0 ? ["Inspection delay on contested route"] : [],
+    hazards: [],
     firstLegFrom: ship.at,
     secondLegFrom: contract.from,
   };
@@ -1751,9 +1723,6 @@ function assignContract(contractId, shipId) {
   const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
   logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
   maybePromptScenario3AssignedTowSupport(ship, contract, uplink);
-  if (inspectionDelay > 0) {
-    basilInform(`Arcworks traffic control adds mandatory inspection delay: +${inspectionDelay}s for Onion Skin stop clearance.`);
-  }
   const returnSignal = oneWaySignalToNode(contract.to);
   basilInform(
     `${formatShipId(ship.id)} mission timing: uplink ${uplink}s, transit ${total}s (speed ${shipSpeed(driveShipId)}), route span ${toPickupSpan + toDropSpan}, fuel ${fuelCost}, return signal ${returnSignal}s. Confirmation ETA: ${uplink + total + returnSignal}s.`
@@ -1817,9 +1786,7 @@ function assignContract(contractId, shipId) {
     "report"
   );
   if (captain) {
-    const completionLine = inspectionDelay >= 180
-      ? "Delivery complete, but inspection delays burned the schedule."
-      : "Delivery complete.";
+    const completionLine = "Delivery complete.";
     scheduleMessage(
       uplink + total + oneWaySignalToNode(contract.to),
       () => {

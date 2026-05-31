@@ -135,7 +135,7 @@ const CONFLICT_AGGRESSOR_LINES = {
     ],
     intercept: [
       "Reduce burn and prepare to be checked.",
-      "Kill the swagger, hold vector, and submit to traffic inspection.",
+      "Kill the swagger, hold vector, and wait for traffic control.",
       "You are now under active challenge. Keep hands visible and drives low.",
     ],
     fire: [
