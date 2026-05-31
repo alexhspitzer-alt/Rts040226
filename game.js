@@ -42,7 +42,6 @@ const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
 const SCENARIO_PATH = "./scenarioDat.json";
-const PLAYER_REQUESTS_PATH = "./indigo_dialogue_player_requests.json";
 const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
 const LEGACY_NODE_ALIASES = {
   anchor: "anchor_station",
@@ -533,13 +532,12 @@ let PlayerHailFlow;
 async function loadReferenceData() {
   try {
     const noCache = { cache: "no-store" };
-    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, playerRequestsResponse, almanacResponse, shipRegistryResponse] = await Promise.all([
+    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse] = await Promise.all([
       fetch("./bluFreight%20text%20RTS.txt", noCache),
       fetch("./indigo_dialogue_characters.json", noCache),
       fetch("./map.json", noCache),
       fetch("./budde.json", noCache),
       fetch(SCENARIO_PATH, noCache),
-      fetch(PLAYER_REQUESTS_PATH, noCache),
       fetch(ALMANAC_PATH, noCache),
       fetch("./ship_registry.json", noCache),
     ]);
@@ -551,7 +549,9 @@ async function loadReferenceData() {
     }
 
     if (dialogueResponse.ok) {
-      state.dialogueDb = await dialogueResponse.json();
+      const dialogueData = await dialogueResponse.json();
+      state.dialogueDb = dialogueData?.characters || dialogueData;
+      state.playerRequestDialogue = dialogueData?.hailResponses || {};
     }
 
     if (mapResponse.ok) {
@@ -586,9 +586,6 @@ async function loadReferenceData() {
       state.scenario4Dialogue = scenario?.scenario4_dialogue || null;
     }
 
-    if (playerRequestsResponse.ok) {
-      state.playerRequestDialogue = await playerRequestsResponse.json();
-    }
 
     if (almanacResponse.ok) {
       const parsedAlmanac = await almanacResponse.json();
