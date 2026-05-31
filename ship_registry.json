@@ -98,5 +98,115 @@
     "armor": 4,
     "guns": 2,
     "utility": "yes"
+  },
+  "condor": {
+    "description": "Condor-class UFP heavy bombardment cruiser and light carrier. Built for devastating first strikes, coordinated withdrawals, and absolutely no fair fights.",
+    "faction": "UFP",
+    "role": "heavy bombardment cruiser and light carrier",
+    "speed": 3,
+    "cargoSpace": 6,
+    "armor": 4,
+    "guns": 8,
+    "utility": "yes"
+  },
+  "ml-x": {
+    "description": "ML-X Arcworks armored assault transport. Brings its own fuel, ammunition, and logistics package because Arcworks considers needing help a design failure.",
+    "faction": "Arcworks",
+    "role": "armored assault transport",
+    "speed": 1,
+    "cargoSpace": 8,
+    "armor": 10,
+    "guns": 4,
+    "utility": "no"
+  },
+  "matador": {
+    "description": "Matador-class Blister main battleship. Built to hold ground, absorb punishment, and make everyone nearby adjust their plans around it.",
+    "faction": "Blister",
+    "role": "main battleship",
+    "speed": 3,
+    "cargoSpace": 3,
+    "armor": 6,
+    "guns": 5,
+    "utility": "no"
+  },
+  "skiff": {
+    "description": "Skiff-class civilian small transfer craft used to move light cargo between docks, piers, stations, and ships too large to berth directly.",
+    "faction": "civilian",
+    "role": "small transfer craft",
+    "speed": 2,
+    "cargoSpace": 2,
+    "armor": 1,
+    "guns": 0,
+    "utility": "no"
+  },
+  "piper": {
+    "description": "Piper-class UFP small transfer craft used to move light cargo between docks, piers, stations, and ships too large to berth directly.",
+    "faction": "UFP",
+    "role": "small transfer craft",
+    "speed": 2,
+    "cargoSpace": 2,
+    "armor": 1,
+    "guns": 0,
+    "utility": "no"
+  },
+  "j-i": {
+    "description": "J-I Arcworks small transfer craft used to move light cargo between docks, piers, stations, and ships too large to berth directly.",
+    "faction": "Arcworks",
+    "role": "small transfer craft",
+    "speed": 2,
+    "cargoSpace": 2,
+    "armor": 1,
+    "guns": 0,
+    "utility": "no"
+  },
+  "trawler": {
+    "description": "Trawler-class civilian workhorse. Slow but versatile, used for hauling, salvage, inspection, repair, and prospecting.",
+    "faction": "civilian",
+    "role": "versatile civilian workhorse",
+    "speed": 1,
+    "cargoSpace": 6,
+    "armor": 2,
+    "guns": 0,
+    "utility": "yes"
+  },
+  "constable": {
+    "description": "Constable-class civilian patrol craft. No one is above the law, except of course anyone who can outrun or outgun it.",
+    "faction": "civilian",
+    "role": "light patrol craft",
+    "speed": 3,
+    "cargoSpace": 1,
+    "armor": 2,
+    "guns": 1,
+    "utility": "no"
+  },
+  "sledge": {
+    "description": "Sledge-class Blister heavy corsair made to lay siege, breach airlocks, and extract dues.",
+    "faction": "Blister",
+    "role": "heavy corsair",
+    "speed": 2,
+    "cargoSpace": 8,
+    "armor": 4,
+    "guns": 2,
+    "utility": "no"
+  },
+  "ibis": {
+    "description": "Ibis-class UFP fast combat drone used for scouting, pursuit, harassment, and making enemies waste expensive ammunition on something cheap.",
+    "faction": "UFP",
+    "role": "fast combat drone",
+    "speed": 4,
+    "cargoSpace": 2,
+    "armor": 2,
+    "guns": 2,
+    "utility": "no"
+  },
+  "j-viii": {
+    "description": "J-VIII Arcworks light cargo ship designed to support miners, but able to carry fuel and munitions if needed.",
+    "faction": "Arcworks",
+    "role": "light cargo ship",
+    "speed": 2,
+    "cargoSpace": 6,
+    "armor": 2,
+    "guns": 0,
+    "utility": "no"
   }
 }
