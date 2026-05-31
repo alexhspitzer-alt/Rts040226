@@ -1,9 +1,5 @@
 export function createPlayerHailFlow({
-  state,
   ui,
-  arcworksExecName,
-  handleScenario2DetainmentHailResolution,
-  basilInform,
   logLine,
   speakerContext,
   speakerMessageType,
@@ -41,11 +37,6 @@ export function createPlayerHailFlow({
       if (!this.isAwaitingChoice()) return false;
       const normalized = this.options.includes(action) ? action : this.options[0];
       const targetName = this.activeTarget;
-      if (targetName === arcworksExecName && state.currentScenario >= 2 && (normalized === "request" || normalized === "negotiate")) {
-        state.onionSkinInspectionWaived = true;
-        basilInform(`${arcworksExecName} has approved your request. Onion Skin inspection holds are now waived for current operations.`);
-      }
-      handleScenario2DetainmentHailResolution(targetName, normalized);
       logLine(`> ${normalized.replace("_", " ")}`, "cmd");
       const responseText = pickResponse(targetName, normalized);
       logLine(`${targetName} ${speakerContext(targetName)}: ${responseText}`, speakerMessageType(targetName));

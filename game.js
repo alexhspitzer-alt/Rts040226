@@ -293,17 +293,12 @@ const state = {
   playerRequestDialogue: null,
   almanacEntries: null,
   tugIntroPlayed: false,
-  scenario2VennDetainmentTriggered: false,
-  scenario2DetainedShipId: null,
-  scenario2DetainmentResolved: false,
-  scenario2VennRelocating: false,
   buddeIntroduced: false,
   scenario2OnionAdvisoryPlayed: false,
   scenario3CapacityBriefed: false,
   scenario3Completed: false,
   scenario3TowRequestPlayed: false,
   scenario3TowRequestDeferred: false,
-  onionSkinInspectionWaived: false,
   lastLatencyReminderTick: -Infinity,
   consoleReadyAtMs: Date.now(),
   respondingToCommand: false,
@@ -1391,7 +1386,7 @@ function isOnionSkinLocation(nodeId) {
 }
 
 function onionSkinInspectionDelay(destinations = []) {
-  if (state.currentScenario !== 2 || state.onionSkinInspectionWaived) return 0;
+  if (state.currentScenario !== 2) return 0;
   const onionStops = destinations.filter((nodeId) => isOnionSkinLocation(nodeId)).length;
   return onionStops * 180;
 }
@@ -1491,111 +1486,9 @@ function checkScenarioCompletion() {
   }
 }
 
-function maybeTriggerScenario2VennDetainment() {
-  if (state.currentScenario !== 2) return;
-  if (state.scenario2VennDetainmentTriggered) return;
-  if (state.completedContracts < 2) return;
-
-  const detainedShip = state.ships.find((ship) => ship.status === "idle" && nodes[ship.at]?.moon === "oxblood");
-  if (!detainedShip) return;
-
-  state.scenario2VennDetainmentTriggered = true;
-  state.scenario2DetainedShipId = detainedShip.id;
-  detainedShip.status = "detained";
-  detainedShip.destination = undefined;
-  detainedShip.departAt = 0;
-  detainedShip.busyUntil = 0;
-  detainedShip.lastContactTick = state.tick;
-
-  const venn = VENN_NAME;
-  logLine(
-    `${venn} ${speakerContext(venn)}: Nice hull you left at Oxblood. I'm impounding ${detainedShip.id} under local claim. Consider it unavailable.`,
-    speakerMessageType(venn)
-  );
-  const detainedCaptain = SHIP_CAPTAINS[detainedShip.id];
-  if (detainedCaptain) {
-    logLine(
-      `${detainedCaptain} ${speakerContext(detainedCaptain)}: We've been pinned and boarded. This detainment is bad news.`,
-      speakerMessageType(detainedCaptain)
-    );
-  }
-  basilInform(`${formatShipId(detainedShip.id)} has been detained at Oxblood and is unavailable for dispatch.`);
-}
-
-function releaseScenario2DetainedShip(reasonText = null) {
-  if (state.scenario2DetainmentResolved) return;
-  const ship = state.ships.find((entry) => entry.id === state.scenario2DetainedShipId && entry.status === "detained");
-  if (!ship) return;
-  ship.status = "idle";
-  ship.departAt = 0;
-  ship.busyUntil = 0;
-  ship.destination = undefined;
-  ship.lastContactTick = state.tick;
-  state.scenario2DetainmentResolved = true;
-  if (reasonText) logLine(reasonText, speakerMessageType(VENN_NAME));
-  basilInform(`${formatShipId(ship.id)} has been released and is available for dispatch.`);
-  beginVennMoveToEndOfDay();
-}
-
-function beginVennMoveToEndOfDay() {
-  if (state.scenario2VennRelocating) return;
-  if (state.currentScenario !== 2) return;
-  const destinationNode = Object.keys(nodes).find((nodeId) => nodes[nodeId]?.moon === "end_of_day");
-  const currentNode = CONTACT_PROFILES[VENN_NAME]?.nodeId;
-  if (!destinationNode || !currentNode) return;
-  state.scenario2VennRelocating = true;
-  const routeSpan = safeRouteDistance(currentNode, destinationNode);
-  const transit = travelTimeForRoute(VENN_NAME, routeSpan);
-  logLine(`${VENN_NAME} ${speakerContext(VENN_NAME)}: Payment received. We are departing for End-of-Day.`, speakerMessageType(VENN_NAME));
-  scheduleMessage(
-    transit,
-    () => {
-      CONTACT_PROFILES[VENN_NAME].nodeId = destinationNode;
-      return `${VENN_NAME} ${speakerContext(VENN_NAME)}: End-of-Day reached.`;
-    },
-    speakerMessageType(VENN_NAME)
-  );
-}
-
-function handleScenario2DetainmentHailResolution(targetName, action) {
-  if (state.currentScenario !== 2) return false;
-  if (!state.scenario2DetainedShipId || state.scenario2DetainmentResolved) return false;
-
-  if (targetName === THORNE_NAME && action === "request") {
-    const oxbloodNode = Object.keys(nodes).find((nodeId) => nodes[nodeId]?.moon === "oxblood");
-    const currentNode = CONTACT_PROFILES[THORNE_NAME]?.nodeId;
-    if (oxbloodNode && currentNode) {
-      const routeSpan = safeRouteDistance(currentNode, oxbloodNode);
-      const transit = travelTimeForRoute(THORNE_NAME, routeSpan);
-      logLine(`${THORNE_NAME} ${speakerContext(THORNE_NAME)}: Request accepted. We'll lean on these Blister thugs until they let your ship go. Kestrel is burning for Oxblood now.`, speakerMessageType(THORNE_NAME));
-      scheduleMessage(
-        transit,
-        () => {
-          CONTACT_PROFILES[THORNE_NAME].nodeId = oxbloodNode;
-          releaseScenario2DetainedShip(`${VENN_NAME} ${speakerContext(VENN_NAME)}: Fine. I'm leaving on an important resupply for Blister colonists, entirely unrelated to those UFP warships suddenly overhead.`);
-          return `${THORNE_NAME} ${speakerContext(THORNE_NAME)}: Arrived Oxblood. Detainment dispute resolved.`;
-        },
-        speakerMessageType(THORNE_NAME)
-      );
-      return true;
-    }
-  }
-
-  if (targetName === VENN_NAME && action === "negotiate") {
-    state.cash -= 1000;
-    releaseScenario2DetainedShip(`${VENN_NAME} ${speakerContext(VENN_NAME)}: Duties, licensing, and necessary restitution collected: $1000. Your ship is released.`);
-    return true;
-  }
-
-  return false;
-}
 
 PlayerHailFlow = createPlayerHailFlow({
-  state,
   ui,
-  arcworksExecName: ARCWORKS_EXEC_NAME,
-  handleScenario2DetainmentHailResolution,
-  basilInform,
   logLine,
   speakerContext,
   speakerMessageType,
