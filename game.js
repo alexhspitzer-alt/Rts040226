@@ -302,6 +302,8 @@ const state = {
   scenario2OnionAdvisoryPlayed: false,
   scenario3CapacityBriefed: false,
   scenario3Completed: false,
+  scenario3TowRequestPlayed: false,
+  scenario3TowRequestDeferred: false,
   onionSkinInspectionWaived: false,
   lastLatencyReminderTick: -Infinity,
   consoleReadyAtMs: Date.now(),
@@ -789,6 +791,54 @@ function addScenario3Tug() {
     lastContactTick: state.tick,
     acquiredAtTick: state.tick,
   });
+}
+
+function isScenario3LowOrbitNode(nodeId) {
+  return ["sulphide", "shooter"].includes(nodes[nodeId]?.moon);
+}
+
+function requestScenario3TowSupport(ship, reasonText, delay = 2) {
+  if (!ship || state.scenario3TowRequestPlayed) return false;
+  const captain = SHIP_CAPTAINS[ship.id];
+  const tugCaptain = SHIP_CAPTAINS[TUG_ID];
+  if (!captain || !tugCaptain) return false;
+  scheduleCharacterMessage(
+    delay,
+    captain,
+    `${tugCaptain}, ${reasonText}`,
+    null,
+    "comms"
+  );
+  state.scenario3TowRequestPlayed = true;
+  state.scenario3TowRequestDeferred = false;
+  return true;
+}
+
+function promptScenario3LowOrbitTowIfAvailable() {
+  if (state.currentScenario !== 3 || state.scenario3TowRequestPlayed) return;
+  const lowOrbitShip = state.ships.find((ship) => (
+    !ship.utility
+    && ship.status === "idle"
+    && isScenario3LowOrbitNode(ship.at)
+    && SHIP_CAPTAINS[ship.id]
+  ));
+  if (!lowOrbitShip) {
+    state.scenario3TowRequestDeferred = true;
+    return;
+  }
+  requestScenario3TowSupport(
+    lowOrbitShip,
+    `${formatShipId(lowOrbitShip.id)} is idle in low orbit at ${nodeLabel(lowOrbitShip.at)}. If the new tug is available, we'd appreciate a tow for the climb out.`
+  );
+}
+
+function maybePromptScenario3AssignedTowSupport(ship, contract, uplink) {
+  if (state.currentScenario !== 3 || !state.scenario3TowRequestDeferred || state.scenario3TowRequestPlayed) return;
+  requestScenario3TowSupport(
+    ship,
+    `${formatShipId(ship.id)} is taking ${contract.id}; tug support would make the return leg easier if dispatch can spare you.`,
+    Math.max(2, uplink * 2 + 1)
+  );
 }
 
 function pickScenarioArrayLine(key) {
@@ -1420,6 +1470,7 @@ function checkScenarioCompletion() {
       while (openContracts().length < targetOpenContractCount()) generateContract();
       logLine("Scenario 3 unlocked: Calibration Debt and Corrected Distances.", "sys");
       playScenario3Intro();
+      promptScenario3LowOrbitTowIfAvailable();
     }
     return;
   }
@@ -1809,6 +1860,7 @@ function assignContract(contractId, shipId) {
 
   const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
   logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
+  maybePromptScenario3AssignedTowSupport(ship, contract, uplink);
   if (inspectionDelay > 0) {
     basilInform(`Arcworks traffic control adds mandatory inspection delay: +${inspectionDelay}s for Onion Skin stop clearance.`);
   }
