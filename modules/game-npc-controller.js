@@ -3,6 +3,69 @@ const NPC_LOITER_MAX = 360;
 const NPC_LOITER_MODE = 200;
 const NPC_LINE_REPEAT_WINDOW = 120;
 const CONFLICT_HEARTBEAT_SECONDS = 10;
+
+const AMBIENT_LOCATION_SPAWN_INTERVAL = 20;
+const AMBIENT_LOCATION_SPAWN_CHANCE = 0.35;
+const AMBIENT_LOCATION_MAX_SHIPS = 8;
+const AMBIENT_LOCATION_MAX_PER_NODE = 2;
+const AMBIENT_LOCATION_DIALOGUE_MIN = 45;
+const AMBIENT_LOCATION_DIALOGUE_MAX = 100;
+const AMBIENT_LOCATION_REMOVE_INTERVAL = 30;
+const AMBIENT_LOCATION_REMOVE_CHANCE = 0.25;
+const AMBIENT_LOCATION_REMOVE_DIALOGUE_GRACE = 60;
+const AMBIENT_LOCATION_MIN_AGE_BEFORE_REMOVE = 45;
+
+const AMBIENT_NEUTRAL_LINES = [
+  "Holding local pattern. Traffic looks orderly from here.",
+  "Copy local traffic. We are keeping a quiet transponder and a clean lane.",
+  "No priority request from us. Just logging the local drift and staying clear.",
+  "Local channel check. We are standing by and monitoring the board.",
+  "Routine wait on this end. Wake is low, drives are cool, patience is negotiable.",
+];
+
+const AMBIENT_LOCATION_SHIP_RULES = [
+  {
+    key: "arcworks-core",
+    matches: (nodeId, label) => ["arcworks_operations_hub", "arcworks_militia_barracks", "condenser_columns"].includes(nodeId)
+      || /arcworks operations hub|arcworks militia barracks|condenser columns/i.test(label),
+    ships: [
+      { registryKey: "j-i", className: "J-I", faction: "arcworks", role: "industrial", rarity: "common", weight: 6, speed: 3 },
+      { registryKey: "mm-ix", className: "MM-IX", faction: "arcworks", role: "industrial", rarity: "uncommon", weight: 3, speed: 2 },
+      { registryKey: "ml-x", className: "ML-X", faction: "arcworks", role: "industrial", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "ufp",
+    matches: (nodeId, label) => nodeId === "ufp_science_station" || /^ufp_/i.test(nodeId) || /ufp .*station|ufp outpost|ufp indigo system administration|ufp science station/i.test(label),
+    ships: [
+      { registryKey: "piper", className: "Piper", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 4 },
+      { registryKey: "ibis", className: "Ibis", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 4 },
+    ],
+  },
+  {
+    key: "yard-refinery-lanes",
+    matches: (nodeId, label) => ["yard", "refinery"].includes(nodeId) || /yard|refinery|transfer lane/i.test(label),
+    ships: [
+      { registryKey: "sledge", className: "Sledge", faction: "blister", role: "raider", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "stations",
+    matches: (nodeId, label) => ["anchor_station", "indigo_station", "barons_market", "arcworks_operations_hub"].includes(nodeId)
+      || /station|baron'?s market|operations hub/i.test(label),
+    ships: [
+      { registryKey: "skiff", className: "Skiff", faction: "civilian", role: "civilian", rarity: "common", weight: 6, speed: 4 },
+      { registryKey: "trawler", className: "Trawler", faction: "civilian", role: "hauler", rarity: "uncommon", weight: 3, speed: 2 },
+      { registryKey: "constable", className: "Constable", faction: "civilian", role: "patrol", rarity: "rare", weight: 1, speed: 3 },
+      { registryKey: "j-viii", className: "J-VIII", faction: "arcworks", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "pelican", className: "Pelican", faction: "ufp", role: "patrol", rarity: "rare", weight: 1, speed: 3 },
+    ],
+  },
+];
+
+const AMBIENT_CALLSIGN_WORDS = ["Wren", "Gannet", "Dory", "Kite", "Mako", "Plover", "Cairn", "Juniper", "Cobalt", "Lantern", "Rook", "Tide"];
+const AMBIENT_CAPTAIN_FIRST_NAMES = ["Ari", "Mika", "Tess", "Nolan", "Vera", "Sera", "Jules", "Kade", "Lena", "Oren", "Pax", "Rhea"];
+const AMBIENT_CAPTAIN_LAST_NAMES = ["Vale", "Marr", "Pell", "Ortez", "Calder", "Sorn", "Bell", "Quill", "Dax", "Rook", "Finch", "Hale"];
 const CONFLICT_DECAY_PER_HEARTBEAT_BASE = 0.09;
 const CONFLICT_GAIN_BASE = 0.12;
 const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
@@ -227,6 +290,140 @@ export function createNpcController({
   const conflictEncounters = new Map();
   let lastConflictHeartbeatTick = -Infinity;
 
+  let nextAmbientLocationSpawnTick = 0;
+  let nextAmbientLocationRemoveTick = 0;
+  let ambientLocationSpawnSerial = 1;
+  const ambientLocationSpawnCooldowns = new Map();
+
+  function nodeLabelText(nodeId) {
+    return String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
+  }
+
+  function weightedPick(entries) {
+    const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.weight || 0), 0);
+    if (total <= 0) return randomPick(entries);
+    let roll = Math.random() * total;
+    for (const entry of entries) {
+      roll -= Math.max(0, entry.weight || 0);
+      if (roll <= 0) return entry;
+    }
+    return entries[entries.length - 1] || null;
+  }
+
+  function ambientRuleForNode(nodeId) {
+    const label = nodeLabelText(nodeId);
+    return AMBIENT_LOCATION_SHIP_RULES.find((rule) => rule.matches(nodeId, label)) || null;
+  }
+
+  function occupiedPlayerNodeIds() {
+    const occupied = new Set();
+    (state.ships || []).forEach((ship) => {
+      if (!ship?.at) return;
+      if (["idle", "tasked", "arrived_pending_report"].includes(ship.status)) occupied.add(ship.at);
+    });
+    return [...occupied].filter((nodeId) => getNodes()?.[nodeId]);
+  }
+
+  function ambientNpcs() {
+    return (state.civilianNpcs || []).filter((npc) => npc.ambientLocationSpawn);
+  }
+
+  function countAmbientNpcsAt(nodeId) {
+    return ambientNpcs().filter((npc) => npc.at === nodeId).length;
+  }
+
+  function randomAmbientCallsign(className) {
+    return `${className} ${randomPick(AMBIENT_CALLSIGN_WORDS)}-${randomInt(10, 98)}`;
+  }
+
+  function randomAmbientCaptainName() {
+    return `Capt. ${randomPick(AMBIENT_CAPTAIN_FIRST_NAMES)} ${randomPick(AMBIENT_CAPTAIN_LAST_NAMES)}`;
+  }
+
+  function nextAmbientDialogueTick() {
+    return state.tick + randomInt(AMBIENT_LOCATION_DIALOGUE_MIN, AMBIENT_LOCATION_DIALOGUE_MAX);
+  }
+
+  function neutralDialoguePool() {
+    const characters = state.dialogueDb || {};
+    const lines = Object.values(characters).flatMap((entry) => Array.isArray(entry?.dialogue?.neutral) ? entry.dialogue.neutral : []);
+    return lines.length ? lines : AMBIENT_NEUTRAL_LINES;
+  }
+
+  function scheduleAmbientNeutralLine(npc) {
+    const line = randomPick(neutralDialoguePool()) || randomPick(AMBIENT_NEUTRAL_LINES);
+    const location = nodeLabel(npc.at);
+    const delay = 1;
+    npc.lastDialogueTick = state.tick + delay;
+    npc.nextDialogueTick = nextAmbientDialogueTick();
+    scheduleCharacterMessage(delay, npc.captainName || npc.callsign, line, `${npc.callsign} @ ${location}`, "comms");
+  }
+
+  function spawnAmbientLocationShip(nodeId) {
+    const rule = ambientRuleForNode(nodeId);
+    if (!rule) return null;
+    const ship = weightedPick(rule.ships);
+    if (!ship) return null;
+    const id = `npc-local-${ship.registryKey}-${ambientLocationSpawnSerial}`;
+    ambientLocationSpawnSerial += 1;
+    const npc = {
+      id,
+      callsign: randomAmbientCallsign(ship.className),
+      captainName: randomAmbientCaptainName(),
+      faction: ship.faction || "civilian",
+      role: ship.role || "local",
+      registryKey: ship.registryKey,
+      at: nodeId,
+      status: "idle",
+      departAt: Infinity,
+      arrivalTick: 0,
+      ambientLocationSpawn: true,
+      spawnedAtTick: state.tick,
+      lastDialogueTick: -Infinity,
+      nextDialogueTick: nextAmbientDialogueTick(),
+    };
+    if (!Array.isArray(state.civilianNpcs)) state.civilianNpcs = [];
+    state.civilianNpcs.push(npc);
+    shipSpeedById[id] = ship.speed || 3;
+    ambientLocationSpawnCooldowns.set(nodeId, state.tick + randomInt(50, 100));
+    return npc;
+  }
+
+  function updateAmbientLocationSpawns() {
+    if (state.tick < nextAmbientLocationSpawnTick) return;
+    nextAmbientLocationSpawnTick = state.tick + AMBIENT_LOCATION_SPAWN_INTERVAL;
+    if (ambientNpcs().length >= AMBIENT_LOCATION_MAX_SHIPS) return;
+    const candidates = occupiedPlayerNodeIds().filter((nodeId) => {
+      if (!ambientRuleForNode(nodeId)) return false;
+      if (countAmbientNpcsAt(nodeId) >= AMBIENT_LOCATION_MAX_PER_NODE) return false;
+      return state.tick >= (ambientLocationSpawnCooldowns.get(nodeId) || 0);
+    });
+    if (!candidates.length || Math.random() > AMBIENT_LOCATION_SPAWN_CHANCE) return;
+    spawnAmbientLocationShip(randomPick(candidates));
+  }
+
+  function updateAmbientLocationDialogue() {
+    ambientNpcs().forEach((npc) => {
+      if (npc.status !== "idle" || !npc.at) return;
+      if (state.tick >= (npc.nextDialogueTick || 0) && playerLocalToNode(npc.at)) scheduleAmbientNeutralLine(npc);
+    });
+  }
+
+  function updateAmbientLocationRemovals() {
+    if (state.tick < nextAmbientLocationRemoveTick) return;
+    nextAmbientLocationRemoveTick = state.tick + AMBIENT_LOCATION_REMOVE_INTERVAL;
+    if (Math.random() > AMBIENT_LOCATION_REMOVE_CHANCE) return;
+    const removable = ambientNpcs().filter((npc) => {
+      const oldEnough = state.tick - (npc.spawnedAtTick || 0) >= AMBIENT_LOCATION_MIN_AGE_BEFORE_REMOVE;
+      const dialogueSafe = state.tick - (npc.lastDialogueTick ?? -Infinity) >= AMBIENT_LOCATION_REMOVE_DIALOGUE_GRACE;
+      return oldEnough && dialogueSafe;
+    });
+    const npc = randomPick(removable);
+    if (!npc) return;
+    state.civilianNpcs = (state.civilianNpcs || []).filter((entry) => entry.id !== npc.id);
+    delete shipSpeedById[npc.id];
+  }
+
   function encounterKey(aId, bId) {
     return [aId, bId].sort().join("|");
   }
@@ -260,7 +457,7 @@ export function createNpcController({
   function shipCombatProfile(npc) {
     if (!npc?.id) return DEFAULT_NPC_COMBAT_PROFILE;
     const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
-    const registryKey = NPC_SHIP_REGISTRY_KEYS[npc.id];
+    const registryKey = npc.registryKey || NPC_SHIP_REGISTRY_KEYS[npc.id];
     const registryProfile = registryKey ? registry?.[registryKey] : null;
     const guns = Number.isFinite(registryProfile?.guns) ? registryProfile.guns : null;
     const armor = Number.isFinite(registryProfile?.armor) ? registryProfile.armor : null;
@@ -582,9 +779,13 @@ export function createNpcController({
       shipSpeedById["npc-arcworks-mm9-1"] = 2;
     },
     update() {
+      updateAmbientLocationSpawns();
+      updateAmbientLocationDialogue();
+      updateAmbientLocationRemovals();
       const npcs = state.civilianNpcs || [];
-      updateConflictEncounters(npcs);
+      updateConflictEncounters(npcs.filter((npc) => !npc.ambientLocationSpawn));
       npcs.forEach((npc) => {
+        if (npc.ambientLocationSpawn) return;
         if (npc.faction === "ufp" || npc.faction === "blister" || npc.faction === "arcworks") {
           const nodeIds = Object.keys(getNodes());
           const allowed = nodeIds.filter((nodeId) => {

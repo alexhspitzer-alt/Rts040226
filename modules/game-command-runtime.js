@@ -445,7 +445,8 @@ export function createCommandRuntime({
         const atLabel = nodeLabel(npc.at);
         const destinationLabel = npc.destination ? ` -> ${nodeLabel(npc.destination)}` : "";
         const captain = npc.captainName ? ` | ${npc.captainName}` : "";
-        logLine(`${idx + 1}. ${npc.callsign}${captain} | ${npc.status} | ${atLabel}${destinationLabel}`, "sys");
+        const ambient = npc.ambientLocationSpawn ? ` | local ${npc.registryKey || npc.role || "traffic"}` : "";
+        logLine(`${idx + 1}. ${npc.callsign}${captain}${ambient} | ${npc.status} | ${atLabel}${destinationLabel}`, "sys");
       });
       return true;
     }
