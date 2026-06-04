@@ -64,8 +64,7 @@ const AMBIENT_LOCATION_SHIP_RULES = [
 ];
 
 const AMBIENT_CALLSIGN_WORDS = ["Wren", "Gannet", "Dory", "Kite", "Mako", "Plover", "Cairn", "Juniper", "Cobalt", "Lantern", "Rook", "Tide"];
-const AMBIENT_CAPTAIN_FIRST_NAMES = ["Ari", "Mika", "Tess", "Nolan", "Vera", "Sera", "Jules", "Kade", "Lena", "Oren", "Pax", "Rhea"];
-const AMBIENT_CAPTAIN_LAST_NAMES = ["Vale", "Marr", "Pell", "Ortez", "Calder", "Sorn", "Bell", "Quill", "Dax", "Rook", "Finch", "Hale"];
+const AMBIENT_AUTOPILOT_CAPTAIN_NAME = "AUTOPILOTv6.9";
 const CONFLICT_DECAY_PER_HEARTBEAT_BASE = 0.09;
 const CONFLICT_GAIN_BASE = 0.12;
 const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
@@ -294,6 +293,7 @@ export function createNpcController({
   let nextAmbientLocationRemoveTick = 0;
   let ambientLocationSpawnSerial = 1;
   const ambientLocationSpawnCooldowns = new Map();
+  const usedAmbientCaptainNames = new Set();
 
   function nodeLabelText(nodeId) {
     return String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
@@ -336,8 +336,35 @@ export function createNpcController({
     return `${className} ${randomPick(AMBIENT_CALLSIGN_WORDS)}-${randomInt(10, 98)}`;
   }
 
-  function randomAmbientCaptainName() {
-    return `Capt. ${randomPick(AMBIENT_CAPTAIN_FIRST_NAMES)} ${randomPick(AMBIENT_CAPTAIN_LAST_NAMES)}`;
+  function normalizeFactionName(value) {
+    const text = String(value || "").toLowerCase();
+    if (text === "ufp" || text.includes("union of free planets")) return "ufp";
+    if (text === "blister") return "blister";
+    if (text === "arcworks") return "arcworks";
+    if (text === "civilian" || text === "blufreight") return "civilian";
+    return "civilian";
+  }
+
+  function factionForShipType(ship) {
+    const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
+    const registryFaction = ship?.registryKey ? registry?.[ship.registryKey]?.faction : null;
+    return normalizeFactionName(registryFaction || ship?.faction);
+  }
+
+  function formatAmbientCaptainName(name) {
+    if (/^(capt\.|cmdr\.|lt\.|supervisor|dockmaster|traffic officer|port marshal)\b/i.test(name)) return name;
+    return `Capt. ${name}`;
+  }
+
+  function drawAmbientCaptainName() {
+    const pool = Array.isArray(state.characterNameRegistry?.randomAssignmentPool)
+      ? state.characterNameRegistry.randomAssignmentPool
+      : [];
+    const available = pool.filter((name) => name && !usedAmbientCaptainNames.has(name));
+    const name = randomPick(available);
+    if (!name) return AMBIENT_AUTOPILOT_CAPTAIN_NAME;
+    usedAmbientCaptainNames.add(name);
+    return formatAmbientCaptainName(name);
   }
 
   function nextAmbientDialogueTick() {
@@ -345,18 +372,27 @@ export function createNpcController({
   }
 
   function neutralDialoguePool() {
+    if (Array.isArray(state.ambientNeutralConversation) && state.ambientNeutralConversation.length) {
+      return state.ambientNeutralConversation;
+    }
     const characters = state.dialogueDb || {};
     const lines = Object.values(characters).flatMap((entry) => Array.isArray(entry?.dialogue?.neutral) ? entry.dialogue.neutral : []);
     return lines.length ? lines : AMBIENT_NEUTRAL_LINES;
   }
 
+  function commsTypeForFaction(faction) {
+    if (faction === "ufp") return "comms-ufp";
+    if (faction === "blister") return "comms-blister";
+    if (faction === "arcworks") return "comms-arcworks";
+    return "comms";
+  }
+
   function scheduleAmbientNeutralLine(npc) {
     const line = randomPick(neutralDialoguePool()) || randomPick(AMBIENT_NEUTRAL_LINES);
-    const location = nodeLabel(npc.at);
     const delay = 1;
     npc.lastDialogueTick = state.tick + delay;
     npc.nextDialogueTick = nextAmbientDialogueTick();
-    scheduleCharacterMessage(delay, npc.captainName || npc.callsign, line, `${npc.callsign} @ ${location}`, "comms");
+    scheduleCharacterMessage(delay, npc.captainName || npc.callsign, line, `ambient-npc:${npc.id}`, commsTypeForFaction(npc.faction));
   }
 
   function spawnAmbientLocationShip(nodeId) {
@@ -369,8 +405,8 @@ export function createNpcController({
     const npc = {
       id,
       callsign: randomAmbientCallsign(ship.className),
-      captainName: randomAmbientCaptainName(),
-      faction: ship.faction || "civilian",
+      captainName: drawAmbientCaptainName(),
+      faction: factionForShipType(ship),
       role: ship.role || "local",
       registryKey: ship.registryKey,
       at: nodeId,
@@ -384,7 +420,8 @@ export function createNpcController({
     };
     if (!Array.isArray(state.civilianNpcs)) state.civilianNpcs = [];
     state.civilianNpcs.push(npc);
-    shipSpeedById[id] = ship.speed || 3;
+    const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
+    shipSpeedById[id] = registry?.[ship.registryKey]?.speed || ship.speed || 3;
     ambientLocationSpawnCooldowns.set(nodeId, state.tick + randomInt(50, 100));
     return npc;
   }

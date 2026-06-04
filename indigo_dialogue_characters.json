@@ -683,5 +683,35 @@
         ]
       }
     }
+  },
+  "ambientNeutralConversation": {
+    "description": "Overheard low-stakes captain and pilot chatter for ambient local traffic ships.",
+    "lines": [
+      "Copy. We see your running lights. They're... very pretty running lights.",
+      "Negative on priority clearance. Positive on whoever left soup in the number three cupholder.",
+      "Tell Rook his lucky wrench is in the galley, and also that it is not lucky anymore.",
+      "Traffic note: if that was a wave, we wave back. If it was a sensor fault, we still wave back.",
+      "I am not saying the coffee is old. I am saying it has developed opinions.",
+      "Local traffic, mind the bright reflection off our port side. That is polish, not a distress signal.",
+      "Copy your drift. We will pretend that was intentional if you pretend this channel is private.",
+      "Whoever is humming on open comms, you are either flat or haunted. Possibly both.",
+      "We have visual on the queue. It is majestic in the way unpaid invoices are majestic.",
+      "Bridge log: sandwich secured, morale up twelve percent, crumbs in the console unresolved.",
+      "No hazard here. Just a toolbox floating by with more confidence than our navigator.",
+      "Traffic control, confirm whether the docking lights are blinking code or just having a mood.",
+      "We are holding short. The pilot says calmly. The pilot is tapping the panel very calmly.",
+      "Copy, passing wide. Your paintwork is safe from us and from good taste generally.",
+      "If anyone finds a left glove in the lane, keep it. We have entered a right-glove era.",
+      "Local advisory: our cat is looking at the radar again, so expect either genius or static.",
+      "We acknowledge the lane marker. It acknowledges us emotionally, if not electronically.",
+      "No cargo shift detected. The loud bang was procedural optimism leaving the hold.",
+      "Confirming we are still in line, still patient, and still pretending those are different things.",
+      "Open question for local traffic: is it still breakfast if the eggs came from a tube?",
+      "We see the tug. Please tell the tug it looks powerful. Tugs like that.",
+      "Minor correction: previous complaint about the heater was unfair. It has now stopped entirely.",
+      "Copy the traffic picture. Lot of dots today. Very proud of everyone for being dots responsibly.",
+      "We are switching to internal comms before the engineer describes the coffee filter again.",
+      "Local channel check complete. If you heard a squeak, that was the chair, not the hull. Probably."
+    ]
   }
 }

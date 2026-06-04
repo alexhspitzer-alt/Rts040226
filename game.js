@@ -279,6 +279,8 @@ const state = {
   },
   loreSummary: DEFAULT_LORE_SUMMARY,
   dialogueDb: {},
+  ambientNeutralConversation: [],
+  characterNameRegistry: null,
   latencyBriefed: false,
   lastAmbientLine: null,
   lastAmbientChatterTick: -Infinity,
@@ -443,6 +445,16 @@ function formatShipId(shipId) {
 }
 
 function speakerContext(name, statusOverride) {
+  const ambientStatusMatch = /^ambient-npc:(.+)$/i.exec(String(statusOverride || ""));
+  if (ambientStatusMatch) {
+    const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.id === ambientStatusMatch[1]);
+    if (ambientNpc) {
+      const location = nodeLabel(ambientNpc.at);
+      const shipTag = ambientNpc.callsign ? `${ambientNpc.callsign}, ` : "";
+      return `[${shipTag}${location} (${ambientNpc.status || DEFAULT_SPEAKER_STATUS})]`;
+    }
+  }
+
   const shipId = Object.keys(SHIP_CAPTAINS).find((id) => SHIP_CAPTAINS[id] === name);
   if (shipId) {
     const ship = state.ships.find((s) => s.id === shipId);
@@ -451,6 +463,14 @@ function speakerContext(name, statusOverride) {
     const location = ship.status === "enroute" && ship.destination ? nodeLabel(ship.destination) : nodeLabel(ship.at);
     if (status === DEFAULT_SPEAKER_STATUS) return `[${formatShipId(shipId)}, ${location}]`;
     return `[${formatShipId(shipId)}, ${location} (${status})]`;
+  }
+
+  const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.captainName === name);
+  if (ambientNpc) {
+    const status = statusOverride || ambientNpc.status || DEFAULT_SPEAKER_STATUS;
+    const location = nodeLabel(ambientNpc.at);
+    const shipTag = ambientNpc.callsign ? `${ambientNpc.callsign}, ` : "";
+    return `[${shipTag}${location}${status ? ` (${status})` : ""}]`;
   }
 
   const contactProfile = CONTACT_PROFILES[name];
@@ -481,7 +501,8 @@ function speakerMessageType(name) {
   if (name === BASIL_NAME) return "basil";
   if (name === BUDDE_NAME) return "budde";
 
-  const fallbackFaction = NPC_CAPTAIN_FACTIONS[name] || "";
+  const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.captainName === name);
+  const fallbackFaction = ambientNpc?.faction || NPC_CAPTAIN_FACTIONS[name] || "";
   const faction = String(state.dialogueDb[name]?.faction || fallbackFaction).toLowerCase();
   if (SHIP_CAPTAINS && Object.values(SHIP_CAPTAINS).includes(name)) return "comms-blufreight";
   if (faction === "blufreight") return "comms-blufreight";
@@ -526,7 +547,7 @@ let PlayerHailFlow;
 async function loadReferenceData() {
   try {
     const noCache = { cache: "no-store" };
-    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse] = await Promise.all([
+    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse, nameRegistryResponse] = await Promise.all([
       fetch("./bluFreight%20text%20RTS.txt", noCache),
       fetch("./indigo_dialogue_characters.json", noCache),
       fetch("./map.json", noCache),
@@ -534,6 +555,7 @@ async function loadReferenceData() {
       fetch(SCENARIO_PATH, noCache),
       fetch(ALMANAC_PATH, noCache),
       fetch("./ship_registry.json", noCache),
+      fetch("./character_name_registry.json", noCache),
     ]);
 
     if (loreResponse.ok) {
@@ -546,6 +568,9 @@ async function loadReferenceData() {
       const dialogueData = await dialogueResponse.json();
       state.dialogueDb = dialogueData?.characters || dialogueData;
       state.playerRequestDialogue = dialogueData?.hailResponses || {};
+      state.ambientNeutralConversation = Array.isArray(dialogueData?.ambientNeutralConversation?.lines)
+        ? dialogueData.ambientNeutralConversation.lines
+        : [];
     }
 
     if (mapResponse.ok) {
@@ -587,6 +612,9 @@ async function loadReferenceData() {
     }
     if (shipRegistryResponse.ok) {
       state.shipRegistry = await shipRegistryResponse.json();
+    }
+    if (nameRegistryResponse.ok) {
+      state.characterNameRegistry = await nameRegistryResponse.json();
     }
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
