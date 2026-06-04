@@ -110,7 +110,7 @@ export function createContractTools({
   function generateContract() {
     const nodes = getNodes();
     const origins = Object.keys(nodes);
-    if (origins.length < 2) return;
+    if (origins.length < 2) return null;
     let from = origins[Math.floor(Math.random() * origins.length)];
     let to = from;
     let client = null;
@@ -140,7 +140,7 @@ export function createContractTools({
     const isScenario4DeuteriumExclusive = state.currentScenario >= 4
       && String(client || "").toLowerCase() === "ufp"
       && String(cargoType || "").toLowerCase() === "deuterium";
-    state.contracts.push({
+    const contract = {
       id: `C-${state.nextContract++}`,
       from,
       to,
@@ -149,7 +149,9 @@ export function createContractTools({
       client,
       cargoType,
       cargoRequirement,
-    });
+    };
+    state.contracts.push(contract);
+    return contract;
   }
 
   return { generateContract, generateCargoContractData };

@@ -36,6 +36,9 @@ const PLAYER_NODE = "anchor_station";
 const CONSOLE_MESSAGE_GAP_MS = 750;
 const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
 const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
+const CONTRACT_BOARD_MIN_OPEN = 4;
+const CONTRACT_BOARD_MAX_OPEN = 6;
+const CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT = 20;
 const OPERATING_COST_PER_SHIP_PER_MINUTE = 8;
 const OPERATING_COST_INTERVAL_SECONDS = 15;
 const OPERATING_COST_PER_SHIP_PER_INTERVAL =
@@ -258,6 +261,7 @@ const state = {
   risk: 22,
   escort: false,
   contracts: [],
+  contractBoardTargetOpen: null,
   completedContracts: 0,
   tutorialDone: false,
   currentScenario: 1,
@@ -1056,8 +1060,33 @@ const generateContract = (...args) => contractTools.generateContract(...args);
 function openContracts() {
   return state.contracts.filter((c) => c.status === "open");
 }
+function randomContractBoardTarget() {
+  return CONTRACT_BOARD_MIN_OPEN + Math.floor(Math.random() * (CONTRACT_BOARD_MAX_OPEN - CONTRACT_BOARD_MIN_OPEN + 1));
+}
+
 function targetOpenContractCount() {
-  return state.currentScenario >= 4 ? 6 : 4;
+  if (!Number.isInteger(state.contractBoardTargetOpen)
+    || state.contractBoardTargetOpen < CONTRACT_BOARD_MIN_OPEN
+    || state.contractBoardTargetOpen > CONTRACT_BOARD_MAX_OPEN) {
+    state.contractBoardTargetOpen = randomContractBoardTarget();
+  }
+  return state.contractBoardTargetOpen;
+}
+
+function resetContractBoardTarget() {
+  state.contractBoardTargetOpen = randomContractBoardTarget();
+  return state.contractBoardTargetOpen;
+}
+
+function fillContractBoard({ forceNewTarget = false } = {}) {
+  const openCount = openContracts().length;
+  if (forceNewTarget || openCount < CONTRACT_BOARD_MIN_OPEN) resetContractBoardTarget();
+  const target = targetOpenContractCount();
+  let attempts = 0;
+  while (openContracts().length < target && attempts < CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT) {
+    attempts += 1;
+    if (!generateContract()) break;
+  }
 }
 
 function idleShip(shipId) {
@@ -1091,7 +1120,7 @@ function render() {
   ui.escort.textContent = state.escort ? "On" : "Off";
 
   ui.contracts.innerHTML = "";
-  openContracts().slice(0, 7).forEach((c, idx) => {
+  openContracts().slice(0, CONTRACT_BOARD_MAX_OPEN).forEach((c, idx) => {
     const li = document.createElement("li");
     const displayNumber = contractNumber(c.id) || (idx + 1);
     const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
@@ -1439,7 +1468,7 @@ function checkScenarioCompletion() {
         syncShipLocationsToActiveMap();
       }
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
-      while (openContracts().length < targetOpenContractCount()) generateContract();
+      fillContractBoard({ forceNewTarget: true });
       logLine("Scenario 2 unlocked: Fuel, Gravity, and Actual Consequences.", "sys");
       playScenario2Intro();
     }
@@ -1467,7 +1496,7 @@ function checkScenarioCompletion() {
       }
       addScenario3Tug();
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
-      while (openContracts().length < targetOpenContractCount()) generateContract();
+      fillContractBoard({ forceNewTarget: true });
       logLine("Scenario 3 unlocked: Calibration Debt and Corrected Distances.", "sys");
       playScenario3Intro();
       promptScenario3LowOrbitTowIfAvailable();
@@ -1487,7 +1516,7 @@ function checkScenarioCompletion() {
       state.completedContracts = 0;
       setupScenario4Fleet();
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
-      while (openContracts().length < targetOpenContractCount()) generateContract();
+      fillContractBoard({ forceNewTarget: true });
       logLine("Scenario 4 unlocked: Exclusive Distribution.", "sys");
       playScenario4Intro();
     }
@@ -1729,6 +1758,7 @@ function assignContract(contractId, shipId) {
   ship.busyUntil = ship.departAt + total;
   ship.destination = contract.to;
   contract.status = "assigned";
+  fillContractBoard();
   contract.assignedShipId = ship.id;
   ship.activeContractId = contract.id;
   contract.fuelCost = fuelCost;
@@ -2028,8 +2058,7 @@ function updateSimulation() {
   });
   state.delayedMessages = state.delayedMessages.filter((m) => m.at > state.tick);
 
-  const contractAutoSpawnEnabled = state.tutorialDone || state.currentScenario >= 2;
-  if (contractAutoSpawnEnabled && openContracts().length < targetOpenContractCount() && state.tick % 10 === 0) generateContract();
+  fillContractBoard();
 
   if (state.tick % 30 === 0) {
     state.risk += Math.random() < 0.5 ? 1 : -1;
@@ -2171,8 +2200,7 @@ async function init() {
     edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
     adjacency = buildGraph(nodes, edges);
   }
-  generateContract();
-  generateContract();
+  fillContractBoard({ forceNewTarget: true });
   state.selection.pending = "await_ship";
   basilSpeak("greetings", "Dispatch online.", "basil");
   playScenarioIntro();
