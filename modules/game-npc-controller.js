@@ -8,9 +8,8 @@ const AMBIENT_LOCATION_SPAWN_INTERVAL = 20;
 const AMBIENT_LOCATION_SPAWN_CHANCE = 0.35;
 const AMBIENT_LOCATION_MAX_SHIPS = 8;
 const AMBIENT_LOCATION_MAX_PER_NODE = 2;
-const AMBIENT_LOCATION_DIALOGUE_MIN = 75;
-const AMBIENT_LOCATION_DIALOGUE_MAX = 180;
-const AMBIENT_LOCATION_MAX_DIALOGUES_PER_SHIP = 1;
+const AMBIENT_LOCATION_DIALOGUE_MIN = 180;
+const AMBIENT_LOCATION_DIALOGUE_MAX = 360;
 const AMBIENT_LOCATION_REMOVE_INTERVAL = 30;
 const AMBIENT_LOCATION_REMOVE_CHANCE = 0.25;
 const AMBIENT_LOCATION_REMOVE_DIALOGUE_GRACE = 60;
@@ -368,8 +367,7 @@ export function createNpcController({
     return formatAmbientCaptainName(name);
   }
 
-  function nextAmbientDialogueTick(npc = null) {
-    if (npc && (npc.dialogueCount || 0) >= AMBIENT_LOCATION_MAX_DIALOGUES_PER_SHIP) return Infinity;
+  function nextAmbientDialogueTick() {
     return state.tick + randomInt(AMBIENT_LOCATION_DIALOGUE_MIN, AMBIENT_LOCATION_DIALOGUE_MAX);
   }
 
@@ -394,7 +392,7 @@ export function createNpcController({
     const delay = 1;
     npc.lastDialogueTick = state.tick + delay;
     npc.dialogueCount = (npc.dialogueCount || 0) + 1;
-    npc.nextDialogueTick = nextAmbientDialogueTick(npc);
+    npc.nextDialogueTick = nextAmbientDialogueTick();
     scheduleCharacterMessage(delay, npc.captainName || npc.callsign, line, `ambient-npc:${npc.id}`, commsTypeForFaction(npc.faction));
   }
 
@@ -446,7 +444,6 @@ export function createNpcController({
   function updateAmbientLocationDialogue() {
     ambientNpcs().forEach((npc) => {
       if (npc.status !== "idle" || !npc.at) return;
-      if ((npc.dialogueCount || 0) >= AMBIENT_LOCATION_MAX_DIALOGUES_PER_SHIP) return;
       if (state.tick >= (npc.nextDialogueTick || 0) && playerLocalToNode(npc.at)) scheduleAmbientNeutralLine(npc);
     });
   }
