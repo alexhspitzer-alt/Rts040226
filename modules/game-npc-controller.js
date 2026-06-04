@@ -371,7 +371,11 @@ export function createNpcController({
     return state.tick + randomInt(AMBIENT_LOCATION_DIALOGUE_MIN, AMBIENT_LOCATION_DIALOGUE_MAX);
   }
 
-  function neutralDialoguePool() {
+  function neutralDialoguePool(npc = null) {
+    const registryPool = npc?.registryKey
+      ? state.ambientDialoguePools?.byRegistryKey?.[npc.registryKey]?.lines
+      : null;
+    if (Array.isArray(registryPool) && registryPool.length) return registryPool;
     if (Array.isArray(state.ambientNeutralConversation) && state.ambientNeutralConversation.length) {
       return state.ambientNeutralConversation;
     }
@@ -388,7 +392,7 @@ export function createNpcController({
   }
 
   function scheduleAmbientNeutralLine(npc) {
-    const line = randomPick(neutralDialoguePool()) || randomPick(AMBIENT_NEUTRAL_LINES);
+    const line = randomPick(neutralDialoguePool(npc)) || randomPick(AMBIENT_NEUTRAL_LINES);
     const delay = 1;
     npc.lastDialogueTick = state.tick + delay;
     npc.dialogueCount = (npc.dialogueCount || 0) + 1;

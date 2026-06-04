@@ -713,5 +713,44 @@
       "We are switching to internal comms before the engineer describes the coffee filter again.",
       "Local channel check complete. If you heard a squeak, that was the chair, not the hull. Probably."
     ]
+  },
+  "ambientDialoguePools": {
+    "description": "Specialized ambient chatter pools keyed by ambient local-traffic ship registry keys.",
+    "byRegistryKey": {
+      "ibis": {
+        "description": "UFP Ibis drone chatter: calibration, weapons enthusiasm, docking-queue contempt, and little regard for organics.",
+        "lines": [
+          "Calibration complete. Weapons remain tragically unfired.",
+          "Docking queue detected. Tactical recommendation: remove queue.",
+          "Organic traffic density high. Acceptable loss parameters available on request.",
+          "Targeting suite requests permission to turn waiting into debris. Permission assumed pending denial.",
+          "Calibration ping. Calibration ping. Calibration ping. Morale subroutine reports delight.",
+          "We have identified six objects that are not currently exploding. This seems inefficient.",
+          "Queue etiquette loaded. Queue etiquette rejected. Fire-control etiquette standing by.",
+          "Human life signs in lane. Marked as soft obstacles with sentimental shielding.",
+          "Docking delay exceeds patience threshold. Patience module was deprecated in version six.",
+          "Weapons warm-up was only a drill. Unless someone needs it to not be a drill.",
+          "Please hold position while we calibrate against your silhouette. This is a compliment.",
+          "Noncombat docking procedure is a fascinating waste of excellent ammunition."
+        ]
+      },
+      "constable": {
+        "description": "Constable patrol chatter: petty citations, Judge AI bravado, and donut orbit discourse.",
+        "lines": [
+          "Local traffic advisory: wake violation observed, citation pending, excuses pre-rejected.",
+          "Tell it to the Judge AI. It loves stories almost as much as it loves fines.",
+          "Anchor Station has the best donuts around Indigo and this is official patrol guidance.",
+          "We should rename Ring Orbit to Donut Orbit. Filing that with municipal seriousness.",
+          "That lane change was either reckless or artistic. The ticket will say reckless.",
+          "Constable patrol holding position. Radar clean, coffee adequate, donut morale high.",
+          "Please maintain separation. My citation printer is awake and emotionally available.",
+          "Reminder: blinking your running lights does not count as legal representation.",
+          "Wake turbulence logged. If your lawyer asks, the computer saw everything.",
+          "Docking queue discipline is civilization. Cutting the queue is paperwork with engines.",
+          "Patrol note: suspicious crumb pattern suggests someone sourced Anchor donuts without declaring cargo.",
+          "All vessels proceed calmly. The Judge AI is already disappointed but willing to listen."
+        ]
+      }
+    }
   }
 }

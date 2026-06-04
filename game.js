@@ -284,6 +284,7 @@ const state = {
   loreSummary: DEFAULT_LORE_SUMMARY,
   dialogueDb: {},
   ambientNeutralConversation: [],
+  ambientDialoguePools: {},
   characterNameRegistry: null,
   latencyBriefed: false,
   lastAmbientLine: null,
@@ -575,6 +576,7 @@ async function loadReferenceData() {
       state.ambientNeutralConversation = Array.isArray(dialogueData?.ambientNeutralConversation?.lines)
         ? dialogueData.ambientNeutralConversation.lines
         : [];
+      state.ambientDialoguePools = dialogueData?.ambientDialoguePools || {};
     }
 
     if (mapResponse.ok) {
