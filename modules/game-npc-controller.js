@@ -7,7 +7,7 @@ const CONFLICT_HEARTBEAT_SECONDS = 10;
 const AMBIENT_LOCATION_SPAWN_INTERVAL = 20;
 const AMBIENT_LOCATION_SPAWN_CHANCE = 0.35;
 const AMBIENT_LOCATION_MAX_SHIPS = 8;
-const AMBIENT_LOCATION_MAX_PER_NODE = 2;
+const AMBIENT_LOCATION_MAX_PER_NODE = 4;
 const AMBIENT_LOCATION_DIALOGUE_MIN = 180;
 const AMBIENT_LOCATION_DIALOGUE_MAX = 360;
 const AMBIENT_LOCATION_REMOVE_INTERVAL = 30;
@@ -43,8 +43,16 @@ const AMBIENT_LOCATION_SHIP_RULES = [
     ],
   },
   {
-    key: "yard-refinery-lanes",
-    matches: (nodeId, label) => ["yard", "refinery"].includes(nodeId) || /yard|refinery|transfer lane/i.test(label),
+    key: "transfer-lanes",
+    matches: (nodeId, label) => /transfer_lane/i.test(nodeId) || /transfer lane/i.test(label),
+    ships: [
+      { registryKey: "trawler", className: "Trawler", faction: "civilian", role: "hauler", rarity: "uncommon", weight: 3, speed: 2 },
+      { registryKey: "sledge", className: "Sledge", faction: "blister", role: "raider", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "yard-refinery",
+    matches: (nodeId, label) => ["yard", "refinery"].includes(nodeId) || /yard|refinery/i.test(label),
     ships: [
       { registryKey: "sledge", className: "Sledge", faction: "blister", role: "raider", rarity: "rare", weight: 1, speed: 2 },
     ],
