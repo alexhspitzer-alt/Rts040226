@@ -26,20 +26,34 @@ const AMBIENT_NEUTRAL_LINES = [
 const AMBIENT_LOCATION_SHIP_RULES = [
   {
     key: "arcworks-core",
-    matches: (nodeId, label) => ["arcworks_operations_hub", "arcworks_militia_barracks", "condenser_columns"].includes(nodeId)
-      || /arcworks operations hub|arcworks militia barracks|condenser columns/i.test(label),
+    matches: (nodeId, label) => ["arcworks_operations_hub", "arcworks_militia_barracks", "condenser_columns", "arcworks_fuel_depot"].includes(nodeId)
+      || /arcworks operations hub|arcworks militia barracks|condenser columns|arcworks fuel depot/i.test(label),
     ships: [
       { registryKey: "j-i", className: "J-I", faction: "arcworks", role: "industrial", rarity: "common", weight: 6, speed: 3 },
       { registryKey: "mm-ix", className: "MM-IX", faction: "arcworks", role: "industrial", rarity: "uncommon", weight: 3, speed: 2 },
       { registryKey: "ml-x", className: "ML-X", faction: "arcworks", role: "industrial", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "ufp-administration-science",
+    matches: (nodeId, label) => ["ufp_indigo_system_administration", "ufp_science_station"].includes(nodeId)
+      || /ufp indigo system administration|ufp science station/i.test(label),
+    ships: [
+      { registryKey: "pelican", className: "Pelican", faction: "ufp", role: "patrol", rarity: "common", weight: 6, speed: 3 },
+      { registryKey: "piper", className: "Piper", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 4 },
+      { registryKey: "ibis", className: "Ibis", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 4 },
+      { registryKey: "condor", className: "Condor", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 3 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
     ],
   },
   {
     key: "ufp",
-    matches: (nodeId, label) => nodeId === "ufp_science_station" || /^ufp_/i.test(nodeId) || /ufp .*station|ufp outpost|ufp indigo system administration|ufp science station/i.test(label),
+    matches: (nodeId, label) => /^ufp_/i.test(nodeId) || /ufp outpost/i.test(label),
     ships: [
       { registryKey: "piper", className: "Piper", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 4 },
       { registryKey: "ibis", className: "Ibis", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 4 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
     ],
   },
   {
@@ -51,22 +65,47 @@ const AMBIENT_LOCATION_SHIP_RULES = [
     ],
   },
   {
-    key: "yard-refinery",
-    matches: (nodeId, label) => ["yard", "refinery"].includes(nodeId) || /yard|refinery/i.test(label),
+    key: "refinery",
+    matches: (nodeId, label) => nodeId === "refinery" || /refinery/i.test(label),
     ships: [
+      { registryKey: "mm-ix", className: "MM-IX", faction: "arcworks", role: "industrial", rarity: "uncommon", weight: 3, speed: 2 },
       { registryKey: "sledge", className: "Sledge", faction: "blister", role: "raider", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
     ],
   },
   {
-    key: "stations",
-    matches: (nodeId, label) => ["anchor_station", "indigo_station", "barons_market", "arcworks_operations_hub"].includes(nodeId)
-      || /station|baron'?s market|operations hub/i.test(label),
+    key: "yard",
+    matches: (nodeId, label) => nodeId === "yard" || /yard/i.test(label),
+    ships: [
+      { registryKey: "sledge", className: "Sledge", faction: "blister", role: "raider", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "barons-market",
+    matches: (nodeId, label) => nodeId === "barons_market" || /baron'?s market/i.test(label),
     ships: [
       { registryKey: "skiff", className: "Skiff", faction: "civilian", role: "civilian", rarity: "common", weight: 6, speed: 4 },
       { registryKey: "trawler", className: "Trawler", faction: "civilian", role: "hauler", rarity: "uncommon", weight: 3, speed: 2 },
       { registryKey: "constable", className: "Constable", faction: "civilian", role: "patrol", rarity: "rare", weight: 1, speed: 3 },
       { registryKey: "j-viii", className: "J-VIII", faction: "arcworks", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
       { registryKey: "pelican", className: "Pelican", faction: "ufp", role: "patrol", rarity: "rare", weight: 1, speed: 3 },
+      { registryKey: "sledge", className: "Sledge", faction: "blister", role: "raider", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "ml-x", className: "ML-X", faction: "arcworks", role: "industrial", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "stations",
+    matches: (nodeId, label) => ["anchor_station", "indigo_station"].includes(nodeId)
+      || /station/i.test(label),
+    ships: [
+      { registryKey: "skiff", className: "Skiff", faction: "civilian", role: "civilian", rarity: "common", weight: 6, speed: 4 },
+      { registryKey: "trawler", className: "Trawler", faction: "civilian", role: "hauler", rarity: "uncommon", weight: 3, speed: 2 },
+      { registryKey: "constable", className: "Constable", faction: "civilian", role: "patrol", rarity: "rare", weight: 1, speed: 3 },
+      { registryKey: "j-viii", className: "J-VIII", faction: "arcworks", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "pelican", className: "Pelican", faction: "ufp", role: "patrol", rarity: "rare", weight: 1, speed: 3 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
     ],
   },
 ];
