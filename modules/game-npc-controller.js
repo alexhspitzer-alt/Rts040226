@@ -125,6 +125,10 @@ function randomPick(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+function clamp(min, max, value) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function randomLoiterSeconds() {
   const min = NPC_LOITER_MIN;
   const max = NPC_LOITER_MAX;
@@ -591,6 +595,130 @@ export function createNpcController({
     return stage;
   }
 
+  function damageChance(guns, armor) {
+    if (guns <= 0) return 0;
+    const safeArmor = Math.max(0, armor || 0);
+    const base = safeArmor <= 0 ? 1 : guns / (guns + safeArmor);
+    const underpoweredPenalty = safeArmor > guns ? Math.min(0.09, (safeArmor - guns) * 0.01) : 0;
+    return clamp(0, 0.995, base - underpoweredPenalty);
+  }
+
+  function rollWeightedOutcome(weights) {
+    const entries = Object.entries(weights).filter(([, probability]) => probability > 0);
+    if (!entries.length) return "no_effect";
+    const total = entries.reduce((sum, [, probability]) => sum + probability, 0);
+    let roll = Math.random() * total;
+    for (const [outcome, probability] of entries) {
+      roll -= probability;
+      if (roll <= 0) return outcome;
+    }
+    return entries[entries.length - 1][0];
+  }
+
+  function directCombatWeights(attacker, defender) {
+    const attackerProfile = shipCombatProfile(attacker);
+    const defenderProfile = shipCombatProfile(defender);
+    const guns = Math.max(0, attackerProfile.guns || 0);
+    const armor = Math.max(0, defenderProfile.armor || 0);
+    const pDamage = damageChance(guns, armor);
+    const overmatch = guns - armor;
+    const killShare = clamp(0.005, 0.35, 0.06 + overmatch * 0.025);
+    const majorShare = clamp(0.15, 0.55, 0.30 + overmatch * 0.025);
+    const minorShare = Math.max(0, 1 - killShare - majorShare);
+    return {
+      kill: pDamage * killShare,
+      major_damage: pDamage * majorShare,
+      minor_damage: pDamage * minorShare,
+      no_effect: Math.max(0, 1 - pDamage),
+    };
+  }
+
+  function collateralCombatWeights(attacker, defender) {
+    const attackerProfile = shipCombatProfile(attacker);
+    const defenderProfile = shipCombatProfile(defender);
+    const pDamage = Math.min(0.2, damageChance(attackerProfile.guns || 0, defenderProfile.armor || 0) * 0.18);
+    return {
+      major_damage: pDamage * 0.25,
+      minor_damage: pDamage * 0.75,
+      no_effect: Math.max(0, 1 - pDamage),
+    };
+  }
+
+  function combatStatusRank(status) {
+    if (status === "killed") return 3;
+    if (status === "major_damage") return 2;
+    if (status === "minor_damage") return 1;
+    return 0;
+  }
+
+  function applyCombatOutcome(npc, outcome) {
+    if (!npc || outcome === "no_effect") return;
+    const normalizedOutcome = outcome === "kill" ? "killed" : outcome;
+    if (combatStatusRank(normalizedOutcome) <= combatStatusRank(npc.combatStatus)) return;
+    npc.combatStatus = normalizedOutcome;
+    npc.lastCombatTick = state.tick;
+    if (normalizedOutcome === "killed") {
+      npc.status = "disabled";
+      npc.departAt = Infinity;
+      npc.arrivalTick = 0;
+      return;
+    }
+    if (normalizedOutcome === "major_damage") {
+      npc.status = "disabled";
+      npc.departAt = Infinity;
+      npc.arrivalTick = 0;
+    }
+  }
+
+  function combatCapable(npc) {
+    return npc && npc.combatStatus !== "killed" && npc.combatStatus !== "major_damage";
+  }
+
+  function resolveDirectCombat(attacker, defender) {
+    const outcome = rollWeightedOutcome(directCombatWeights(attacker, defender));
+    applyCombatOutcome(defender, outcome);
+    return { attacker, defender, outcome };
+  }
+
+  function resolveCollateralCombat(attacker, defender) {
+    const outcome = rollWeightedOutcome(collateralCombatWeights(attacker, defender));
+    applyCombatOutcome(defender, outcome);
+    return { attacker, defender, outcome };
+  }
+
+  function outcomeLabel(outcome) {
+    if (outcome === "kill" || outcome === "killed") return "kill";
+    if (outcome === "major_damage") return "major damage";
+    if (outcome === "minor_damage") return "minor damage";
+    return "no effect";
+  }
+
+  function formatCombatResultLine(result, prefix = "Fire") {
+    return `[${prefix}] ${result.attacker.callsign} -> ${result.defender.callsign}: ${outcomeLabel(result.outcome)}.`;
+  }
+
+  function resolveCombatExchange(aggressor, responder, nodeId) {
+    const shipsAtNode = (state.civilianNpcs || []).filter((npc) => (
+      npc?.at === nodeId
+      && npc.id !== aggressor.id
+      && npc.id !== responder.id
+      && npc.combatStatus !== "killed"
+    ));
+    const direct = resolveDirectCombat(aggressor, responder);
+    const collateral = shipsAtNode
+      .map((npc) => resolveCollateralCombat(aggressor, npc))
+      .filter((result) => result.outcome !== "no_effect");
+    const canReturn = combatCapable(responder) && hasGuns(responder);
+    const returnFire = canReturn ? resolveDirectCombat(responder, aggressor) : null;
+    const returnCollateral = returnFire
+      ? shipsAtNode
+        .filter((npc) => npc.combatStatus !== "killed")
+        .map((npc) => resolveCollateralCombat(responder, npc))
+        .filter((result) => result.outcome !== "no_effect")
+      : [];
+    return { direct, collateral, returnFire, returnCollateral, canReturn };
+  }
+
   function playerLocalToNode(nodeId) {
     if (nodeId === "anchor_station") return true;
     return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "enroute"));
@@ -639,19 +767,43 @@ export function createNpcController({
       "comms"
     );
 
-    if (encounter.stage === "fire" && hasGuns(responder) && Math.random() < 0.55) {
-      const counterfireLines = [
-        `[Fire] to ${aggressor.callsign} @ ${location}: Returning fire. Marking your drives and breaking across your bow.`,
-        `[Fire] to ${aggressor.callsign} @ ${location}: Counterfire authorized. You fire again, you drift home in pieces.`,
-        `[Fire] to ${aggressor.callsign} @ ${location}: Defensive guns active. You wanted a duel—now finish it fast.`,
-      ];
+    if (encounter.stage === "fire") {
+      const exchange = resolveCombatExchange(aggressor, responder, encounter.nodeId);
       scheduleCharacterMessage(
         3,
-        responder.captainName || responder.callsign,
-        randomPick(counterfireLines),
+        aggressor.captainName || aggressor.callsign,
+        `${formatCombatResultLine(exchange.direct)} ${exchange.direct.outcome === "major_damage" || exchange.direct.outcome === "kill" ? `${responder.callsign} cannot return fire.` : ""}`.trim(),
         "interdicting",
         "comms"
       );
+      exchange.collateral.forEach((result, idx) => {
+        scheduleCharacterMessage(
+          4 + idx,
+          result.defender.captainName || result.defender.callsign,
+          formatCombatResultLine(result, "Collateral"),
+          "damaged",
+          "comms"
+        );
+      });
+      if (exchange.returnFire) {
+        const delay = 4 + exchange.collateral.length;
+        scheduleCharacterMessage(
+          delay,
+          responder.captainName || responder.callsign,
+          formatCombatResultLine(exchange.returnFire),
+          exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
+          "comms"
+        );
+        exchange.returnCollateral.forEach((result, idx) => {
+          scheduleCharacterMessage(
+            delay + 1 + idx,
+            result.defender.captainName || result.defender.callsign,
+            formatCombatResultLine(result, "Collateral"),
+            "damaged",
+            "comms"
+          );
+        });
+      }
     }
   }
 
@@ -661,7 +813,7 @@ export function createNpcController({
     const npcById = new Map(npcs.map((npc) => [npc.id, npc]));
     const byNode = new Map();
     npcs.forEach((npc) => {
-      if (!npc?.at) return;
+      if (!npc?.at || !combatCapable(npc)) return;
       if (!byNode.has(npc.at)) byNode.set(npc.at, []);
       byNode.get(npc.at).push(npc);
     });
@@ -899,6 +1051,7 @@ export function createNpcController({
       updateConflictEncounters(npcs.filter((npc) => !npc.ambientLocationSpawn));
       npcs.forEach((npc) => {
         if (npc.ambientLocationSpawn) return;
+        if (!combatCapable(npc)) return;
         if (npc.faction === "ufp" || npc.faction === "blister" || npc.faction === "arcworks") {
           const nodeIds = Object.keys(getNodes());
           const allowed = nodeIds.filter((nodeId) => {
