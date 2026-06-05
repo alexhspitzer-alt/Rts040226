@@ -339,6 +339,7 @@ export function createNpcController({
   let nextAmbientLocationSpawnTick = 0;
   let nextAmbientLocationRemoveTick = 0;
   let ambientLocationSpawnSerial = 1;
+  let ambientIbisFlockSerial = 1;
   const ambientLocationSpawnCooldowns = new Map();
   const usedAmbientCaptainNames = new Set();
 
@@ -414,6 +415,28 @@ export function createNpcController({
     return formatAmbientCaptainName(name);
   }
 
+  function numberWord(value) {
+    const ones = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    const number = Math.max(0, Math.floor(Number(value) || 0));
+    if (number < ones.length) return ones[number];
+    if (number < 100) {
+      const ten = Math.floor(number / 10);
+      const one = number % 10;
+      return one ? `${tens[ten]}-${ones[one]}` : tens[ten];
+    }
+    return String(number);
+  }
+
+  function drawAmbientShipName(ship) {
+    if (ship?.registryKey === "ibis") {
+      const name = `Flock ${numberWord(ambientIbisFlockSerial)}`;
+      ambientIbisFlockSerial += 1;
+      return name;
+    }
+    return drawAmbientCaptainName();
+  }
+
   function nextAmbientDialogueTick() {
     return state.tick + randomInt(AMBIENT_LOCATION_DIALOGUE_MIN, AMBIENT_LOCATION_DIALOGUE_MAX);
   }
@@ -457,7 +480,7 @@ export function createNpcController({
     const npc = {
       id,
       callsign: randomAmbientCallsign(ship.className),
-      captainName: drawAmbientCaptainName(),
+      captainName: drawAmbientShipName(ship),
       faction: factionForShipType(ship),
       role: ship.role || "local",
       registryKey: ship.registryKey,
