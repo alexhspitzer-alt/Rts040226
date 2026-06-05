@@ -970,6 +970,37 @@ export function createNpcController({
     npc.arrivalTick = state.tick + uplink + transitTime;
   }
 
+  function sortedConflictDebugEntries() {
+    return [...conflictEncounters.values()].sort((a, b) => b.stress - a.stress);
+  }
+
+  function formatConflictDebugEntry(entry, idx) {
+    return `${idx + 1}. ${entry.aggressorId} -> ${entry.responderId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}`;
+  }
+
+  function bumpConflictStress(index, amount = 0.4) {
+    const entries = sortedConflictDebugEntries();
+    const entry = entries[index - 1];
+    if (!entry) return [`dbConflict: no conflict pair #${index}. Run dbconflict to list active pairs.`];
+    const npcs = state.civilianNpcs || [];
+    const npcById = new Map(npcs.map((npc) => [npc.id, npc]));
+    const aggressor = npcById.get(entry.aggressorId || entry.aId);
+    const priorStage = entry.stage;
+    const priorStress = entry.stress;
+    entry.stress = Math.min(1, entry.stress + amount);
+    entry.lastSeenTick = state.tick;
+    const nextStage = capStageForAggressor(conflictStageForStress(entry.stress), aggressor);
+    if (nextStage !== entry.stage) {
+      entry.stage = nextStage;
+      if (typeof onConflictStage === "function") onConflictStage({ stage: entry.stage, nodeId: entry.nodeId, aggressorId: entry.aggressorId, responderId: entry.responderId });
+      if (playerLocalToNode(entry.nodeId)) emitConflictLine(entry, npcById);
+    }
+    return [
+      `dbConflict: stressed pair #${index} by +${amount.toFixed(2)} (${priorStress.toFixed(2)} -> ${entry.stress.toFixed(2)}, ${priorStage} -> ${entry.stage}).`,
+      formatConflictDebugEntry(entry, index - 1),
+    ];
+  }
+
   return {
     bootstrap() {
       if (Array.isArray(state.civilianNpcs) && state.civilianNpcs.length) return;
@@ -1082,11 +1113,12 @@ export function createNpcController({
       });
     },
     getConflictDebugLines() {
-      const entries = [...conflictEncounters.values()];
+      const entries = sortedConflictDebugEntries();
       if (!entries.length) return ["dbConflict: no active NPC conflicts."];
-      return entries
-        .sort((a, b) => b.stress - a.stress)
-        .map((entry, idx) => `${idx + 1}. ${entry.aggressorId} -> ${entry.responderId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}`);
+      return entries.map((entry, idx) => formatConflictDebugEntry(entry, idx));
+    },
+    bumpConflictStress(index, amount) {
+      return bumpConflictStress(index, amount);
     },
   };
 }

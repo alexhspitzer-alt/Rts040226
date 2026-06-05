@@ -40,6 +40,7 @@ export function createCommandRuntime({
   playerHailFlow,
   tutorialGoal,
   npcConflictDebugLines,
+  bumpNpcConflictStress,
 }) {
 
   function titleCaseWords(value) {
@@ -464,6 +465,15 @@ export function createCommandRuntime({
       return true;
     }
 
+    if (command === "stress" && parts.length >= 2) {
+      const index = Number(parts[1]);
+      if (!Number.isInteger(index) || index <= 0) return logLine('Usage: stress [dbConflict pair number]', "error");
+      const lines = typeof bumpNpcConflictStress === "function" ? bumpNpcConflictStress(index) : [];
+      if (!lines?.length) return logLine("dbConflict: stress debug feed unavailable.", "error");
+      lines.forEach((line) => logLine(line, "sys"));
+      return true;
+    }
+
     if (command === "dbnpc") {
       const npcs = Array.isArray(state.civilianNpcs) ? state.civilianNpcs : [];
       if (!npcs.length) {
@@ -488,6 +498,7 @@ export function createCommandRuntime({
         return true;
       }
       lines.forEach((line) => logLine(line, "sys"));
+      logLine('Debug: type "stress [number]" to add +0.40 stress to a listed pair.', "sys");
       return true;
     }
 

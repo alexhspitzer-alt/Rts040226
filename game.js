@@ -2212,6 +2212,7 @@ commandRuntime = createCommandRuntime({
   playerHailFlow: PlayerHailFlow,
   tutorialGoal: TUTORIAL_GOAL,
   npcConflictDebugLines: () => NpcController.getConflictDebugLines(),
+  bumpNpcConflictStress: (index, amount) => NpcController.bumpConflictStress(index, amount),
 });
 NpcController.bootstrap();
 
