@@ -31,6 +31,7 @@ export function createCommandRuntime({
   basilSpeak,
   scheduleMessage,
   speakerContext,
+  formatNpcShipIdentity,
   pickLine,
   speakerMessageType,
   characterSpeak,
@@ -40,6 +41,25 @@ export function createCommandRuntime({
   tutorialGoal,
   npcConflictDebugLines,
 }) {
+
+  function titleCaseWords(value) {
+    return String(value || "")
+      .split(/[\s_-]+/)
+      .filter(Boolean)
+      .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+      .join(" ");
+  }
+
+  function playerShipType(shipOrId) {
+    const id = typeof shipOrId === "string" ? shipOrId : shipOrId?.id;
+    return titleCaseWords(String(id || "ship").split("-")[0]);
+  }
+
+  function playerShipCallsign(ship) {
+    const shipNumber = Math.max(1, state.ships.findIndex((entry) => entry.id === ship?.id) + 1);
+    return `${playerShipType(ship)} Blue-${shipNumber}`;
+  }
+
   function resolveShipToken(token) {
     const raw = String(token || "").trim();
     if (!raw) return null;
@@ -55,7 +75,17 @@ export function createCommandRuntime({
     }
 
     const normalized = normalizeShipIdToken(raw) || raw.toLowerCase();
-    const ship = state.ships.find((s) => s.id === normalized || s.id === raw.toLowerCase());
+    const normalizedCallsign = raw.toLowerCase().replace(/\s+/g, " ").trim();
+    const compactCallsign = normalizedCallsign.replace(/[-\s]/g, "");
+    const ship = state.ships.find((s) => {
+      const fullCallsign = playerShipCallsign(s).toLowerCase();
+      const shortCallsign = fullCallsign.replace(`${playerShipType(s).toLowerCase()} `, "");
+      return s.id === normalized
+        || s.id === raw.toLowerCase()
+        || fullCallsign === normalizedCallsign
+        || shortCallsign === normalizedCallsign
+        || shortCallsign.replace(/[-\s]/g, "") === compactCallsign;
+    });
     if (!ship) return null;
     return {
       shipId: ship.id,
@@ -442,11 +472,12 @@ export function createCommandRuntime({
       }
       logLine("dbNPC: NPC positions", "sys");
       npcs.forEach((npc, idx) => {
-        const atLabel = nodeLabel(npc.at);
         const destinationLabel = npc.destination ? ` -> ${nodeLabel(npc.destination)}` : "";
-        const captain = npc.captainName ? ` | ${npc.captainName}` : "";
         const ambient = npc.ambientLocationSpawn ? ` | local ${npc.registryKey || npc.role || "traffic"}` : "";
-        logLine(`${idx + 1}. ${npc.callsign}${captain}${ambient} | ${npc.status} | ${atLabel}${destinationLabel}`, "sys");
+        const identity = typeof formatNpcShipIdentity === "function"
+          ? formatNpcShipIdentity(npc)
+          : `${npc.captainName || "Capt. Unassigned"} [${npc.callsign}, ${nodeLabel(npc.at)} (${npc.status})]`;
+        logLine(`${idx + 1}. ${identity}${destinationLabel}${ambient}`, "sys");
       });
       return true;
     }

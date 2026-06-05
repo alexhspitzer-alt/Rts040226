@@ -110,8 +110,8 @@ const AMBIENT_LOCATION_SHIP_RULES = [
   },
 ];
 
-const AMBIENT_CALLSIGN_WORDS = ["Wren", "Gannet", "Dory", "Kite", "Mako", "Plover", "Cairn", "Juniper", "Cobalt", "Lantern", "Rook", "Tide"];
-const AMBIENT_AUTOPILOT_CAPTAIN_NAME = "AUTOPILOTv6.9";
+const AMBIENT_CALLSIGN_WORDS = ["Bright", "Swift", "Steady", "Ready", "Brisk", "Keen", "True", "Bold", "Quick", "Calm", "Daring", "Able"];
+const AMBIENT_AUTOPILOT_CAPTAIN_NAME = "Capt. AUTOPILOTv6.9";
 const CONFLICT_DECAY_PER_HEARTBEAT_BASE = 0.09;
 const CONFLICT_GAIN_BASE = 0.12;
 const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
@@ -840,17 +840,17 @@ export function createNpcController({
       const spawnBlister = () => randomPick(blisterNodeIds) || spawn();
       const spawnArcworks = () => randomPick(arcworksNodeIds) || spawn();
       state.civilianNpcs = [
-        { id: "npc-hauler-1", callsign: "Hauler Vesper-14", captainName: "Capt. Elara Kade", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-hauler-2", callsign: "Hauler Morrow-22", captainName: "Capt. Rowan Pike", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-courier-1", callsign: "Courier Kite-7", captainName: "Capt. Nia Calder", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-courier-2", callsign: "Courier Finch-3", captainName: "Capt. Joren Hale", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-ufp-kestrel-1", callsign: "UFP Kestrel-2", captainName: "Lt. Sera Malk", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
-        { id: "npc-ufp-kestrel-2", callsign: "UFP Kestrel-3", captainName: "Lt. Arlen Dax", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
-        { id: "npc-ufp-pelican-1", callsign: "UFP Pelican-1", captainName: "Cmdr. Ilya Soren", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
-        { id: "npc-blister-dragoon-1", callsign: "Blister Dragoon-2", captainName: "Capt. Rysa Korr", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
-        { id: "npc-blister-dragoon-2", callsign: "Blister Dragoon-3", captainName: "Capt. Varek Noll", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
-        { id: "npc-arcworks-mk4-1", callsign: "Arcworks MK-IV", captainName: "Supervisor Edda Marr", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
-        { id: "npc-arcworks-mm9-1", callsign: "Arcworks MM-IX", captainName: "Supervisor Tal Ren", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
+        { id: "npc-hauler-1", callsign: "Hauler Steady-14", captainName: "Capt. Elara Kade", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-hauler-2", callsign: "Hauler Brisk-22", captainName: "Capt. Rowan Pike", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-courier-1", callsign: "Courier Swift-7", captainName: "Capt. Nia Calder", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-courier-2", callsign: "Courier Quick-3", captainName: "Capt. Joren Hale", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-ufp-kestrel-1", callsign: "Kestrel Alert-2", captainName: "Capt. Sera Malk", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
+        { id: "npc-ufp-kestrel-2", callsign: "Kestrel Keen-3", captainName: "Capt. Arlen Dax", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
+        { id: "npc-ufp-pelican-1", callsign: "Pelican Ready-1", captainName: "Capt. Ilya Soren", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
+        { id: "npc-blister-dragoon-1", callsign: "Dragoon Bold-2", captainName: "Capt. Rysa Korr", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
+        { id: "npc-blister-dragoon-2", callsign: "Dragoon Daring-3", captainName: "Capt. Varek Noll", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
+        { id: "npc-arcworks-mk4-1", callsign: "MK-IV Able-4", captainName: "Capt. Edda Marr", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
+        { id: "npc-arcworks-mm9-1", callsign: "MM-IX True-9", captainName: "Capt. Tal Ren", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
       ];
       state.civilianNpcs.forEach((npc) => {
         const wait = randomLoiterSeconds();

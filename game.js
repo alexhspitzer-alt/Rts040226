@@ -237,18 +237,18 @@ const NPC_CAPTAIN_FACTIONS = {
   "Capt. Rowan Pike": "civilian",
   "Capt. Nia Calder": "civilian",
   "Capt. Joren Hale": "civilian",
-  "Lt. Sera Malk": "ufp",
-  "Lt. Arlen Dax": "ufp",
-  "Cmdr. Ilya Soren": "ufp",
+  "Capt. Sera Malk": "ufp",
+  "Capt. Arlen Dax": "ufp",
+  "Capt. Ilya Soren": "ufp",
   "Capt. Rysa Korr": "blister",
   "Capt. Varek Noll": "blister",
-  "Supervisor Edda Marr": "arcworks",
-  "Supervisor Tal Ren": "arcworks",
+  "Capt. Edda Marr": "arcworks",
+  "Capt. Tal Ren": "arcworks",
 };
 
 const CONTACT_PROFILES = {
-  [THORNE_NAME]: { nodeId: "ufp_outpost_delta", shipTag: "UFP Kestrel-1", present: true },
-  [VENN_NAME]: { nodeId: "yard", shipTag: "Blister Dragoon-1", present: true },
+  [THORNE_NAME]: { nodeId: "ufp_outpost_delta", shipTag: "Kestrel Guard-1", present: true },
+  [VENN_NAME]: { nodeId: "yard", shipTag: "Dragoon Fierce-1", present: true },
   "Port Marshal Celia Wren": { nodeId: "anchor_station", present: true },
   [ARCWORKS_EXEC_NAME]: { nodeId: "indigo_station", present: true },
 };
@@ -449,40 +449,90 @@ function formatShipId(shipId) {
     .join("-");
 }
 
+function titleCaseWords(value) {
+  return String(value || "")
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function playerShipType(shipOrId) {
+  const id = typeof shipOrId === "string" ? shipOrId : shipOrId?.id;
+  const prefix = String(id || "ship").split("-")[0];
+  return titleCaseWords(prefix);
+}
+
+function playerShipCallsign(ship) {
+  const shipNumber = Math.max(1, state.ships.findIndex((entry) => entry.id === ship?.id) + 1);
+  return `${playerShipType(ship)} Blue-${shipNumber}`;
+}
+
+function playerShipLabelById(shipId) {
+  const ship = state.ships.find((entry) => entry.id === shipId);
+  return ship ? playerShipCallsign(ship) : formatShipId(shipId);
+}
+
+function formatNodeWithMoon(nodeId) {
+  return nodeLabel(nodeId);
+}
+
+function formatShipContext({ callsign, nodeId, status }) {
+  const location = formatNodeWithMoon(nodeId);
+  const statusLabel = status || DEFAULT_SPEAKER_STATUS;
+  return `[${callsign}, ${location} (${statusLabel})]`;
+}
+
+function playerShipStatus(ship, statusOverride = null) {
+  if (statusOverride) return statusOverride;
+  if (ship?.status === "enroute" || ship?.status === "arrived_pending_report") return "in transit";
+  return ship?.status || DEFAULT_SPEAKER_STATUS;
+}
+
+function formatPlayerShipIdentity(ship, statusOverride = null) {
+  const captain = SHIP_CAPTAINS[ship?.id] || "Capt. Unassigned";
+  const contextNode = (ship?.status === "enroute" || ship?.status === "arrived_pending_report") && ship.destination
+    ? ship.destination
+    : ship?.at;
+  return `${captain} ${formatShipContext({ callsign: playerShipCallsign(ship), nodeId: contextNode, status: playerShipStatus(ship, statusOverride) })}`;
+}
+
+function formatNpcShipContext(npc, statusOverride = null) {
+  const contextNode = npc?.status === "enroute" && npc.destination ? npc.destination : npc?.at;
+  return formatShipContext({
+    callsign: npc?.callsign || titleCaseWords(npc?.role || "Ship"),
+    nodeId: contextNode,
+    status: statusOverride || npc?.status || DEFAULT_SPEAKER_STATUS,
+  });
+}
+
+function formatNpcShipIdentity(npc, statusOverride = null) {
+  return `${npc?.captainName || "Capt. Unassigned"} ${formatNpcShipContext(npc, statusOverride)}`;
+}
+
 function speakerContext(name, statusOverride) {
   const ambientStatusMatch = /^ambient-npc:(.+)$/i.exec(String(statusOverride || ""));
   if (ambientStatusMatch) {
     const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.id === ambientStatusMatch[1]);
-    if (ambientNpc) {
-      const location = nodeLabel(ambientNpc.at);
-      const shipTag = ambientNpc.callsign ? `${ambientNpc.callsign}, ` : "";
-      return `[${shipTag}${location} (${ambientNpc.status || DEFAULT_SPEAKER_STATUS})]`;
-    }
+    if (ambientNpc) return formatNpcShipContext(ambientNpc);
   }
 
   const shipId = Object.keys(SHIP_CAPTAINS).find((id) => SHIP_CAPTAINS[id] === name);
   if (shipId) {
     const ship = state.ships.find((s) => s.id === shipId);
     if (!ship) return "";
-    const status = statusOverride || (ship.status === "enroute" ? "in transit" : DEFAULT_SPEAKER_STATUS);
-    const location = ship.status === "enroute" && ship.destination ? nodeLabel(ship.destination) : nodeLabel(ship.at);
-    if (status === DEFAULT_SPEAKER_STATUS) return `[${formatShipId(shipId)}, ${location}]`;
-    return `[${formatShipId(shipId)}, ${location} (${status})]`;
+    const contextNode = (ship.status === "enroute" || ship.status === "arrived_pending_report") && ship.destination ? ship.destination : ship.at;
+    return formatShipContext({ callsign: playerShipCallsign(ship), nodeId: contextNode, status: playerShipStatus(ship, statusOverride) });
   }
 
   const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.captainName === name);
-  if (ambientNpc) {
-    const status = statusOverride || ambientNpc.status || DEFAULT_SPEAKER_STATUS;
-    const location = nodeLabel(ambientNpc.at);
-    const shipTag = ambientNpc.callsign ? `${ambientNpc.callsign}, ` : "";
-    return `[${shipTag}${location}${status ? ` (${status})` : ""}]`;
-  }
+  if (ambientNpc) return formatNpcShipContext(ambientNpc, statusOverride);
 
   const contactProfile = CONTACT_PROFILES[name];
   if (contactProfile?.nodeId && nodes[contactProfile.nodeId]) {
-    const location = nodeLabel(contactProfile.nodeId);
+    const location = formatNodeWithMoon(contactProfile.nodeId);
     const shipTag = contactProfile.shipTag ? `${contactProfile.shipTag}, ` : "";
-    return `[${shipTag}${location}]`;
+    return `[${shipTag}${location} (${statusOverride || DEFAULT_SPEAKER_STATUS})]`;
   }
 
   const profile = SPEAKER_PROFILES[name];
@@ -1107,10 +1157,10 @@ function commandPromptLabel() {
   if (pending === "await_route_from") return "<Map routes: from>";
   if (pending === "await_route_to") return "<Map routes: to>";
   if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
-  if (pending === "await_contract") return `<${formatShipId(selectedShipId)} contracts>`;
-  if (pending === "await_destination") return `<${formatShipId(selectedShipId)} destinations>`;
-  if (pending === "await_dock_target") return `<${formatShipId(selectedShipId)} dock target>`;
-  return `<${formatShipId(selectedShipId)} actions>`;
+  if (pending === "await_contract") return `<${playerShipLabelById(selectedShipId)} contracts>`;
+  if (pending === "await_destination") return `<${playerShipLabelById(selectedShipId)} destinations>`;
+  if (pending === "await_dock_target") return `<${playerShipLabelById(selectedShipId)} dock target>`;
+  return `<${playerShipLabelById(selectedShipId)} actions>`;
 }
 
 function render() {
@@ -1147,7 +1197,7 @@ function render() {
       ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
       : "";
     const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
-    li.textContent = `${idx + 1}. ${s.id} @ ${nodeLabel(s.at)} | ${displayStatus}${capacityLabel}`;
+    li.textContent = `${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${s.id}${capacityLabel}`;
     ui.fleet.appendChild(li);
   });
   if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
@@ -1296,7 +1346,7 @@ function postTripReportToInbox(ship, report) {
   const from = firstMateRanked.replace(/^First Mate\s+/i, "");
   const hazardsText = report.hazards?.length ? report.hazards.join("; ") : "None reported";
   const body = [
-    `Vessel: ${formatShipId(ship.id)}`,
+    `Vessel: ${playerShipCallsign(ship)}`,
     `Outcome: ${report.outcome}`,
     `Contract: ${report.contractLabel || "None"}`,
     `Distance traveled: ${report.distanceText}`,
@@ -1306,7 +1356,7 @@ function postTripReportToInbox(ship, report) {
     `Damage: ${report.damage || "None reported"}`,
     `Net proceeds after expenses: $${report.netProceeds || 0}`,
     "",
-    `— ${firstMateRanked}, ${formatShipId(ship.id)}`,
+    `— ${firstMateRanked}, ${playerShipCallsign(ship)}`,
   ].join("\n");
   state.inbox.push({
     speaker: from,
@@ -1324,15 +1374,12 @@ function postTripReportToInbox(ship, report) {
 
 function showShipsList() {
   state.ships.forEach((s, idx) => {
-    const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
     const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
-    const dockedSuffix = s.dockedTo ? ` -> docked to ${s.dockedTo}` : s.utilityDockedBy ? ` <- utility ${s.utilityDockedBy}` : "";
+    const dockedSuffix = s.dockedTo ? ` | docked to ${s.dockedTo}` : s.utilityDockedBy ? ` | utility ${s.utilityDockedBy}` : "";
     const capacityLabel = state.currentScenario >= 3 && !s.utility
       ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
       : "";
-    const showLocation = s.status === "idle" || s.status === "tasked";
-    const locationSegment = showLocation ? ` @ ${s.at}` : "";
-    logLine(`${idx + 1}. ${s.id} (${displayStatus}${dockedSuffix})${locationSegment} | ${captain}${capacityLabel}`, "sys");
+    logLine(`${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${s.id}${dockedSuffix}${capacityLabel}`, "sys");
   });
   logLine("Select ship by typing its number or ID.", "sys");
 }
@@ -2156,6 +2203,7 @@ commandRuntime = createCommandRuntime({
   basilSpeak,
   scheduleMessage,
   speakerContext,
+  formatNpcShipIdentity,
   pickLine,
   speakerMessageType,
   characterSpeak,
