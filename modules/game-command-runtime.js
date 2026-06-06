@@ -6,6 +6,7 @@ export function createCommandRuntime({
   normalizeConsoleInput,
   normalizeContractIdToken,
   normalizeShipIdToken,
+  playerShipDisplayId,
   openContracts,
   contractNumber,
   assignContract,
@@ -61,6 +62,22 @@ export function createCommandRuntime({
     return `${playerShipType(ship)} Blue-${shipNumber}`;
   }
 
+  function visibleShipId(ship) {
+    return typeof playerShipDisplayId === "function" ? playerShipDisplayId(ship) : null;
+  }
+
+  function visibleShipIdById(shipId) {
+    const ship = state.ships.find((entry) => entry.id === shipId);
+    return visibleShipId(ship) || shipId;
+  }
+
+  function normalizeFleetIdToken(token) {
+    const clean = String(token || "").trim().toUpperCase().replace(/\s+/g, "");
+    const match = clean.match(/^B-?(\d+)$/);
+    if (!match) return null;
+    return `B-${Number(match[1])}`;
+  }
+
   function resolveShipToken(token) {
     const raw = String(token || "").trim();
     if (!raw) return null;
@@ -69,9 +86,20 @@ export function createCommandRuntime({
     if (Number.isInteger(numeric) && numeric > 0) {
       const byIndex = state.ships[numeric - 1];
       if (!byIndex) return null;
+      const displayId = visibleShipId(byIndex) || byIndex.id;
       return {
         shipId: byIndex.id,
-        interpretation: raw !== byIndex.id ? `Interpreting "${raw}" as "${byIndex.id}".` : null,
+        interpretation: raw !== displayId ? `Interpreting "${raw}" as "${displayId}".` : null,
+      };
+    }
+
+    const fleetId = normalizeFleetIdToken(raw);
+    if (fleetId) {
+      const byFleetId = state.ships[Number(fleetId.slice(2)) - 1];
+      if (!byFleetId) return null;
+      return {
+        shipId: byFleetId.id,
+        interpretation: raw.toUpperCase() !== fleetId ? `Interpreting "${raw}" as "${fleetId}".` : null,
       };
     }
 
@@ -81,8 +109,11 @@ export function createCommandRuntime({
     const ship = state.ships.find((s) => {
       const fullCallsign = playerShipCallsign(s).toLowerCase();
       const shortCallsign = fullCallsign.replace(`${playerShipType(s).toLowerCase()} `, "");
+      const displayId = String(visibleShipId(s) || "").toLowerCase();
       return s.id === normalized
         || s.id === raw.toLowerCase()
+        || displayId === normalizedCallsign
+        || displayId.replace(/-/g, "") === compactCallsign
         || fullCallsign === normalizedCallsign
         || shortCallsign === normalizedCallsign
         || shortCallsign.replace(/[-\s]/g, "") === compactCallsign;
@@ -90,7 +121,7 @@ export function createCommandRuntime({
     if (!ship) return null;
     return {
       shipId: ship.id,
-      interpretation: raw.toLowerCase() !== ship.id ? `Interpreting "${raw}" as "${ship.id}".` : null,
+      interpretation: raw.toLowerCase() !== ship.id ? `Interpreting "${raw}" as "${visibleShipId(ship) || ship.id}".` : null,
     };
   }
 
@@ -140,8 +171,9 @@ export function createCommandRuntime({
     const aliases = {
       contract: "contracts",
       contracts: "contracts",
-      ship: "ships",
-      ships: "ships",
+      fleet: "fleet",
+      ship: "fleet",
+      ships: "fleet",
       sel: "select",
       select: "select",
       stat: "status",
@@ -242,7 +274,7 @@ export function createCommandRuntime({
 
     if (letter === "a") {
       if (ship.utility) {
-        logLine(`${shipId} cannot take cargo contracts. Use dock/send operations instead.`, "error");
+        logLine(`${visibleShipIdById(shipId)} cannot take cargo contracts. Use dock/send operations instead.`, "error");
         return true;
       }
       state.selection.pending = "await_contract";
@@ -251,7 +283,7 @@ export function createCommandRuntime({
     }
     if (letter === "s") {
       if (ship.utility && ship.status === "docked") {
-        logLine(`${shipId} is currently docked. Undock first.`, "error");
+        logLine(`${visibleShipIdById(shipId)} is currently docked. Undock first.`, "error");
         return true;
       }
       state.selection.pending = "await_destination";
@@ -267,9 +299,9 @@ export function createCommandRuntime({
         return true;
       }
       state.selection.pending = "await_dock_target";
-      logLine(`Dock ${shipId} to which ship?`, "sys");
+      logLine(`Dock ${visibleShipIdById(shipId)} to which ship?`, "sys");
       state.selection.dockableShipIds.forEach((targetId, idx) => {
-        logLine(`${idx + 1}. ${targetId}`, "sys");
+        logLine(`${idx + 1}. ${visibleShipIdById(targetId)}`, "sys");
       });
       return true;
     }
@@ -322,8 +354,8 @@ export function createCommandRuntime({
     if (parts[0] === "h" && parts.length >= 2) command = "hail";
 
     if (command === "help") {
-      logLine("help | status | comms | hail <name> | map [routes] | ships | select <ship|number> | assign <contract> <ship> (either order; IDs or numbers) | send <ship> <destination> | pause", "sys");
-      logLine("Aliases: contract/contracts, ship/ships, sel/select, C1/C-1, hauler1/hauler-1. Extra spaces and case are ignored.", "sys");
+      logLine("help | status | comms | hail <name> | map [routes] | fleet | select <ship|number> | assign <contract> <ship> (either order; IDs or numbers) | send <ship> <destination> | pause", "sys");
+      logLine("Aliases: contract/contracts, sel/select, B1/B-1, C1/C-1, Blue-1. Extra spaces and case are ignored.", "sys");
       return true;
     }
 
@@ -389,7 +421,7 @@ export function createCommandRuntime({
       return true;
     }
 
-    if (command === "ships") {
+    if (command === "fleet") {
       state.selection.pending = "await_ship";
       showShipsList();
       return true;
@@ -397,7 +429,7 @@ export function createCommandRuntime({
 
     if (command === "select" && parts[1]) {
       const resolvedShip = resolveShipToken(parts[1]);
-      if (!resolvedShip) logLine(`Could not resolve ship "${parts[1]}". Try a ship ID like hauler-1 or list number.`, "error");
+      if (!resolvedShip) logLine(`Could not resolve ship "${parts[1]}". Try a ship ID like B-1 or list number.`, "error");
       else {
         if (resolvedShip.interpretation) logLine(resolvedShip.interpretation, "sys");
         state.selection.selectedShipId = resolvedShip.shipId;
@@ -459,7 +491,7 @@ export function createCommandRuntime({
 
     if (command === "send" && parts.length >= 3) {
       const resolvedShip = resolveShipToken(parts[1]);
-      if (!resolvedShip) return logLine(`Could not resolve ship "${parts[1]}". Try ship ID or visible ship number.`, "error");
+      if (!resolvedShip) return logLine(`Could not resolve ship "${parts[1]}". Try ship ID like B-1 or visible ship number.`, "error");
       if (resolvedShip.interpretation) logLine(resolvedShip.interpretation, "sys");
       sendShip(resolvedShip.shipId, parts[2]);
       return true;
@@ -586,7 +618,7 @@ export function createCommandRuntime({
       }
     }
 
-    if (!handleLongForm(parts)) logLine("Unknown input. Try: ships or help", "error");
+    if (!handleLongForm(parts)) logLine("Unknown input. Try: fleet or help", "error");
     state.respondingToCommand = false;
   }
 
