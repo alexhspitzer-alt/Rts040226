@@ -117,7 +117,6 @@ const CONFLICT_GAIN_BASE = 0.12;
 const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
 const COLLATERAL_REPRISAL_CHANCE_NO_EFFECT = 0.03;
 const COLLATERAL_REPRISAL_CHANCE_MINOR_DAMAGE = 0.35;
-const COLLATERAL_REPRISAL_MAX_DEPTH = 2;
 
 function randomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -710,10 +709,17 @@ export function createNpcController({
     return 0;
   }
 
+  function sameFactionReprisalBlocked(attacker, target) {
+    const attackerFaction = attacker?.faction || "civilian";
+    const targetFaction = target?.faction || "civilian";
+    return attackerFaction === targetFaction && (attackerFaction === "ufp" || attackerFaction === "arcworks");
+  }
+
   function shouldCollateralReturnFire(result, target) {
     return combatCapable(result?.defender)
       && combatCapable(target)
       && hasGuns(result.defender)
+      && !sameFactionReprisalBlocked(result.defender, target)
       && Math.random() < collateralReprisalChance(result.outcome);
   }
 
@@ -730,24 +736,26 @@ export function createNpcController({
       .map((npc) => resolveCollateralCombat(attacker, npc));
   }
 
-  function resolveCollateralReprisals(triggerResults, target, nodeId, depth = 0, reprisalShipIds = new Set()) {
-    if (depth >= COLLATERAL_REPRISAL_MAX_DEPTH || !combatCapable(target)) return [];
+  function resolveCollateralReprisals(triggerResults, target, nodeId, reprisalShipIds = new Set()) {
     const reprisalEvents = [];
-    triggerResults.forEach((trigger) => {
-      const reprisalAttacker = trigger.defender;
-      if (!reprisalAttacker?.id || reprisalShipIds.has(reprisalAttacker.id)) return;
-      if (!shouldCollateralReturnFire(trigger, target)) return;
+    const reprisalQueue = triggerResults.map((trigger) => ({ trigger, target }));
+    while (reprisalQueue.length) {
+      const eventSeed = reprisalQueue.shift();
+      const reprisalAttacker = eventSeed.trigger.defender;
+      if (!reprisalAttacker?.id || reprisalShipIds.has(reprisalAttacker.id)) continue;
+      if (!shouldCollateralReturnFire(eventSeed.trigger, eventSeed.target)) continue;
       reprisalShipIds.add(reprisalAttacker.id);
-      const direct = resolveDirectCombat(reprisalAttacker, target);
-      const collateralResults = resolveCollateralVolley(reprisalAttacker, target, nodeId);
-      const childReprisals = resolveCollateralReprisals(collateralResults, reprisalAttacker, nodeId, depth + 1, reprisalShipIds);
+      const direct = resolveDirectCombat(reprisalAttacker, eventSeed.target);
+      const collateralResults = resolveCollateralVolley(reprisalAttacker, eventSeed.target, nodeId);
       reprisalEvents.push({
-        trigger,
+        trigger: eventSeed.trigger,
         direct,
         collateral: collateralDamageResults(collateralResults),
-        childReprisals,
       });
-    });
+      collateralResults.forEach((trigger) => {
+        reprisalQueue.push({ trigger, target: reprisalAttacker });
+      });
+    }
     return reprisalEvents;
   }
 
@@ -769,9 +777,9 @@ export function createNpcController({
     const returnCollateralResults = returnFire ? resolveCollateralVolley(responder, aggressor, nodeId) : [];
     const returnCollateral = collateralDamageResults(returnCollateralResults);
     const reprisalShipIds = new Set([aggressor.id, responder.id]);
-    const collateralReprisals = resolveCollateralReprisals(collateralResults, aggressor, nodeId, 0, reprisalShipIds);
+    const collateralReprisals = resolveCollateralReprisals(collateralResults, aggressor, nodeId, reprisalShipIds);
     const returnCollateralReprisals = returnFire
-      ? resolveCollateralReprisals(returnCollateralResults, responder, nodeId, 0, reprisalShipIds)
+      ? resolveCollateralReprisals(returnCollateralResults, responder, nodeId, reprisalShipIds)
       : [];
     return {
       direct,
@@ -890,7 +898,6 @@ export function createNpcController({
           );
           reprisalDelay += 1;
         });
-        (event.childReprisals || []).forEach(scheduleReprisal);
       };
       exchange.collateralReprisals.forEach(scheduleReprisal);
       exchange.returnCollateralReprisals.forEach(scheduleReprisal);
