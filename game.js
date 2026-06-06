@@ -972,8 +972,12 @@ const NpcController = createNpcController({
   scheduleCharacterMessage,
   getShipRegistry: () => state.shipRegistry,
   onConflictStage: ({ stage, nodeId }) => {
-    if (stage === "intercept") applyTrafficControlLock(nodeId, 30, "intercept in progress");
-    if (stage === "fire") applyTrafficControlLock(nodeId, 120, "hazard clearance following weapons discharge");
+    if (stage === "fire") {
+      scheduleMessage(4, () => {
+        applyTrafficControlLock(nodeId, 300, "hazard clearance following weapons discharge");
+        return null;
+      }, "sys");
+    }
   },
 });
 
