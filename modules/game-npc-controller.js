@@ -336,6 +336,8 @@ export function createNpcController({
   nodeLabel,
   scheduleCharacterMessage,
   getShipRegistry,
+  playerShipCallsign,
+  playerShipCaptainById,
   onConflictStage,
 }) {
   const recentNpcLineHistory = [];
@@ -573,10 +575,39 @@ export function createNpcController({
     return "notice";
   }
 
+  function playerRegistryKey(ship) {
+    return String(ship?.id || "").split("-")[0] || null;
+  }
+
+  function playerCollateralCandidate(ship) {
+    if (!ship?.id) return null;
+    const registryKey = playerRegistryKey(ship);
+    const fallbackCallsign = `${titleCase(registryKey || "Ship")} Blue`;
+    return {
+      ...ship,
+      id: ship.id,
+      playerShip: true,
+      sourceShip: ship,
+      callsign: typeof playerShipCallsign === "function" ? playerShipCallsign(ship) : fallbackCallsign,
+      captainName: typeof playerShipCaptainById === "function" ? playerShipCaptainById(ship.id) : null,
+      faction: "blufreight",
+      registryKey,
+    };
+  }
+
+  function playerShipAvailableForCollateral(ship) {
+    return ship?.id
+      && ship.status !== "disabled"
+      && ship.status !== "enroute"
+      && ship.status !== "docked"
+      && ship.combatStatus !== "major_damage"
+      && ship.combatStatus !== "killed";
+  }
+
   function shipCombatProfile(npc) {
     if (!npc?.id) return DEFAULT_NPC_COMBAT_PROFILE;
     const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
-    const registryKey = npc.registryKey || NPC_SHIP_REGISTRY_KEYS[npc.id];
+    const registryKey = npc.registryKey || (npc.playerShip ? playerRegistryKey(npc) : null) || NPC_SHIP_REGISTRY_KEYS[npc.id];
     const registryProfile = registryKey ? registry?.[registryKey] : null;
     const guns = Number.isFinite(registryProfile?.guns) ? registryProfile.guns : null;
     const armor = Number.isFinite(registryProfile?.armor) ? registryProfile.armor : null;
@@ -653,8 +684,30 @@ export function createNpcController({
     return 0;
   }
 
+  function applyPlayerCollateralOutcome(shipLike, outcome) {
+    const ship = shipLike?.sourceShip || shipLike;
+    if (!ship || outcome === "no_effect") return;
+    const normalizedOutcome = outcome === "kill" ? "major_damage" : outcome;
+    if (combatStatusRank(normalizedOutcome) <= combatStatusRank(ship.combatStatus)) return;
+    ship.combatStatus = normalizedOutcome;
+    ship.lastCombatTick = state.tick;
+    if (normalizedOutcome === "major_damage") {
+      ship.status = "disabled";
+      ship.busyUntil = 0;
+      ship.departAt = 0;
+      return;
+    }
+    if (normalizedOutcome === "minor_damage" && ship.status === "idle") {
+      ship.status = "damaged";
+    }
+  }
+
   function applyCombatOutcome(npc, outcome) {
     if (!npc || outcome === "no_effect") return;
+    if (npc.playerShip) {
+      applyPlayerCollateralOutcome(npc, outcome);
+      return;
+    }
     const normalizedOutcome = outcome === "kill" ? "killed" : outcome;
     if (combatStatusRank(normalizedOutcome) <= combatStatusRank(npc.combatStatus)) return;
     npc.combatStatus = normalizedOutcome;
@@ -727,13 +780,22 @@ export function createNpcController({
     const idsToSkip = new Set(excludedIds);
     if (attacker?.id) idsToSkip.add(attacker.id);
     if (primaryTarget?.id) idsToSkip.add(primaryTarget.id);
-    return (state.civilianNpcs || [])
+    const npcTargets = (state.civilianNpcs || [])
       .filter((npc) => (
         npc?.at === nodeId
         && !idsToSkip.has(npc.id)
         && npc.combatStatus !== "killed"
+      ));
+    const playerTargets = (state.ships || [])
+      .filter((ship) => (
+        ship?.at === nodeId
+        && !idsToSkip.has(ship.id)
+        && playerShipAvailableForCollateral(ship)
       ))
-      .map((npc) => resolveCollateralCombat(attacker, npc));
+      .map(playerCollateralCandidate)
+      .filter(Boolean);
+    return [...npcTargets, ...playerTargets]
+      .map((target) => resolveCollateralCombat(attacker, target));
   }
 
   function resolveCollateralReprisals(triggerResults, target, nodeId, reprisalShipIds = new Set()) {

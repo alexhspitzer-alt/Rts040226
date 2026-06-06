@@ -971,6 +971,8 @@ const NpcController = createNpcController({
   nodeLabel,
   scheduleCharacterMessage,
   getShipRegistry: () => state.shipRegistry,
+  playerShipCallsign,
+  playerShipCaptainById: (shipId) => SHIP_CAPTAINS[shipId] || null,
   onConflictStage: ({ stage, nodeId }) => {
     if (stage === "fire") {
       scheduleMessage(4, () => {
