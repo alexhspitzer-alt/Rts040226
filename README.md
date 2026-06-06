@@ -48,6 +48,7 @@ You can use either **short interactive input** (recommended) or **long-form comm
 - `contracts`
 - `assign <contract_id> <ship_id or B-1>`
 - `send <ship_id or B-1> <node>`
+- Flexible chains such as `a B1 c3` or `F 1 a 3`
 - `escort on` / `escort off`
 - `pause`
 
