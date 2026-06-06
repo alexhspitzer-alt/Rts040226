@@ -1487,11 +1487,11 @@ function showShipMenu(shipId) {
       if (flags) flags.budde_first_shuttle_explainer = true;
     }
   }
-  let menuOptions = "A assign, S send, I information, R recall, B back to ship list.";
+  let menuOptions = "A assign, S send, I information, R recall. Global: F fleet, C contracts, M map, H help.";
   if (ship.utility && ship.status === "docked") {
-    menuOptions = "U undock.";
+    menuOptions = "U undock. Global: F fleet, C contracts, M map, H help.";
   } else if (ship.utility) {
-    menuOptions = "D dock, S send, I information, R recall, B back to ship list.";
+    menuOptions = "D dock, S send, I information, R recall. Global: F fleet, C contracts, M map, H help.";
   }
   logLine(`${formatShipId(shipId)} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
 }

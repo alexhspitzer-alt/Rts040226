@@ -171,6 +171,7 @@ export function createCommandRuntime({
     const aliases = {
       contract: "contracts",
       contracts: "contracts",
+      f: "fleet",
       fleet: "fleet",
       ship: "fleet",
       ships: "fleet",
@@ -215,7 +216,7 @@ export function createCommandRuntime({
       if (assigned) {
         state.selection.selectedShipId = null;
         state.selection.pending = "await_ship";
-        logLine("Assignment uplinked. Returning to ship list.", "sys");
+        logLine("Assignment uplinked. Returning to fleet.", "sys");
         return showShipsList();
       }
       return true;
@@ -321,12 +322,6 @@ export function createCommandRuntime({
       showShipMenu(shipId);
       return true;
     }
-    if (letter === "b") {
-      state.selection.selectedShipId = null;
-      state.selection.pending = "await_ship";
-      showShipsList();
-      return true;
-    }
 
     return false;
   }
@@ -355,6 +350,7 @@ export function createCommandRuntime({
 
     if (command === "help") {
       logLine("help | status | comms | hail <name> | map [routes] | fleet | select <ship|number> | assign <contract> <ship> (either order; IDs or numbers) | send <ship> <destination> | pause", "sys");
+      logLine("Global shortcuts: F fleet, C contracts, M map, H help.", "sys");
       logLine("Aliases: contract/contracts, sel/select, B1/B-1, C1/C-1, Blue-1. Extra spaces and case are ignored.", "sys");
       return true;
     }
@@ -422,6 +418,7 @@ export function createCommandRuntime({
     }
 
     if (command === "fleet") {
+      state.selection.selectedShipId = null;
       state.selection.pending = "await_ship";
       showShipsList();
       return true;
@@ -483,7 +480,7 @@ export function createCommandRuntime({
       if (assigned) {
         state.selection.selectedShipId = null;
         state.selection.pending = "await_ship";
-        logLine("Assignment uplinked. Returning to ship list.", "sys");
+        logLine("Assignment uplinked. Returning to fleet.", "sys");
         showShipsList();
       }
       return true;
@@ -575,7 +572,7 @@ export function createCommandRuntime({
         if (assigned) {
           state.selection.selectedShipId = null;
           state.selection.pending = "await_ship";
-          logLine("Assignment uplinked. Returning to ship list.", "sys");
+          logLine("Assignment uplinked. Returning to fleet.", "sys");
           showShipsList();
           state.respondingToCommand = false;
           return;
