@@ -115,6 +115,9 @@ const AMBIENT_AUTOPILOT_CAPTAIN_NAME = "Capt. AUTOPILOTv6.9";
 const CONFLICT_DECAY_PER_HEARTBEAT_BASE = 0.09;
 const CONFLICT_GAIN_BASE = 0.12;
 const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
+const COLLATERAL_REPRISAL_CHANCE_NO_EFFECT = 0.03;
+const COLLATERAL_REPRISAL_CHANCE_MINOR_DAMAGE = 0.35;
+const COLLATERAL_REPRISAL_MAX_DEPTH = 2;
 
 function randomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -697,26 +700,88 @@ export function createNpcController({
     return `[${prefix}] ${result.attacker.callsign} -> ${result.defender.callsign}: ${outcomeLabel(result.outcome)}.`;
   }
 
+  function collateralDamageResults(results) {
+    return results.filter((result) => result.outcome !== "no_effect");
+  }
+
+  function collateralReprisalChance(outcome) {
+    if (outcome === "minor_damage") return COLLATERAL_REPRISAL_CHANCE_MINOR_DAMAGE;
+    if (outcome === "no_effect") return COLLATERAL_REPRISAL_CHANCE_NO_EFFECT;
+    return 0;
+  }
+
+  function shouldCollateralReturnFire(result, target) {
+    return combatCapable(result?.defender)
+      && combatCapable(target)
+      && hasGuns(result.defender)
+      && Math.random() < collateralReprisalChance(result.outcome);
+  }
+
+  function resolveCollateralVolley(attacker, primaryTarget, nodeId, excludedIds = new Set()) {
+    const idsToSkip = new Set(excludedIds);
+    if (attacker?.id) idsToSkip.add(attacker.id);
+    if (primaryTarget?.id) idsToSkip.add(primaryTarget.id);
+    return (state.civilianNpcs || [])
+      .filter((npc) => (
+        npc?.at === nodeId
+        && !idsToSkip.has(npc.id)
+        && npc.combatStatus !== "killed"
+      ))
+      .map((npc) => resolveCollateralCombat(attacker, npc));
+  }
+
+  function resolveCollateralReprisals(triggerResults, target, nodeId, depth = 0, reprisalShipIds = new Set()) {
+    if (depth >= COLLATERAL_REPRISAL_MAX_DEPTH || !combatCapable(target)) return [];
+    const reprisalEvents = [];
+    triggerResults.forEach((trigger) => {
+      const reprisalAttacker = trigger.defender;
+      if (!reprisalAttacker?.id || reprisalShipIds.has(reprisalAttacker.id)) return;
+      if (!shouldCollateralReturnFire(trigger, target)) return;
+      reprisalShipIds.add(reprisalAttacker.id);
+      const direct = resolveDirectCombat(reprisalAttacker, target);
+      const collateralResults = resolveCollateralVolley(reprisalAttacker, target, nodeId);
+      const childReprisals = resolveCollateralReprisals(collateralResults, reprisalAttacker, nodeId, depth + 1, reprisalShipIds);
+      reprisalEvents.push({
+        trigger,
+        direct,
+        collateral: collateralDamageResults(collateralResults),
+        childReprisals,
+      });
+    });
+    return reprisalEvents;
+  }
+
+  function collateralReprisalTriggerLabel(outcome) {
+    if (outcome === "no_effect") return "shrugged off collateral fire";
+    return `took ${outcomeLabel(outcome)} collateral damage`;
+  }
+
+  function formatCollateralReprisalLine(event) {
+    return `${formatCombatResultLine(event.direct, "Reprisal")} Trigger: ${event.trigger.defender.callsign} ${collateralReprisalTriggerLabel(event.trigger.outcome)}.`;
+  }
+
   function resolveCombatExchange(aggressor, responder, nodeId) {
-    const shipsAtNode = (state.civilianNpcs || []).filter((npc) => (
-      npc?.at === nodeId
-      && npc.id !== aggressor.id
-      && npc.id !== responder.id
-      && npc.combatStatus !== "killed"
-    ));
     const direct = resolveDirectCombat(aggressor, responder);
-    const collateral = shipsAtNode
-      .map((npc) => resolveCollateralCombat(aggressor, npc))
-      .filter((result) => result.outcome !== "no_effect");
+    const collateralResults = resolveCollateralVolley(aggressor, responder, nodeId);
+    const collateral = collateralDamageResults(collateralResults);
     const canReturn = combatCapable(responder) && hasGuns(responder);
     const returnFire = canReturn ? resolveDirectCombat(responder, aggressor) : null;
-    const returnCollateral = returnFire
-      ? shipsAtNode
-        .filter((npc) => npc.combatStatus !== "killed")
-        .map((npc) => resolveCollateralCombat(responder, npc))
-        .filter((result) => result.outcome !== "no_effect")
+    const returnCollateralResults = returnFire ? resolveCollateralVolley(responder, aggressor, nodeId) : [];
+    const returnCollateral = collateralDamageResults(returnCollateralResults);
+    const reprisalShipIds = new Set([aggressor.id, responder.id]);
+    const collateralReprisals = resolveCollateralReprisals(collateralResults, aggressor, nodeId, 0, reprisalShipIds);
+    const returnCollateralReprisals = returnFire
+      ? resolveCollateralReprisals(returnCollateralResults, responder, nodeId, 0, reprisalShipIds)
       : [];
-    return { direct, collateral, returnFire, returnCollateral, canReturn };
+    return {
+      direct,
+      collateral,
+      returnFire,
+      returnCollateral,
+      collateralReprisals,
+      returnCollateralReprisals,
+      canReturn,
+    };
   }
 
   function playerLocalToNode(nodeId) {
@@ -804,6 +869,31 @@ export function createNpcController({
           );
         });
       }
+      let reprisalDelay = 4 + exchange.collateral.length;
+      if (exchange.returnFire) reprisalDelay += 1 + exchange.returnCollateral.length;
+      const scheduleReprisal = (event) => {
+        scheduleCharacterMessage(
+          reprisalDelay,
+          event.direct.attacker.captainName || event.direct.attacker.callsign,
+          formatCollateralReprisalLine(event),
+          event.direct.outcome === "major_damage" || event.direct.outcome === "kill" ? "interdicting" : "returning fire",
+          "comms"
+        );
+        reprisalDelay += 1;
+        event.collateral.forEach((result) => {
+          scheduleCharacterMessage(
+            reprisalDelay,
+            result.defender.captainName || result.defender.callsign,
+            formatCombatResultLine(result, "Collateral"),
+            "damaged",
+            "comms"
+          );
+          reprisalDelay += 1;
+        });
+        (event.childReprisals || []).forEach(scheduleReprisal);
+      };
+      exchange.collateralReprisals.forEach(scheduleReprisal);
+      exchange.returnCollateralReprisals.forEach(scheduleReprisal);
     }
   }
 
