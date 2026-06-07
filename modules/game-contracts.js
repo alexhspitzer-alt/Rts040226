@@ -1,3 +1,21 @@
+const CONTRACT_PAYOUT_VARIABILITY = 240;
+const CONTRACT_PAYOUT_BASE = 260;
+const CONTRACT_CLIENT_PAYOUT_ADJUSTMENTS = {
+  ufp: 60,
+  civilian: 0,
+  station_municipal: -60,
+};
+
+function normalizedClientKey(client) {
+  return String(client || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+function contractPayoutForClient(client) {
+  const clientKey = normalizedClientKey(client);
+  const clientAdjustment = CONTRACT_CLIENT_PAYOUT_ADJUSTMENTS[clientKey] ?? 0;
+  return CONTRACT_PAYOUT_BASE + clientAdjustment + Math.floor(Math.random() * CONTRACT_PAYOUT_VARIABILITY);
+}
+
 export function randomInt(min, max) {
   const low = Math.ceil(min);
   const high = Math.floor(max);
@@ -144,7 +162,7 @@ export function createContractTools({
       id: `C-${state.nextContract++}`,
       from,
       to,
-      payout: isScenario4DeuteriumExclusive ? 0 : 300 + Math.floor(Math.random() * 160),
+      payout: isScenario4DeuteriumExclusive ? 0 : contractPayoutForClient(client),
       status: "open",
       client,
       cargoType,
