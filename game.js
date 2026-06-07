@@ -36,8 +36,6 @@ const PLAYER_NODE = "anchor_station";
 const CONSOLE_MESSAGE_GAP_MS = 750;
 const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
 const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
-const CONTRACT_BOARD_MIN_OPEN = 4;
-const CONTRACT_BOARD_MAX_OPEN = 6;
 const CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT = 20;
 const OPERATING_COST_PER_SHIP_PER_MINUTE = 8;
 const OPERATING_COST_INTERVAL_SECONDS = 15;
@@ -956,7 +954,7 @@ const fuelBillingActive = () => NavigationModel.fuelBillingActive();
 const BuddeAdvisor = createBuddeAdvisor({
   state,
   getNodes: () => nodes,
-  openContracts,
+  openContracts: visibleOpenContracts,
   fuelCostForRoute,
   nodeLabel,
   candidateDestinationsForShip,
@@ -1131,27 +1129,32 @@ const generateContract = (...args) => contractTools.generateContract(...args);
 function openContracts() {
   return state.contracts.filter((c) => c.status === "open");
 }
-function randomContractBoardTarget() {
-  return CONTRACT_BOARD_MIN_OPEN + Math.floor(Math.random() * (CONTRACT_BOARD_MAX_OPEN - CONTRACT_BOARD_MIN_OPEN + 1));
+
+function playerControlledShipCount() {
+  return Array.isArray(state.ships) ? state.ships.length : 0;
+}
+
+function visibleContractCount() {
+  return playerControlledShipCount();
+}
+
+function visibleOpenContracts() {
+  return openContracts().slice(0, visibleContractCount());
 }
 
 function targetOpenContractCount() {
-  if (!Number.isInteger(state.contractBoardTargetOpen)
-    || state.contractBoardTargetOpen < CONTRACT_BOARD_MIN_OPEN
-    || state.contractBoardTargetOpen > CONTRACT_BOARD_MAX_OPEN) {
-    state.contractBoardTargetOpen = randomContractBoardTarget();
-  }
+  const target = playerControlledShipCount();
+  if (state.contractBoardTargetOpen !== target) state.contractBoardTargetOpen = target;
   return state.contractBoardTargetOpen;
 }
 
 function resetContractBoardTarget() {
-  state.contractBoardTargetOpen = randomContractBoardTarget();
+  state.contractBoardTargetOpen = playerControlledShipCount();
   return state.contractBoardTargetOpen;
 }
 
 function fillContractBoard({ forceNewTarget = false } = {}) {
-  const openCount = openContracts().length;
-  if (forceNewTarget || openCount < CONTRACT_BOARD_MIN_OPEN) resetContractBoardTarget();
+  if (forceNewTarget) resetContractBoardTarget();
   const target = targetOpenContractCount();
   let attempts = 0;
   while (openContracts().length < target && attempts < CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT) {
@@ -1191,7 +1194,7 @@ function render() {
   ui.escort.textContent = state.escort ? "On" : "Off";
 
   ui.contracts.innerHTML = "";
-  openContracts().slice(0, CONTRACT_BOARD_MAX_OPEN).forEach((c, idx) => {
+  visibleOpenContracts().forEach((c, idx) => {
     const li = document.createElement("li");
     const displayNumber = contractNumber(c.id) || (idx + 1);
     const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
@@ -1497,7 +1500,7 @@ function showShipMenu(shipId) {
 }
 
 function showContractsForSelectedShip() {
-  const contracts = openContracts();
+  const contracts = visibleOpenContracts();
   if (!contracts.length) return logLine("No open contracts to assign.", "sys");
   logLine(`Assign ${formatShipId(state.selection.selectedShipId)} to what contract?`, "sys");
   BuddeAdvisor.adviseContractOptions(state.selection.selectedShipId);
@@ -2198,7 +2201,7 @@ commandRuntime = createCommandRuntime({
   normalizeContractIdToken,
   normalizeShipIdToken,
   playerShipDisplayId,
-  openContracts,
+  openContracts: visibleOpenContracts,
   contractNumber,
   assignContract,
   sendShip,
