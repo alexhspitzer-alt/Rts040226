@@ -98,59 +98,59 @@
       "Stations, Outposts, and Facilities": [
         {
           "name": "Anchor Station",
-          "description": "Anchor Station is one of the core civilian reference points in the Indigo system and functions as exactly what its name suggests: a place from which traffic, planning, and ordinary work can reliably begin. It sits near Cat’s Eye and gives bluFreight players a stable mental center in a system otherwise full of bands, lanes, and delayed information. Anchor Station matters because it is legible. Operators know where it is, what kind of traffic tends to pass through it, and what kinds of work can plausibly start there. In a system built on motion, any place that feels still for more than five minutes becomes valuable almost automatically."
+          "description": "Anchor Station is a civilian station near Cat's Eye in high orbit. It serves as the primary local reference point for bluFreight operations and routine traffic planning. Its position at the 0-degree reference mark around Indigo makes it a common starting point for routes, contracts, and comparisons to other moons and facilities."
         },
         {
           "name": "Refinery",
-          "description": "The Refinery at Oxblood is one of the system’s obvious industrial hearts. It processes fuel-related materials and therefore sits close to the practical center of many profitable and dangerous decisions. Deuterium cargo logically originates here, and anyone working logistics for long will learn to treat refinery nodes as both opportunity and constraint. They generate work, they attract attention, and they turn abstract energy policy into actual freight. Refineries also have the useful property of making systems feel material. When you route cargo out of one, you are not just moving units on a board. You are moving the output of heat, machinery, labor, and whatever compromises kept the place running."
+          "description": "The Refinery is an industrial facility at Oxblood in ring orbit. It processes deuterium-rich materials from Indigo's rings and supports fuel production for civilian, corporate, and military traffic. Freight moving through the Refinery commonly includes processed fuel, industrial supplies, spare parts, and maintenance cargo."
         },
         {
           "name": "Yard",
-          "description": "Yard at Oxblood is a practical, unpretentious industrial facility where ships, scrap, and salvage all begin to look less distinct than their owners might prefer. It is a natural origin for munitions in your current logic and a likely future home for salvage, towing, and unpleasant conversations about value. The name works because places like this rarely need something more poetic. Everyone already knows what the Yard is for. It is where things go when they need to be assembled, stripped, patched, condemned, or repurposed. In a system full of movement, the Yard is where motion leaves visible marks."
+          "description": "The Yard is an industrial facility at Oxblood in ring orbit. It handles ship repair, hull work, salvage processing, and heavy equipment staging. Its proximity to the Refinery places repair capacity close to fuel processing and other industrial freight activity."
         },
         {
           "name": "Indigo Station",
-          "description": "Indigo Station is one of the system’s core stations and a reliable anchor for municipal, civilian, and operational traffic. It sits near Sulphide, which gives it the useful and irritating trait of being connected to a more demanding orbital environment than its name might imply. As a station, it can serve as a source or destination for multiple cargo types and helps make the system feel inhabited rather than purely industrial. Indigo Station matters because it combines civic life with orbital necessity. People live, work, queue, and complain there, while larger movements treat it as another point in a chain of route logic. Both views are correct, which is why stations matter."
+          "description": "Indigo Station is a major station near Sulphide in low orbit. It supports municipal, civilian, and operational traffic within the inner system. Its location deep in Indigo's gravity well connects ordinary station life with demanding low-orbit logistics, including fuel planning, tug support, and traffic coordination."
         },
         {
           "name": "UFP Science Station",
-          "description": "UFP Science Station at End-of-Day is one of the cleaner examples of a facility whose purpose justifies its distance. It is a Union installation, but it also counts as a station in practical terms, which lets it sit at the intersection of science, infrastructure, and civic functionality. As an origin for deuterium it suggests research, storage, or specialized processing. As a station it remains part of the system’s working life rather than a pure abstraction. Science stations in frontier logistics settings are useful because they make remote places feel deliberate. Someone chose to put expensive people and equipment out there, and now freight has to explain why that was a manageable idea."
+          "description": "UFP Science Station is a Union research facility at End-of-Day in outer orbit. It supports scientific observation, technical studies, and specialized storage or processing work far from the denser inner traffic bands. Its remote position requires regular freight service for equipment, fuel, personnel supplies, and station maintenance."
         },
         {
           "name": "Arcworks Operations Hub",
-          "description": "Arcworks Operations Hub on Onion Skin is both a corporate center and, functionally, a station. That dual nature is important. It means the place is not only where Arcworks works, but where Arcworks organizes, directs, and projects itself as authority. Operations hubs are where schedules, extraction, security, and local politics start sharing the same offices whether they want to or not. As a station-class destination it can source or receive practical cargo. As an Arcworks site it also implies corporate territorial expectations. If Indigo contains places where administration and industrial identity are inseparable, this is one of them."
+          "description": "Arcworks Operations Hub is a corporate command and station facility on Onion Skin in ring orbit. It coordinates Arcworks extraction schedules, industrial traffic, security assignments, and local administration. The hub anchors Arcworks activity around Onion Skin and links corporate planning directly to nearby ring-orbit infrastructure."
         },
         {
           "name": "Arcworks Militia Barracks",
-          "description": "Arcworks Militia Barracks on Onion Skin represent the point where corporate logistics and armed enforcement stop pretending to be separate. Barracks are rarely complicated in purpose, which is part of what makes them useful as setting texture. They tell you immediately what kind of authority expects to remain present. In a system like Indigo, militia facilities also imply escort culture, route control, seizure capacity, and an institutional willingness to treat local conflict as part of ordinary operations. Even if players are not delivering directly to barracks often, their presence changes how nearby routes feel. A map node that includes a militia barracks is never merely industrial."
+          "description": "Arcworks Militia Barracks is an armed corporate security facility on Onion Skin. It houses militia personnel, equipment, and supplies used to protect Arcworks infrastructure and enforce local control. The barracks supports escort activity, route security, and rapid response near Arcworks operations in ring orbit."
         },
         {
           "name": "UFP Indigo System Administration",
-          "description": "UFP Indigo System Administration is a Union administrative complex on Shooter. It coordinates regulatory authority, contract oversight, and official traffic priorities for the Indigo system. Its location in low orbit places Union civil administration close to major security infrastructure and high-priority logistics routes."
+          "description": "UFP Indigo System Administration is a Union administrative complex on Shooter in low orbit. It coordinates regulatory authority, contract oversight, traffic priorities, and official system policy. Its placement near UFP Outpost Alpha keeps civil administration close to Union security infrastructure and high-priority logistics routes."
         },
         {
           "name": "UFP Outpost Alpha",
-          "description": "UFP Outpost Alpha on Shooter is a clear military destination and one of the core UFP outposts used for contract routing. Outposts are useful because they tell the player what sort of node they are dealing with before any lore text begins. Alpha, like Bravo and Delta elsewhere, implies Union reach rather than local life. It is where supplies, munitions, rations, and official traffic go because policy has attached itself to a place and given it walls. Outposts are not subtle, but they are legible, and legibility matters in a system where route clarity often has to substitute for certainty."
+          "description": "UFP Outpost Alpha is a Union military outpost on Shooter in low orbit. It supports patrol operations, security response, and official freight handling near UFP Indigo System Administration. Supplies, munitions, rations, and administrative cargo pass through the outpost as part of Union activity in the inner system."
         },
         {
           "name": "UFP Outpost Bravo",
-          "description": "UFP Outpost Bravo on Patch gives Union logistics a foothold in a ring-orbit environment where traffic and industrial movement already matter. That makes it a particularly useful outpost because it is both military and infrastructural. Bravo can serve as a destination for UFP cargo while also reminding the player that the Union’s presence is not confined to some distant administrative perch. It is inserted directly into the working layers of the system. Outposts like this also help create political friction naturally. A corporate, civilian, or municipal node nearby never has to say much for everyone to understand that priorities in the area may not be entirely local anymore."
+          "description": "UFP Outpost Bravo is a Union military outpost on Patch in ring orbit. It supports Union patrols and logistics in the ring-adjacent traffic band, close to the Low Orbit Transfer Lane. The outpost handles military supplies, escort coordination, and security operations around nearby industrial and transfer routes."
         },
         {
           "name": "UFP Outpost Delta",
-          "description": "UFP Outpost Delta is a Union outpost at Corkscrew. It monitors high-orbit traffic, supports escorted routing, and serves as a destination for Union logistics contracts. Its position in the same orbit band as Cat's Eye places it on a major high-orbit arc from Anchor Station."
+          "description": "UFP Outpost Delta is a Union military outpost at Corkscrew in high orbit. It monitors traffic along the high-orbit arc from Cat's Eye, supports escorted routing, and receives Union logistics cargo. Its position in the same orbit band as Anchor Station places it on a major civilian and military transit path."
         },
         {
           "name": "Arcworks Fuel Depot",
-          "description": "Arcworks Fuel Depot on Peltier is exactly the sort of location that explains why Arcworks remains relevant even when the UFP thinks it owns the system. Fuel depots are leverage. They are also practical, profitable, and difficult to ignore. As a deuterium origin point, the depot gives Arcworks a clear place in the logistical bloodstream of Indigo. It reminds the player that control does not only reside in outposts or flags. Sometimes it resides in whatever facility can keep ships moving another few legs. Fuel depots also make good targets, good bargaining chips, and bad places to pretend politics is separate from inventory."
+          "description": "Arcworks Fuel Depot is a fuel storage and distribution facility on Peltier in high orbit. It handles deuterium supplies and related equipment for Arcworks traffic, commercial buyers, and onward shipment. The depot provides Arcworks with a practical foothold in high-orbit fuel logistics outside the inner industrial bands."
         },
         {
           "name": "Baron's Market",
-          "description": "Baron’s Market on Peltier is one of the best examples of a station that feels lived in rather than merely routed through. It functions as a station, a market, and a global origin override because practically anything can begin moving if enough trade passes through a place. That makes it useful in gameplay and flavorful in-world. Markets gather civilians, opportunists, municipal needs, and quietly influential actors in ways that military sites never do. If UFP Administration represents formal authority, Baron’s Market represents the other kind: the authority of people who can always find a buyer, a broker, or a very good reason this cargo needs to be somewhere else by morning."
+          "description": "Baron's Market is a commercial station on Peltier in high orbit. It serves as a market, brokerage point, and civilian trade hub for cargo moving through the local high-orbit network. Traffic at the station includes consumer goods, industrial parts, fuel contracts, and opportunistic freight from multiple factions and private operators."
         },
         {
           "name": "Condenser Columns",
-          "description": "Condenser Columns appear both near Clambroth and in the broader system logic as a fuel-related origin point, which makes sense for a structure whose very name suggests large-scale industrial collection and processing. The phrase sounds mechanical and architectural rather than civic, and that is useful. A location like this exists because some part of Indigo’s resource economy required a massive, repetitive solution. Condenser Columns therefore feel like places where systems harvest, sort, and prepare valuable material for later movement. They are less likely to inspire fondness than dependence, which is often enough to make a site important in freight terms."
+          "description": "Condenser Columns is an industrial extraction and processing site near Clambroth in outer orbit. It collects and prepares fuel-related materials for storage, refinement, or shipment elsewhere in the system. Its remote location links outer-orbit resource work to the broader deuterium supply chain."
         }
       ]
     },
