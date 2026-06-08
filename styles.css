@@ -69,13 +69,13 @@ h1 {
 }
 
 .contract-client-neutral {
-  border-color: #395273;
+  border-color: #8fcfc3;
+  color: #8fcfc3;
 }
 
 .contract-client-ufp {
-  border-color: #8f7430;
-  background: #211c10;
-  color: #ffe4a2;
+  border-color: #ffd86a;
+  color: #ffd86a;
 }
 
 .terminal {
