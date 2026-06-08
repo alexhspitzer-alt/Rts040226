@@ -38,43 +38,43 @@
       "Moons": [
         {
           "name": "Cat's Eye",
-          "description": "Cat's Eye is a high-orbit moon and the reference point for bluFreight operations. Anchor Station is located near Cat's Eye, so its relative position is the baseline: high orbit at 0 degrees. The moon also hosts the Ring Transfer Lane, which gives it local importance for early freight movement and transfers into ring-orbit routes."
+          "description": "Cat's Eye is a high-orbit moon used as the baseline for local bluFreight navigation. Anchor Station lies near Cat's Eye at the 0-degree reference position around Indigo. The nearby Ring Transfer Lane connects the moon to freight movement between high orbit and the ring-orbit band."
         },
         {
           "name": "Corkscrew",
-          "description": "Corkscrew is a high-orbit moon. Relative to Anchor Station at Cat's Eye, it is in the same orbit band and 110 degrees prograde around Indigo. UFP Outpost Delta is located at Corkscrew, giving the moon a Union security and routing role in the current map."
+          "description": "Corkscrew is a high-orbit moon located in the same orbital band as Cat's Eye. Measured from Anchor Station at Cat's Eye, it lies 110 degrees prograde, or counterclockwise, around Indigo. UFP Outpost Delta operates at Corkscrew and supports Union security and routing activity in that sector."
         },
         {
           "name": "Peltier",
-          "description": "Peltier is a high-orbit moon. Relative to Anchor Station at Cat's Eye, it is in the same orbit band and 125 degrees retrograde around Indigo. The moon hosts Arcworks Fuel Depot and Baron's Market, making it a local fuel and trade point."
+          "description": "Peltier is a high-orbit moon in the main civilian traffic network. From Anchor Station at Cat's Eye, it lies 125 degrees retrograde, or clockwise, around Indigo within the same orbital band. Arcworks Fuel Depot and Baron's Market are located there, with local traffic centered on fuel supply and trade."
         },
         {
           "name": "Oxblood",
-          "description": "Oxblood is a ring-orbit moon. Relative to Anchor Station at Cat's Eye, it is one orbit band inward and 35 degrees prograde around Indigo. The Refinery and Yard are located at Oxblood, making it an industrial destination for fuel processing, repair, and freight contracts."
+          "description": "Oxblood is a ring-orbit moon positioned one orbital band inward from Cat's Eye, toward Indigo. From Anchor Station, it lies 35 degrees prograde, or counterclockwise, around the planet. The Refinery and Yard at Oxblood serve fuel processing, repair work, and industrial freight traffic."
         },
         {
           "name": "Patch",
-          "description": "Patch is a ring-orbit moon. Relative to Anchor Station at Cat's Eye, it is one orbit band inward and 160 degrees prograde around Indigo. The Low Orbit Transfer Lane and UFP Outpost Bravo are located at Patch, linking the moon to transfer traffic and Union operations."
+          "description": "Patch is a ring-orbit moon positioned one orbital band inward from Cat's Eye, toward Indigo. From Anchor Station, it lies 160 degrees prograde, or counterclockwise, around the planet. The Low Orbit Transfer Lane and UFP Outpost Bravo place Patch on both transfer routes and Union logistical lines."
         },
         {
           "name": "Onion Skin",
-          "description": "Onion Skin is a ring-orbit moon. Relative to Anchor Station at Cat's Eye, it is one orbit band inward and 60 degrees retrograde around Indigo. Arcworks Operations Hub and Arcworks Militia Barracks are located there, making it an Arcworks command and security site."
+          "description": "Onion Skin is a ring-orbit moon positioned one orbital band inward from Cat's Eye, toward Indigo. From Anchor Station, it lies 60 degrees retrograde, or clockwise, around the planet. Arcworks Operations Hub and Arcworks Militia Barracks are the main local facilities for corporate command and security."
         },
         {
           "name": "Shooter",
-          "description": "Shooter is a low-orbit moon. Relative to Anchor Station at Cat's Eye, it is two orbit bands inward and 80 degrees prograde around Indigo. UFP Indigo System Administration and UFP Outpost Alpha are located at Shooter, making it a major Union administrative and security location."
+          "description": "Shooter is a low-orbit moon positioned two orbital bands inward from Cat's Eye, deeper in Indigo's gravity well. From Anchor Station, it lies 80 degrees prograde, or counterclockwise, around the planet. Shooter contains UFP Indigo System Administration and UFP Outpost Alpha, the main Union administrative and security sites in that band."
         },
         {
           "name": "Sulphide",
-          "description": "Sulphide is a low-orbit moon. Relative to Anchor Station at Cat's Eye, it is two orbit bands inward and 110 degrees retrograde around Indigo. Indigo Station and the Deep Space Transfer Lane are located at Sulphide, connecting low-orbit station traffic with long-range transfer routing."
+          "description": "Sulphide is a low-orbit moon positioned two orbital bands inward from Cat's Eye, deeper in Indigo's gravity well. From Anchor Station, it lies 110 degrees retrograde, or clockwise, around the planet. Indigo Station and the Deep Space Transfer Lane connect Sulphide to civic station traffic and long-range route planning."
         },
         {
           "name": "Clambroth",
-          "description": "Clambroth is an outer-orbit moon. Relative to Anchor Station at Cat's Eye, it is one orbit band outward and 145 degrees prograde around Indigo. The High Orbit Transfer Lane and Condenser Columns are located at Clambroth, making it a remote transfer and extraction site."
+          "description": "Clambroth is an outer-orbit moon positioned one orbital band outward from Cat's Eye, farther from Indigo. From Anchor Station, it lies 145 degrees prograde, or counterclockwise, around the planet. The High Orbit Transfer Lane and Condenser Columns support transfer staging and fuel-related extraction work in this remote band."
         },
         {
           "name": "End-of-Day",
-          "description": "End-of-Day is an outer-orbit moon. Relative to Anchor Station at Cat's Eye, it is one orbit band outward and 35 degrees retrograde around Indigo. UFP Science Station is located there, making the moon a remote Union research destination."
+          "description": "End-of-Day is an outer-orbit moon positioned one orbital band outward from Cat's Eye, farther from Indigo. From Anchor Station, it lies 35 degrees retrograde, or clockwise, around the planet. UFP Science Station is located there and serves as a remote Union research site."
         }
       ],
       "Transfer Lanes": [
@@ -126,7 +126,7 @@
         },
         {
           "name": "UFP Indigo System Administration",
-          "description": "UFP Indigo System Administration on Shooter is one of the clearest formal power centers in the current map. It is where Union authority stops being distributed among patrols and outposts and becomes administrative fact. As an origin override for cargo generation, it makes sense because powerful bureaucracies can cause almost anything to start moving. As a location, it tells the player that someone is not merely watching Indigo but organizing it. System administration also provides a nice counterpart to Baron's Market: one place where the public logic of state power begins, and another where private or local usefulness can override tidiness."
+          "description": "UFP Indigo System Administration is a Union administrative complex on Shooter. It coordinates regulatory authority, contract oversight, and official traffic priorities for the Indigo system. Its location in low orbit places Union civil administration close to major security infrastructure and high-priority logistics routes."
         },
         {
           "name": "UFP Outpost Alpha",
@@ -138,7 +138,7 @@
         },
         {
           "name": "UFP Outpost Delta",
-          "description": "UFP Outpost Delta at Corkscrew is the third major Union outpost in the current map set and arguably one of the clearest examples of strategic placement. Corkscrew is already a geometry problem; adding a UFP outpost makes it an official one. Delta serves as a destination for Union contracts and as a visible marker that the UFP expects to remain involved in local traffic. Outposts turn abstract faction presence into operational consequences. If Delta exists on the board, then some routes are more watched, some deliveries more political, and some arguments about 'civilian' traffic less convincing than they were a moment earlier."
+          "description": "UFP Outpost Delta is a Union outpost at Corkscrew. It monitors high-orbit traffic, supports escorted routing, and serves as a destination for Union logistics contracts. Its position in the same orbit band as Cat's Eye places it on a major high-orbit arc from Anchor Station."
         },
         {
           "name": "Arcworks Fuel Depot",
