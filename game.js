@@ -709,7 +709,7 @@ function renderAlmanac() {
     categoryNode.appendChild(categorySummary);
 
     if (Array.isArray(categoryPayload)) {
-      addAlmanacItems(categoryNode, "Entries", categoryPayload);
+      addAlmanacItems(categoryNode, null, categoryPayload);
     } else if (categoryPayload && typeof categoryPayload === "object") {
       Object.entries(categoryPayload).forEach(([groupName, groupEntries]) => {
         addAlmanacItems(categoryNode, groupName, groupEntries);
@@ -756,17 +756,20 @@ function buildAlmanacViewModel(entries) {
       "Factions, Institutions, and Clients": [...factions, ...clients],
     },
     "Ships and Classes": Array.isArray(entries?.ships_and_classes) ? entries.ships_and_classes : [],
+    "Cargo Types": Array.isArray(entries?.cargo_types) ? entries.cargo_types : [],
   };
 }
 
 function addAlmanacItems(parentNode, groupName, entries) {
   if (!Array.isArray(entries) || !entries.length) return;
-  const groupNode = document.createElement("details");
-  groupNode.className = "almanac-group";
+  const containerNode = groupName ? document.createElement("details") : parentNode;
+  if (groupName) {
+    containerNode.className = "almanac-group";
 
-  const groupSummary = document.createElement("summary");
-  groupSummary.textContent = groupName;
-  groupNode.appendChild(groupSummary);
+    const groupSummary = document.createElement("summary");
+    groupSummary.textContent = groupName;
+    containerNode.appendChild(groupSummary);
+  }
 
   entries.forEach((entry) => {
     const itemNode = document.createElement("details");
@@ -780,10 +783,10 @@ function addAlmanacItems(parentNode, groupName, entries) {
     description.className = "almanac-entry-description";
     description.textContent = entry?.description || "No description available.";
     itemNode.appendChild(description);
-    groupNode.appendChild(itemNode);
+    containerNode.appendChild(itemNode);
   });
 
-  parentNode.appendChild(groupNode);
+  if (groupName) parentNode.appendChild(containerNode);
 }
 
 function playScenarioIntro() {

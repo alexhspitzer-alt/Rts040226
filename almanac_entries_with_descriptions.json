@@ -187,43 +187,87 @@
     "ships_and_classes": [
       {
         "name": "Hauler",
-        "description": "Hauler-class ships are standard civilian freight vessels built for bulk cargo movement. They carry larger loads than couriers or shuttles but accelerate slowly and perform poorly on steep climbs out of lower orbit bands. Haulers are the baseline craft for routine bluFreight contracts."
+        "description": "Hauler-class ships are standard civilian freight vessels built for bulk cargo movement. They are used for routine cargo contracts where capacity matters more than speed. Registry stats: faction civilian; role general cargo freighter; speed 2; cargo space 8; armor 2; guns 0; utility no."
       },
       {
         "name": "Courier",
-        "description": "Courier-class ships are light freight vessels designed for small, time-sensitive cargo. They trade capacity for speed, route flexibility, and lower handling overhead. Couriers are suited to medical cargo, documents, priority components, and other shipments where arrival time matters more than tonnage."
+        "description": "Courier-class ships are civilian light freighters built for small, time-sensitive cargo. They trade capacity for speed, route flexibility, and low handling overhead. Registry stats: faction civilian; role fast light freighter; speed 4; cargo space 3; armor 1; guns 0; utility no."
       },
       {
         "name": "Tug",
-        "description": "Tug-class vessels are utility craft built to move mass through difficult orbital maneuvers. They carry little cargo directly but assist heavier ships with climbs, repositioning, and other high-burn route segments. Tugs are especially valuable when loaded freighters need to move outward from deeper orbit bands."
+        "description": "Tug-class vessels are civilian utility craft built for tow work and difficult orbital maneuvers. They assist heavier ships with climbs, repositioning, and high-burn route segments. Registry stats: faction civilian; role tow and utility ship; speed 4; cargo space 0; armor 2; guns 0; utility yes."
       },
       {
         "name": "Shuttle",
-        "description": "Shuttle-class craft are short-range vessels used for local transfers, station errands, personnel movement, and small cargo hops. They are not designed for heavy freight or long independent routes. Their value comes from access, responsiveness, and the ability to handle nearby destinations without committing a larger freighter."
+        "description": "Shuttle-class craft are civilian short-range transports used for local transfers, personnel movement, station errands, and small cargo hops. Registry stats: faction civilian; role passenger and light cargo transport; speed 3; cargo space 2; armor 1; guns 0; utility no."
       },
       {
         "name": "Probe",
-        "description": "Probe-class platforms are stationary or near-stationary sensor assets. They monitor traffic, detect contacts, and provide local awareness for routes or facilities. Probes do not haul cargo and have limited survivability if directly attacked."
+        "description": "Probe-class platforms are sensor assets used for traffic monitoring, contact detection, and local awareness. They are not cargo vessels. Registry stats: faction all; role sensor platform; speed 0; cargo space 0; armor 0; guns 0; utility no."
       },
       {
         "name": "Kestrel",
-        "description": "The Kestrel is a Union interceptor built for rapid response and pursuit. It emphasizes speed, maneuverability, and enough armament to challenge raiders or escort hostile contacts away from civilian traffic. Kestrels are commonly associated with patrol coverage and convoy security."
+        "description": "The Kestrel is a Union interceptor built for rapid response and pursuit. It is used for patrol coverage, convoy security, and interception of hostile contacts. Registry stats: faction UFP; role interceptor; speed 6; cargo space 1; armor 1; guns 4; utility no."
       },
       {
         "name": "Pelican",
-        "description": "The Pelican is a Union logistics freighter used for protected cargo movement. It carries more military support and defensive capability than a civilian hauler while retaining substantial freight capacity. Pelicans are used for official supply runs, outpost support, and higher-risk Union logistics work."
+        "description": "The Pelican is a Union logistics freighter for protected cargo movement. It combines substantial freight capacity with military support systems for official supply runs and outpost work. Registry stats: faction UFP; role armed logistics freighter; speed 2; cargo space 8; armor 3; guns 2; utility no."
       },
       {
         "name": "Dragoon",
-        "description": "The Dragoon is a Blister interceptor used for intimidation, pursuit, and armed control of routes. It is not the fastest interceptor in Indigo, but it is durable enough for raids and close engagements. Dragoons support Blister's practice of turning route insecurity into leverage."
+        "description": "The Dragoon is a Blister heavy interceptor used for intimidation, pursuit, and armed route control. It favors durability and pressure over cargo capacity. Registry stats: faction Blister; role heavy interceptor; speed 4; cargo space 1; armor 4; guns 3; utility no."
       },
       {
         "name": "MK-IV",
-        "description": "The MK-IV is an Arcworks interceptor adapted from industrial hull designs. It combines workship durability with weapons and armor for local defense. MK-IVs reflect Arcworks' reliance on practical industrial hardware converted for militia and infrastructure security roles."
+        "description": "The MK-IV is an Arcworks interceptor adapted from industrial hull designs. It combines workship durability with weapons and armor for local defense. Registry stats: faction Arcworks; role retrofitted interceptor; speed 3; cargo space 0; armor 3; guns 3; utility yes."
       },
       {
         "name": "MM-IX",
-        "description": "The MM-IX is an Arcworks utility platform retrofitted for armed service. It retains the mass, mounting points, and rugged systems of a work platform while carrying equipment suitable for defense and enforcement. The class is used around corporate facilities where industrial support and security overlap."
+        "description": "The MM-IX is an Arcworks utility platform retrofitted for armed service. It is used around corporate facilities where industrial support and security overlap. Registry stats: faction Arcworks; role armed utility platform; speed 2; cargo space 2; armor 4; guns 2; utility yes."
+      },
+      {
+        "name": "Condor",
+        "description": "The Condor is a Union heavy bombardment cruiser and light carrier. It is used for major strike operations, force projection, and protected command of combat groups. Registry stats: faction UFP; role heavy bombardment cruiser and light carrier; speed 3; cargo space 6; armor 4; guns [redacted]; utility yes."
+      },
+      {
+        "name": "ML-X",
+        "description": "The ML-X is an Arcworks armored assault transport. It carries troops, cargo, and support equipment for heavily contested industrial or security operations. Registry stats: faction Arcworks; role armored assault transport; speed 1; cargo space 8; armor 10; guns 4; utility no."
+      },
+      {
+        "name": "Matador",
+        "description": "The Matador is a Blister main battleship. It is built to absorb punishment, hold contested areas, and force nearby traffic to account for its presence. Registry stats: faction Blister; role main battleship; speed 3; cargo space 3; armor 6; guns 5; utility no."
+      },
+      {
+        "name": "Skiff",
+        "description": "The Skiff is a civilian small transfer craft used for light cargo movement between docks, piers, stations, and larger ships. Registry stats: faction civilian; role small transfer craft; speed 2; cargo space 2; armor 1; guns 0; utility no."
+      },
+      {
+        "name": "Piper",
+        "description": "The Piper is a Union small transfer craft used for light cargo movement between docks, piers, stations, and larger ships. Registry stats: faction UFP; role small transfer craft; speed 2; cargo space 2; armor 1; guns 0; utility no."
+      },
+      {
+        "name": "J-I",
+        "description": "The J-I is an Arcworks small transfer craft used for light cargo movement between docks, piers, stations, and larger ships. Registry stats: faction Arcworks; role small transfer craft; speed 2; cargo space 2; armor 1; guns 0; utility no."
+      },
+      {
+        "name": "Trawler",
+        "description": "The Trawler is a civilian workhorse vessel used for hauling, salvage, survey, repair, and prospecting. Registry stats: faction civilian; role versatile civilian workhorse; speed 1; cargo space 6; armor 2; guns 0; utility yes."
+      },
+      {
+        "name": "Constable",
+        "description": "The Constable is a civilian light patrol craft used for local security, inspection, and traffic enforcement. Registry stats: faction civilian; role light patrol craft; speed 3; cargo space 1; armor 2; guns 1; utility no."
+      },
+      {
+        "name": "Sledge",
+        "description": "The Sledge is a Blister heavy corsair used for siege work, boarding threats, and coercive route control. Registry stats: faction Blister; role heavy corsair; speed 2; cargo space 8; armor 4; guns 2; utility no."
+      },
+      {
+        "name": "Ibis",
+        "description": "The Ibis is a Union fast combat drone used for scouting, pursuit, harassment, and expendable combat support. Registry stats: faction UFP; role fast combat drone; speed 4; cargo space 2; armor 2; guns 2; utility no."
+      },
+      {
+        "name": "J-VIII",
+        "description": "The J-VIII is an Arcworks light cargo ship designed to support mining operations and carry fuel, munitions, or industrial supplies. Registry stats: faction Arcworks; role light cargo ship; speed 2; cargo space 6; armor 2; guns 0; utility no."
       }
     ],
     "cargo_types": [
@@ -254,48 +298,6 @@
       {
         "name": "VIP",
         "description": "VIP cargo refers to protected passenger movement for officials, specialists, negotiators, executives, or other high-priority persons. These contracts are small by mass but high in security and timing requirements. A VIP shipment may affect route approvals, escort decisions, and faction attention."
-      }
-    ],
-    "characters": [
-      {
-        "name": "BASIL",
-        "description": "BASIL is the BluFreight Automated Scheduling, Interchange, and Liaison system assigned to Indigo operations. It handles dispatch messaging, contract framing, operational reminders, and status updates for bluFreight traffic. BASIL represents the company's scheduling and administrative layer in the system."
-      },
-      {
-        "name": "BUDDE",
-        "description": "BUDDE, the Benchmark Unified Directions Dedicated Engine, is the navigation optimizer used for route efficiency, burn planning, and transfer comparison. It evaluates distance, orbit-band changes, direction of travel, and approach variability. BUDDE's recommendations focus on movement efficiency rather than political or commercial judgment."
-      },
-      {
-        "name": "Capt. Soren Nnadi",
-        "description": "Captain Soren Nnadi is a bluFreight hauler captain. He handles standard civilian freight work and is associated with steady route execution, crew management, and practical contract movement. His role represents the ordinary line-captain side of bluFreight operations."
-      },
-      {
-        "name": "Capt. Tamsin Rook",
-        "description": "Captain Tamsin Rook is a bluFreight shuttle captain. She specializes in short-range transfers, local-access routes, station errands, and small cargo movement. Her work covers destinations where a full freighter is unnecessary or inefficient."
-      },
-      {
-        "name": "Capt. Laleh Mercer",
-        "description": "Captain Laleh Mercer is a bluFreight courier captain. She handles light freight, priority cargo, and routes where speed is more important than carrying capacity. Her assignments commonly involve time-sensitive shipments and smaller loads."
-      },
-      {
-        "name": "Capt. Jonas Vale",
-        "description": "Captain Jonas Vale is a bluFreight heavy freight captain. He handles large, slow cargo movements where mass, fuel cost, and route planning dominate the operation. His work is closely tied to the practical limits of moving heavy freight through Indigo's orbit bands."
-      },
-      {
-        "name": "Capt. Mara Ibarra",
-        "description": "Captain Mara Ibarra is a bluFreight tug captain. She handles assist maneuvers, heavy climbs, and mass-control work for ships that need support moving through Indigo's gravity well. Her role is centered on propulsion assistance rather than direct cargo capacity."
-      },
-      {
-        "name": "Cmdr. Elias Thorne",
-        "description": "Commander Elias Thorne is a Union officer associated with patrol authority and traffic discipline in Indigo. He represents the UFP security presence around civilian shipping, outposts, and escorted routes. His authority is tied to Union enforcement of order and route control."
-      },
-      {
-        "name": "Capt. Hadrik Venn",
-        "description": "Captain Hadrik Venn is a Blister captain active in Indigo route politics and armed freight encounters. He represents Blister's use of negotiation, tribute, threat, and force as tools of movement control. His presence marks routes where security depends on more than distance and fuel."
-      },
-      {
-        "name": "Port Marshal Celia Wren",
-        "description": "Port Marshal Celia Wren is a station authority responsible for berth discipline, traffic queues, manifests, and local port operations. Her work sits between civilian station life and freight movement. She represents the administrative control needed to keep station traffic orderly."
       }
     ]
   }
