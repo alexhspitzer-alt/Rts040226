@@ -562,15 +562,30 @@ function activeCommsContacts() {
   return Object.keys(state.dialogueDb).filter((name) => name !== BASIL_NAME && name !== BUDDE_NAME && isContactPresent(name));
 }
 
+function characterRegistryCategory(name) {
+  const canonicalNames = state.characterNameRegistry?.canonicalUsedNames;
+  if (!Array.isArray(canonicalNames)) return "";
+  const entry = canonicalNames.find((candidate) => candidate?.name === name);
+  return String(entry?.category || "").toLowerCase();
+}
+
+function isBluFreightPersonnel(name) {
+  if (!name || name === BASIL_NAME || name === BUDDE_NAME) return false;
+  if (name === "Gregory Trundle") return true;
+  if (SHIP_CAPTAINS && Object.values(SHIP_CAPTAINS).includes(name)) return true;
+  const faction = String(state.dialogueDb?.[name]?.faction || "").toLowerCase();
+  if (faction === "blufreight") return true;
+  return characterRegistryCategory(name).startsWith("blufreight_");
+}
+
 function speakerMessageType(name) {
   if (name === BASIL_NAME) return "basil";
   if (name === BUDDE_NAME) return "budde";
 
   const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.captainName === name);
   const fallbackFaction = ambientNpc?.faction || NPC_CAPTAIN_FACTIONS[name] || "";
-  const faction = String(state.dialogueDb[name]?.faction || fallbackFaction).toLowerCase();
-  if (SHIP_CAPTAINS && Object.values(SHIP_CAPTAINS).includes(name)) return "comms-blufreight";
-  if (faction === "blufreight") return "comms-blufreight";
+  const faction = String(state.dialogueDb?.[name]?.faction || fallbackFaction).toLowerCase();
+  if (isBluFreightPersonnel(name)) return "comms-blufreight";
   if (faction === "ufp") return "comms-ufp";
   if (faction === "blister") return "comms-blister";
   if (faction === "arcworks") return "comms-arcworks";
@@ -1243,6 +1258,13 @@ function render() {
   if (inboxActive) renderInbox();
 }
 
+function inboxDisplayMessageType(msg) {
+  const sender = msg?.from || msg?.speaker;
+  const messageType = msg?.messageType || (sender ? speakerMessageType(sender) : "sys");
+  if ((!msg?.messageType || msg.messageType === "sys") && isBluFreightPersonnel(sender)) return "comms-blufreight";
+  return messageType;
+}
+
 function inboxMessageClass(messageType) {
   return `inbox-message-${String(messageType || "sys").toLowerCase().replace(/[^a-z0-9-]+/g, "-")}`;
 }
@@ -1256,7 +1278,8 @@ function renderInbox() {
   ordered.forEach((msg, idx) => {
     const actualIndex = state.inbox.length - 1 - idx;
     const li = document.createElement("li");
-    li.className = `inbox-item ${inboxMessageClass(msg.messageType)}`;
+    const messageType = inboxDisplayMessageType(msg);
+    li.className = `inbox-item ${inboxMessageClass(messageType)}`;
     const details = document.createElement("details");
     details.className = "inbox-mail";
     details.open = openSet.has(actualIndex);
@@ -1276,7 +1299,7 @@ function renderInbox() {
     details.appendChild(summary);
 
     const body = document.createElement("p");
-    body.className = `inbox-mail-body inbox-mail-body-${msg.messageType || "sys"}`;
+    body.className = `inbox-mail-body inbox-mail-body-${messageType || "sys"}`;
     body.textContent = msg.body || msg.text || "";
     details.appendChild(body);
 
@@ -1371,7 +1394,7 @@ function postOperatingExpenseReport() {
 
 — Gregory Trundle
 bluFreight Accounting.`,
-    messageType: "sys",
+    messageType: speakerMessageType("Gregory Trundle"),
     tick: state.tick,
     timestamp: fmtTime(state.tick),
   });
