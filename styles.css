@@ -68,6 +68,16 @@ h1 {
   padding: 0.5rem;
 }
 
+.contract-client-neutral {
+  border-color: #395273;
+}
+
+.contract-client-ufp {
+  border-color: #8f7430;
+  background: #211c10;
+  color: #ffe4a2;
+}
+
 .terminal {
   grid-area: terminal;
   font-size: 1rem;

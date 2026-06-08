@@ -12,6 +12,7 @@ export function createCommandRuntime({
   assignContract,
   sendShip,
   recallShip,
+  canRecallShip,
   dockUtilityShip,
   undockUtilityShip,
   shipReport,
@@ -445,6 +446,7 @@ export function createCommandRuntime({
       return true;
     }
     if (letter === "r") {
+      if (typeof canRecallShip === "function" && !canRecallShip(shipId)) return false;
       recallShip(shipId);
       showShipMenu(shipId);
       return true;

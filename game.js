@@ -419,8 +419,8 @@ function stylizeConsoleText(text) {
   const escaped = escapeHtml(text);
   return escaped
     .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|\s)([AISRBDUaisrbdu]\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|[,:]\s*)([AISRBDUaisrbdu])(?=\s+(assign|information|send|recall|report|back|dock|undock)\b)/g, '$1<span class="choice">$2</span>');
+    .replace(/(^|\s)([AISRDUFCHMaisrdufchm]\.)/g, '$1<span class="choice">$2</span>')
+    .replace(/(^|[,:]\s*)([AISRDUFCHMaisrdufchm])(?=\s+(assign|information|send|recall|report|dock|undock|fleet|contracts|map|help)\b)/g, '$1<span class="choice">$2</span>');
 }
 
 const { logLine } = createConsoleLogger({
@@ -1142,6 +1142,15 @@ function visibleOpenContracts() {
   return openContracts().slice(0, visibleContractCount());
 }
 
+function contractClientClass(contract) {
+  const clientKey = String(contract?.client || "neutral").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return clientKey === "ufp" ? "contract-client-ufp" : "contract-client-neutral";
+}
+
+function shipRecallAvailable(ship) {
+  return ship?.status === "tasked" || ship?.status === "enroute";
+}
+
 function targetOpenContractCount() {
   const target = playerControlledShipCount();
   if (state.contractBoardTargetOpen !== target) state.contractBoardTargetOpen = target;
@@ -1196,6 +1205,7 @@ function render() {
   ui.contracts.innerHTML = "";
   visibleOpenContracts().forEach((c, idx) => {
     const li = document.createElement("li");
+    li.className = contractClientClass(c);
     const displayNumber = contractNumber(c.id) || (idx + 1);
     const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
       ? ` | cargo ${c.cargoRequirement}T`
@@ -1490,11 +1500,12 @@ function showShipMenu(shipId) {
       if (flags) flags.budde_first_shuttle_explainer = true;
     }
   }
-  let menuOptions = "A assign, S send, I information, R recall. Global: F fleet, C contracts, M map, H help.";
+  const recallOption = shipRecallAvailable(ship) ? ", R recall" : "";
+  let menuOptions = `A assign, S send, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
   if (ship.utility && ship.status === "docked") {
     menuOptions = "U undock. Global: F fleet, C contracts, M map, H help.";
   } else if (ship.utility) {
-    menuOptions = "D dock, S send, I information, R recall. Global: F fleet, C contracts, M map, H help.";
+    menuOptions = `D dock, S send, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
   }
   logLine(`${formatShipId(shipId)} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
 }
@@ -2206,6 +2217,7 @@ commandRuntime = createCommandRuntime({
   assignContract,
   sendShip,
   recallShip,
+  canRecallShip: (shipId) => shipRecallAvailable(state.ships.find((ship) => ship.id === shipId)),
   dockUtilityShip,
   undockUtilityShip,
   shipReport,
