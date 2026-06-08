@@ -2298,7 +2298,7 @@ async function init() {
   }
   fillContractBoard({ forceNewTarget: true });
   state.selection.pending = "await_ship";
-  basilSpeak("greetings", "Dispatch online.", "basil");
+  basilInform("Dispatch online. I've sent operating instructions to your inbox because management has asked me to stop spamming the console with monologues.", "basil");
   playScenarioIntro();
   logLine("Tutorial online. Select ship by typing its number or ID.", "sys");
   showShipsList();
