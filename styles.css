@@ -3,6 +3,7 @@
   font-family: "IBM Plex Sans", Inter, system-ui, sans-serif;
   --console-neutral-comm: #8fcfc3;
   --console-ufp-comm: #ffd86a;
+  --console-blufreight-comm: #95c9ff;
 }
 
 body {
@@ -80,6 +81,11 @@ h1 {
 #contracts.list li.contract-client-ufp {
   border-color: var(--console-ufp-comm) !important;
   color: var(--console-ufp-comm) !important;
+}
+
+#fleet.list li {
+  border-color: var(--console-blufreight-comm);
+  color: var(--console-blufreight-comm);
 }
 
 .terminal {
@@ -233,7 +239,7 @@ h1 {
 }
 
 .line.type-comms-blufreight .body {
-  color: #95c9ff;
+  color: var(--console-blufreight-comm);
 }
 
 .line.type-comms .body {
