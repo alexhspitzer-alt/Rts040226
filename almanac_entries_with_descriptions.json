@@ -38,43 +38,43 @@
       "Moons": [
         {
           "name": "Cat's Eye",
-          "description": "Cat’s Eye is one of the more recognizable moons in local traffic, partly because it sits in useful high orbit and partly because so much civilian life seems to collect nearby. Anchor Station and Ring Transfer Lane make it feel like a natural reference point for operators, which is why many early assignments orbit around it both literally and administratively. Cat’s Eye is not inherently glamorous, but it is legible, and legible places become important in a delayed-information system. If Indigo has a moon that feels like an ordinary working center instead of a problem, it is probably Cat’s Eye."
+          "description": "Cat's Eye is a high-orbit moon and the reference point for bluFreight operations. Anchor Station is located near Cat's Eye, so its relative position is the baseline: high orbit at 0 degrees. The moon also hosts the Ring Transfer Lane, which gives it local importance for early freight movement and transfers into ring-orbit routes."
         },
         {
           "name": "Corkscrew",
-          "description": "Corkscrew sits in high orbit and feels exactly like the sort of place that earned its name from the shape of its traffic problems. It is useful, awkward, and more strategically relevant than its size would suggest. Routes through Corkscrew tend to make sense only after someone patient explains them, which means BUDDE likes it more than most crews do. The presence of UFP Outpost Delta gives it a more formal role in the system than a mere waystop would enjoy. It is the kind of moon that reminds operators that even when distances are manageable, geometry can still find a way to become annoying."
+          "description": "Corkscrew is a high-orbit moon. Relative to Anchor Station at Cat's Eye, it is in the same orbit band and 110 degrees prograde around Indigo. UFP Outpost Delta is located at Corkscrew, giving the moon a Union security and routing role in the current map."
         },
         {
-          "name": "Libbons",
-          "description": "Libbons is a high-orbit moon with a slightly local, slightly worn name, which is fitting for a place that seems to gather mixed-use infrastructure and practical commerce. Arcworks fuel interests and Baron's Market make it feel less tidy than a purely military or civilian node. It is the kind of moon where official traffic, private trade, and local improvisation all occupy the same conversation whether they want to or not. Libbons matters because it supports motion: fuel, access, and resale all happen around it. That makes it a good logistics moon and a bad place to expect clear lines between legitimate, useful, and merely tolerated."
+          "name": "Peltier",
+          "description": "Peltier is a high-orbit moon. Relative to Anchor Station at Cat's Eye, it is in the same orbit band and 125 degrees retrograde around Indigo. The moon hosts Arcworks Fuel Depot and Baron's Market, making it a local fuel and trade point."
         },
         {
           "name": "Oxblood",
-          "description": "Oxblood is a ring-orbit moon with a name that sounds industrial even before you know what is attached to it. Refinery and Yard give it a working identity immediately: fuel is processed here, damaged or decommissioned hulls end up here, and a lot of useful ugliness passes through. Oxblood is the sort of moon where ships arrive because they need something practical, not because they enjoy the view. It is therefore excellent for logistics. If Indigo’s economy has a smell, Oxblood probably has more than its share of it, along with a great deal of metal, old heat, and people who can tell a fresh mistake from a profitable one."
+          "description": "Oxblood is a ring-orbit moon. Relative to Anchor Station at Cat's Eye, it is one orbit band inward and 35 degrees prograde around Indigo. The Refinery and Yard are located at Oxblood, making it an industrial destination for fuel processing, repair, and freight contracts."
         },
         {
           "name": "Patch",
-          "description": "Patch is a ring-orbit moon whose name implies maintenance, improvisation, and things held together with enough success to count. The local Low Orbit Transfer Lane and UFP Outpost Bravo give it a split identity between civilian routing usefulness and Union presence. Patch feels like the kind of place where route logic and military logistics overlap just enough to make everyone suspicious. It is useful because it connects layers of movement, not because it is comfortable. When BUDDE talks about a clever transfer path through Patch, that usually means the geometry is sound and the lived experience will depend heavily on whether anyone nearby is currently arguing with artillery."
+          "description": "Patch is a ring-orbit moon. Relative to Anchor Station at Cat's Eye, it is one orbit band inward and 160 degrees prograde around Indigo. The Low Orbit Transfer Lane and UFP Outpost Bravo are located at Patch, linking the moon to transfer traffic and Union operations."
         },
         {
           "name": "Onion Skin",
-          "description": "Onion Skin is another ring-orbit moon, and the name suits a place that feels layered, structural, and slightly fragile in the way old systems often are. Arcworks Operations Hub and Arcworks Militia Barracks make it one of the clearer examples of corporate power hardening into local authority. Onion Skin is not simply industrial; it is administered. That makes it more politically sharp than moons that only refine or stage freight. Routes touching Onion Skin are often simple on paper and more loaded in practice. If you are moving goods through it, you are usually also moving through Arcworks expectations about who belongs there and under what terms."
+          "description": "Onion Skin is a ring-orbit moon. Relative to Anchor Station at Cat's Eye, it is one orbit band inward and 60 degrees retrograde around Indigo. Arcworks Operations Hub and Arcworks Militia Barracks are located there, making it an Arcworks command and security site."
         },
         {
           "name": "Shooter",
-          "description": "Shooter is a low-orbit moon with exactly the sort of name that makes people assume it either earned it honestly or has been trying to since. UFP Indigo System Administration and UFP Outpost Alpha give Shooter strong Union identity and make it feel more official than most moons in its band. Low orbit already makes it demanding; bureaucratic and military overlays make it consequential. Shooter is a place where gravity, administration, and strategic posture all point in the same direction, which is seldom toward convenience. When cargo moves here, it usually does so for reasons that are larger than commerce, even if commerce still gets to carry the paperwork."
+          "description": "Shooter is a low-orbit moon. Relative to Anchor Station at Cat's Eye, it is two orbit bands inward and 80 degrees prograde around Indigo. UFP Indigo System Administration and UFP Outpost Alpha are located at Shooter, making it a major Union administrative and security location."
         },
         {
           "name": "Sulphide",
-          "description": "Sulphide sits in low orbit and reads as harsh, industrial, and faintly unpleasant, which is helpful because it probably is all three. Indigo Station and the Deep Space Transfer Lane give it a mixed identity between civic infrastructure and route complexity. Sulphide feels like a place where local life survives next to systems much larger than itself: fuel logic, gravity costs, and long-haul transfer planning all seem to pass through. It is one of the moons that teaches operators to stop trusting simple map intuition. A route to or from Sulphide can look short and still become expensive, which is a very Indigo lesson."
+          "description": "Sulphide is a low-orbit moon. Relative to Anchor Station at Cat's Eye, it is two orbit bands inward and 110 degrees retrograde around Indigo. Indigo Station and the Deep Space Transfer Lane are located at Sulphide, connecting low-orbit station traffic with long-range transfer routing."
         },
         {
           "name": "Clambroth",
-          "description": "Clambroth occupies outer orbit and sounds like somewhere you only go because you are paid, ordered, or born too near it to leave cheaply. That is part of its charm. High Orbit Transfer Lane and Condenser Columns make it important enough to matter but still remote enough to feel like a commitment. Clambroth is useful because it is out there, and in logistics distance can be its own industry. Outer-orbit nodes like this become valuable whenever something must be processed, staged, or collected away from crowded inner traffic. They also become excellent tests of whether an operator actually understands fuel, climb penalties, and the cost of pretending far away is the same as inaccessible."
+          "description": "Clambroth is an outer-orbit moon. Relative to Anchor Station at Cat's Eye, it is one orbit band outward and 145 degrees prograde around Indigo. The High Orbit Transfer Lane and Condenser Columns are located at Clambroth, making it a remote transfer and extraction site."
         },
         {
           "name": "End-of-Day",
-          "description": "End-of-Day is perhaps the strongest outer-orbit name in the system because it sounds remote, final, and still somehow routine. That combination is exactly what frontier infrastructure tends to become. The UFP Science Station there gives it a specialized purpose, but the moon’s identity is still shaped by its distance from easier places. End-of-Day is where the system’s scale stops being abstract and becomes procedural fact. Missions to it are rarely casual. If something is happening at End-of-Day, then either science, policy, or expensive logistics has decided it matters enough to drag attention all the way out into the dark."
+          "description": "End-of-Day is an outer-orbit moon. Relative to Anchor Station at Cat's Eye, it is one orbit band outward and 35 degrees retrograde around Indigo. UFP Science Station is located there, making the moon a remote Union research destination."
         }
       ],
       "Transfer Lanes": [
@@ -142,11 +142,11 @@
         },
         {
           "name": "Arcworks Fuel Depot",
-          "description": "Arcworks Fuel Depot on Libbons is exactly the sort of location that explains why Arcworks remains relevant even when the UFP thinks it owns the system. Fuel depots are leverage. They are also practical, profitable, and difficult to ignore. As a deuterium origin point, the depot gives Arcworks a clear place in the logistical bloodstream of Indigo. It reminds the player that control does not only reside in outposts or flags. Sometimes it resides in whatever facility can keep ships moving another few legs. Fuel depots also make good targets, good bargaining chips, and bad places to pretend politics is separate from inventory."
+          "description": "Arcworks Fuel Depot on Peltier is exactly the sort of location that explains why Arcworks remains relevant even when the UFP thinks it owns the system. Fuel depots are leverage. They are also practical, profitable, and difficult to ignore. As a deuterium origin point, the depot gives Arcworks a clear place in the logistical bloodstream of Indigo. It reminds the player that control does not only reside in outposts or flags. Sometimes it resides in whatever facility can keep ships moving another few legs. Fuel depots also make good targets, good bargaining chips, and bad places to pretend politics is separate from inventory."
         },
         {
           "name": "Baron's Market",
-          "description": "Baron’s Market on Libbons is one of the best examples of a station that feels lived in rather than merely routed through. It functions as a station, a market, and a global origin override because practically anything can begin moving if enough trade passes through a place. That makes it useful in gameplay and flavorful in-world. Markets gather civilians, opportunists, municipal needs, and quietly influential actors in ways that military sites never do. If UFP Administration represents formal authority, Baron’s Market represents the other kind: the authority of people who can always find a buyer, a broker, or a very good reason this cargo needs to be somewhere else by morning."
+          "description": "Baron’s Market on Peltier is one of the best examples of a station that feels lived in rather than merely routed through. It functions as a station, a market, and a global origin override because practically anything can begin moving if enough trade passes through a place. That makes it useful in gameplay and flavorful in-world. Markets gather civilians, opportunists, municipal needs, and quietly influential actors in ways that military sites never do. If UFP Administration represents formal authority, Baron’s Market represents the other kind: the authority of people who can always find a buyer, a broker, or a very good reason this cargo needs to be somewhere else by morning."
         },
         {
           "name": "Condenser Columns",
