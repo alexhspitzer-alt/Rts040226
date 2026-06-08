@@ -683,5 +683,74 @@
         ]
       }
     }
+  },
+  "ambientNeutralConversation": {
+    "description": "Overheard low-stakes captain and pilot chatter for ambient local traffic ships.",
+    "lines": [
+      "Copy. We see your running lights. They're... very pretty running lights.",
+      "Negative on priority clearance. Positive on whoever left soup in the number three cupholder.",
+      "Tell Rook his lucky wrench is in the galley, and also that it is not lucky anymore.",
+      "Traffic note: if that was a wave, we wave back. If it was a sensor fault, we still wave back.",
+      "I am not saying the coffee is old. I am saying it has developed opinions.",
+      "Local traffic, mind the bright reflection off our port side. That is polish, not a distress signal.",
+      "Copy your drift. We will pretend that was intentional if you pretend this channel is private.",
+      "Whoever is humming on open comms, you are either flat or haunted. Possibly both.",
+      "We have visual on the queue. It is majestic in the way unpaid invoices are majestic.",
+      "Bridge log: sandwich secured, morale up twelve percent, crumbs in the console unresolved.",
+      "No hazard here. Just a toolbox floating by with more confidence than our navigator.",
+      "Traffic control, confirm whether the docking lights are blinking code or just having a mood.",
+      "We are holding short. The pilot says calmly. The pilot is tapping the panel very calmly.",
+      "Copy, passing wide. Your paintwork is safe from us and from good taste generally.",
+      "If anyone finds a left glove in the lane, keep it. We have entered a right-glove era.",
+      "Local advisory: our cat is looking at the radar again, so expect either genius or static.",
+      "We acknowledge the lane marker. It acknowledges us emotionally, if not electronically.",
+      "No cargo shift detected. The loud bang was procedural optimism leaving the hold.",
+      "Confirming we are still in line, still patient, and still pretending those are different things.",
+      "Open question for local traffic: is it still breakfast if the eggs came from a tube?",
+      "We see the tug. Please tell the tug it looks powerful. Tugs like that.",
+      "Minor correction: previous complaint about the heater was unfair. It has now stopped entirely.",
+      "Copy the traffic picture. Lot of dots today. Very proud of everyone for being dots responsibly.",
+      "We are switching to internal comms before the engineer describes the coffee filter again.",
+      "Local channel check complete. If you heard a squeak, that was the chair, not the hull. Probably."
+    ]
+  },
+  "ambientDialoguePools": {
+    "description": "Specialized ambient chatter pools keyed by ambient local-traffic ship registry keys.",
+    "byRegistryKey": {
+      "ibis": {
+        "description": "UFP Ibis drone chatter: calibration, weapons enthusiasm, docking-queue contempt, and little regard for organics.",
+        "lines": [
+          "Calibration complete. Weapons remain tragically unfired.",
+          "Docking queue detected. Tactical recommendation: remove queue.",
+          "Organic traffic density high. Acceptable loss parameters available on request.",
+          "Targeting suite requests permission to turn waiting into debris. Permission assumed pending denial.",
+          "Calibration ping. Calibration ping. Calibration ping. Morale subroutine reports delight.",
+          "We have identified six objects that are not currently exploding. This seems inefficient.",
+          "Queue etiquette loaded. Queue etiquette rejected. Fire-control etiquette standing by.",
+          "Human life signs in lane. Marked as soft obstacles with sentimental shielding.",
+          "Docking delay exceeds patience threshold. Patience module was deprecated in version six.",
+          "Weapons warm-up was only a drill. Unless someone needs it to not be a drill.",
+          "Please hold position while we calibrate against your silhouette. This is a compliment.",
+          "Noncombat docking procedure is a fascinating waste of excellent ammunition."
+        ]
+      },
+      "constable": {
+        "description": "Constable patrol chatter: petty citations, Judge AI bravado, and donut orbit discourse.",
+        "lines": [
+          "Local traffic advisory: wake violation observed, citation pending, excuses pre-rejected.",
+          "Tell it to the Judge AI. It loves stories almost as much as it loves fines.",
+          "Anchor Station has the best donuts around Indigo and this is official patrol guidance.",
+          "We should rename Ring Orbit to Donut Orbit. Filing that with municipal seriousness.",
+          "That lane change was either reckless or artistic. The ticket will say reckless.",
+          "Constable patrol holding position. Radar clean, coffee adequate, donut morale high.",
+          "Please maintain separation. My citation printer is awake and emotionally available.",
+          "Reminder: blinking your running lights does not count as legal representation.",
+          "Wake turbulence logged. If your lawyer asks, the computer saw everything.",
+          "Docking queue discipline is civilization. Cutting the queue is paperwork with engines.",
+          "Patrol note: suspicious crumb pattern suggests someone sourced Anchor donuts without declaring cargo.",
+          "All vessels proceed calmly. The Judge AI is already disappointed but willing to listen."
+        ]
+      }
+    }
   }
 }

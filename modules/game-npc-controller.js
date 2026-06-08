@@ -3,9 +3,120 @@ const NPC_LOITER_MAX = 360;
 const NPC_LOITER_MODE = 200;
 const NPC_LINE_REPEAT_WINDOW = 120;
 const CONFLICT_HEARTBEAT_SECONDS = 10;
+
+const AMBIENT_LOCATION_SPAWN_INTERVAL = 20;
+const AMBIENT_LOCATION_SPAWN_CHANCE = 0.35;
+const AMBIENT_LOCATION_MAX_SHIPS = 8;
+const AMBIENT_LOCATION_MAX_PER_NODE = 4;
+const AMBIENT_LOCATION_DIALOGUE_MIN = 180;
+const AMBIENT_LOCATION_DIALOGUE_MAX = 360;
+const AMBIENT_LOCATION_REMOVE_INTERVAL = 30;
+const AMBIENT_LOCATION_REMOVE_CHANCE = 0.25;
+const AMBIENT_LOCATION_REMOVE_DIALOGUE_GRACE = 60;
+const AMBIENT_LOCATION_MIN_AGE_BEFORE_REMOVE = 45;
+
+const AMBIENT_NEUTRAL_LINES = [
+  "Holding local pattern. Traffic looks orderly from here.",
+  "Copy local traffic. We are keeping a quiet transponder and a clean lane.",
+  "No priority request from us. Just logging the local drift and staying clear.",
+  "Local channel check. We are standing by and monitoring the board.",
+  "Routine wait on this end. Wake is low, drives are cool, patience is negotiable.",
+];
+
+const AMBIENT_LOCATION_SHIP_RULES = [
+  {
+    key: "arcworks-core",
+    matches: (nodeId, label) => ["arcworks_operations_hub", "arcworks_militia_barracks", "condenser_columns", "arcworks_fuel_depot"].includes(nodeId)
+      || /arcworks operations hub|arcworks militia barracks|condenser columns|arcworks fuel depot/i.test(label),
+    ships: [
+      { registryKey: "j-i", className: "J-I", faction: "arcworks", role: "industrial", rarity: "common", weight: 6, speed: 3 },
+      { registryKey: "mm-ix", className: "MM-IX", faction: "arcworks", role: "industrial", rarity: "uncommon", weight: 3, speed: 2 },
+      { registryKey: "ml-x", className: "ML-X", faction: "arcworks", role: "industrial", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "ufp-administration-science",
+    matches: (nodeId, label) => ["ufp_indigo_system_administration", "ufp_science_station"].includes(nodeId)
+      || /ufp indigo system administration|ufp science station/i.test(label),
+    ships: [
+      { registryKey: "pelican", className: "Pelican", faction: "ufp", role: "patrol", rarity: "common", weight: 6, speed: 3 },
+      { registryKey: "piper", className: "Piper", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 4 },
+      { registryKey: "ibis", className: "Ibis", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 4 },
+      { registryKey: "condor", className: "Condor", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 3 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "ufp",
+    matches: (nodeId, label) => /^ufp_/i.test(nodeId) || /ufp outpost/i.test(label),
+    ships: [
+      { registryKey: "piper", className: "Piper", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 4 },
+      { registryKey: "ibis", className: "Ibis", faction: "ufp", role: "patrol", rarity: "uncommon", weight: 3, speed: 4 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "transfer-lanes",
+    matches: (nodeId, label) => /transfer_lane/i.test(nodeId) || /transfer lane/i.test(label),
+    ships: [
+      { registryKey: "trawler", className: "Trawler", faction: "civilian", role: "hauler", rarity: "uncommon", weight: 3, speed: 2 },
+      { registryKey: "sledge", className: "Sledge", faction: "blister", role: "raider", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "refinery",
+    matches: (nodeId, label) => nodeId === "refinery" || /refinery/i.test(label),
+    ships: [
+      { registryKey: "mm-ix", className: "MM-IX", faction: "arcworks", role: "industrial", rarity: "uncommon", weight: 3, speed: 2 },
+      { registryKey: "sledge", className: "Sledge", faction: "blister", role: "raider", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "yard",
+    matches: (nodeId, label) => nodeId === "yard" || /yard/i.test(label),
+    ships: [
+      { registryKey: "sledge", className: "Sledge", faction: "blister", role: "raider", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "barons-market",
+    matches: (nodeId, label) => nodeId === "barons_market" || /baron'?s market/i.test(label),
+    ships: [
+      { registryKey: "skiff", className: "Skiff", faction: "civilian", role: "civilian", rarity: "common", weight: 6, speed: 4 },
+      { registryKey: "trawler", className: "Trawler", faction: "civilian", role: "hauler", rarity: "uncommon", weight: 3, speed: 2 },
+      { registryKey: "constable", className: "Constable", faction: "civilian", role: "patrol", rarity: "rare", weight: 1, speed: 3 },
+      { registryKey: "j-viii", className: "J-VIII", faction: "arcworks", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "pelican", className: "Pelican", faction: "ufp", role: "patrol", rarity: "rare", weight: 1, speed: 3 },
+      { registryKey: "sledge", className: "Sledge", faction: "blister", role: "raider", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "ml-x", className: "ML-X", faction: "arcworks", role: "industrial", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+  {
+    key: "stations",
+    matches: (nodeId, label) => ["anchor_station", "indigo_station"].includes(nodeId)
+      || /station/i.test(label),
+    ships: [
+      { registryKey: "skiff", className: "Skiff", faction: "civilian", role: "civilian", rarity: "common", weight: 6, speed: 4 },
+      { registryKey: "trawler", className: "Trawler", faction: "civilian", role: "hauler", rarity: "uncommon", weight: 3, speed: 2 },
+      { registryKey: "constable", className: "Constable", faction: "civilian", role: "patrol", rarity: "rare", weight: 1, speed: 3 },
+      { registryKey: "j-viii", className: "J-VIII", faction: "arcworks", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+      { registryKey: "pelican", className: "Pelican", faction: "ufp", role: "patrol", rarity: "rare", weight: 1, speed: 3 },
+      { registryKey: "hauler", className: "Hauler", faction: "civilian", role: "hauler", rarity: "rare", weight: 1, speed: 2 },
+    ],
+  },
+];
+
+const AMBIENT_CALLSIGN_WORDS = ["Bright", "Swift", "Steady", "Ready", "Brisk", "Keen", "True", "Bold", "Quick", "Calm", "Daring", "Able"];
+const AMBIENT_AUTOPILOT_CAPTAIN_NAME = "Capt. AUTOPILOTv6.9";
 const CONFLICT_DECAY_PER_HEARTBEAT_BASE = 0.09;
 const CONFLICT_GAIN_BASE = 0.12;
 const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
+const COLLATERAL_REPRISAL_CHANCE_NO_EFFECT = 0.03;
+const COLLATERAL_REPRISAL_CHANCE_MINOR_DAMAGE = 0.35;
 
 function randomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -14,6 +125,10 @@ function randomInt(min, max) {
 function randomPick(list) {
   if (!Array.isArray(list) || !list.length) return null;
   return list[Math.floor(Math.random() * list.length)];
+}
+
+function clamp(min, max, value) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function randomLoiterSeconds() {
@@ -221,11 +336,214 @@ export function createNpcController({
   nodeLabel,
   scheduleCharacterMessage,
   getShipRegistry,
+  playerShipCallsign,
+  playerShipCaptainById,
   onConflictStage,
 }) {
   const recentNpcLineHistory = [];
   const conflictEncounters = new Map();
   let lastConflictHeartbeatTick = -Infinity;
+
+  let nextAmbientLocationSpawnTick = 0;
+  let nextAmbientLocationRemoveTick = 0;
+  let ambientLocationSpawnSerial = 1;
+  let ambientIbisFlockSerial = 1;
+  const ambientLocationSpawnCooldowns = new Map();
+  const usedAmbientCaptainNames = new Set();
+
+  function nodeLabelText(nodeId) {
+    return String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
+  }
+
+  function weightedPick(entries) {
+    const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.weight || 0), 0);
+    if (total <= 0) return randomPick(entries);
+    let roll = Math.random() * total;
+    for (const entry of entries) {
+      roll -= Math.max(0, entry.weight || 0);
+      if (roll <= 0) return entry;
+    }
+    return entries[entries.length - 1] || null;
+  }
+
+  function ambientRuleForNode(nodeId) {
+    const label = nodeLabelText(nodeId);
+    return AMBIENT_LOCATION_SHIP_RULES.find((rule) => rule.matches(nodeId, label)) || null;
+  }
+
+  function occupiedPlayerNodeIds() {
+    const occupied = new Set();
+    (state.ships || []).forEach((ship) => {
+      if (!ship?.at) return;
+      if (["idle", "tasked", "arrived_pending_report"].includes(ship.status)) occupied.add(ship.at);
+    });
+    return [...occupied].filter((nodeId) => getNodes()?.[nodeId]);
+  }
+
+  function ambientNpcs() {
+    return (state.civilianNpcs || []).filter((npc) => npc.ambientLocationSpawn);
+  }
+
+  function countAmbientNpcsAt(nodeId) {
+    return ambientNpcs().filter((npc) => npc.at === nodeId).length;
+  }
+
+  function randomAmbientCallsign(className) {
+    return `${className} ${randomPick(AMBIENT_CALLSIGN_WORDS)}-${randomInt(10, 98)}`;
+  }
+
+  function normalizeFactionName(value) {
+    const text = String(value || "").toLowerCase();
+    if (text === "ufp" || text.includes("union of free planets")) return "ufp";
+    if (text === "blister") return "blister";
+    if (text === "arcworks") return "arcworks";
+    if (text === "civilian" || text === "blufreight") return "civilian";
+    return "civilian";
+  }
+
+  function factionForShipType(ship) {
+    const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
+    const registryFaction = ship?.registryKey ? registry?.[ship.registryKey]?.faction : null;
+    return normalizeFactionName(registryFaction || ship?.faction);
+  }
+
+  function formatAmbientCaptainName(name) {
+    if (/^(capt\.|cmdr\.|lt\.|supervisor|dockmaster|traffic officer|port marshal)\b/i.test(name)) return name;
+    return `Capt. ${name}`;
+  }
+
+  function drawAmbientCaptainName() {
+    const pool = Array.isArray(state.characterNameRegistry?.randomAssignmentPool)
+      ? state.characterNameRegistry.randomAssignmentPool
+      : [];
+    const available = pool.filter((name) => name && !usedAmbientCaptainNames.has(name));
+    const name = randomPick(available);
+    if (!name) return AMBIENT_AUTOPILOT_CAPTAIN_NAME;
+    usedAmbientCaptainNames.add(name);
+    return formatAmbientCaptainName(name);
+  }
+
+  function numberWord(value) {
+    const ones = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    const number = Math.max(0, Math.floor(Number(value) || 0));
+    if (number < ones.length) return ones[number];
+    if (number < 100) {
+      const ten = Math.floor(number / 10);
+      const one = number % 10;
+      return one ? `${tens[ten]}-${ones[one]}` : tens[ten];
+    }
+    return String(number);
+  }
+
+  function drawAmbientShipName(ship) {
+    if (ship?.registryKey === "ibis") {
+      const name = `Flock ${numberWord(ambientIbisFlockSerial)}`;
+      ambientIbisFlockSerial += 1;
+      return name;
+    }
+    return drawAmbientCaptainName();
+  }
+
+  function nextAmbientDialogueTick() {
+    return state.tick + randomInt(AMBIENT_LOCATION_DIALOGUE_MIN, AMBIENT_LOCATION_DIALOGUE_MAX);
+  }
+
+  function neutralDialoguePool(npc = null) {
+    const registryPool = npc?.registryKey
+      ? state.ambientDialoguePools?.byRegistryKey?.[npc.registryKey]?.lines
+      : null;
+    if (Array.isArray(registryPool) && registryPool.length) return registryPool;
+    if (Array.isArray(state.ambientNeutralConversation) && state.ambientNeutralConversation.length) {
+      return state.ambientNeutralConversation;
+    }
+    const characters = state.dialogueDb || {};
+    const lines = Object.values(characters).flatMap((entry) => Array.isArray(entry?.dialogue?.neutral) ? entry.dialogue.neutral : []);
+    return lines.length ? lines : AMBIENT_NEUTRAL_LINES;
+  }
+
+  function commsTypeForFaction(faction) {
+    if (faction === "ufp") return "comms-ufp";
+    if (faction === "blister") return "comms-blister";
+    if (faction === "arcworks") return "comms-arcworks";
+    return "comms";
+  }
+
+  function scheduleAmbientNeutralLine(npc) {
+    const line = randomPick(neutralDialoguePool(npc)) || randomPick(AMBIENT_NEUTRAL_LINES);
+    const delay = 1;
+    npc.lastDialogueTick = state.tick + delay;
+    npc.dialogueCount = (npc.dialogueCount || 0) + 1;
+    npc.nextDialogueTick = nextAmbientDialogueTick();
+    scheduleCharacterMessage(delay, npc.captainName || npc.callsign, line, `ambient-npc:${npc.id}`, commsTypeForFaction(npc.faction));
+  }
+
+  function spawnAmbientLocationShip(nodeId) {
+    const rule = ambientRuleForNode(nodeId);
+    if (!rule) return null;
+    const ship = weightedPick(rule.ships);
+    if (!ship) return null;
+    const id = `npc-local-${ship.registryKey}-${ambientLocationSpawnSerial}`;
+    ambientLocationSpawnSerial += 1;
+    const npc = {
+      id,
+      callsign: randomAmbientCallsign(ship.className),
+      captainName: drawAmbientShipName(ship),
+      faction: factionForShipType(ship),
+      role: ship.role || "local",
+      registryKey: ship.registryKey,
+      at: nodeId,
+      status: "idle",
+      departAt: Infinity,
+      arrivalTick: 0,
+      ambientLocationSpawn: true,
+      spawnedAtTick: state.tick,
+      lastDialogueTick: -Infinity,
+      dialogueCount: 0,
+      nextDialogueTick: nextAmbientDialogueTick(),
+    };
+    if (!Array.isArray(state.civilianNpcs)) state.civilianNpcs = [];
+    state.civilianNpcs.push(npc);
+    const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
+    shipSpeedById[id] = registry?.[ship.registryKey]?.speed || ship.speed || 3;
+    ambientLocationSpawnCooldowns.set(nodeId, state.tick + randomInt(50, 100));
+    return npc;
+  }
+
+  function updateAmbientLocationSpawns() {
+    if (state.tick < nextAmbientLocationSpawnTick) return;
+    nextAmbientLocationSpawnTick = state.tick + AMBIENT_LOCATION_SPAWN_INTERVAL;
+    if (ambientNpcs().length >= AMBIENT_LOCATION_MAX_SHIPS) return;
+    const candidates = occupiedPlayerNodeIds().filter((nodeId) => {
+      if (!ambientRuleForNode(nodeId)) return false;
+      if (countAmbientNpcsAt(nodeId) >= AMBIENT_LOCATION_MAX_PER_NODE) return false;
+      return state.tick >= (ambientLocationSpawnCooldowns.get(nodeId) || 0);
+    });
+    if (!candidates.length || Math.random() > AMBIENT_LOCATION_SPAWN_CHANCE) return;
+    spawnAmbientLocationShip(randomPick(candidates));
+  }
+
+  function updateAmbientLocationDialogue() {
+    ambientNpcs().forEach((npc) => {
+      if (npc.status !== "idle" || !npc.at) return;
+      if (state.tick >= (npc.nextDialogueTick || 0) && playerLocalToNode(npc.at)) scheduleAmbientNeutralLine(npc);
+    });
+  }
+
+  function updateAmbientLocationRemovals() {
+    if (state.tick < nextAmbientLocationRemoveTick) return;
+    nextAmbientLocationRemoveTick = state.tick + AMBIENT_LOCATION_REMOVE_INTERVAL;
+    if (Math.random() > AMBIENT_LOCATION_REMOVE_CHANCE) return;
+    const removable = ambientNpcs().filter((npc) => {
+      const oldEnough = state.tick - (npc.spawnedAtTick || 0) >= AMBIENT_LOCATION_MIN_AGE_BEFORE_REMOVE;
+      const dialogueSafe = state.tick - (npc.lastDialogueTick ?? -Infinity) >= AMBIENT_LOCATION_REMOVE_DIALOGUE_GRACE;
+      return oldEnough && dialogueSafe;
+    });
+    const npc = randomPick(removable);
+    if (!npc) return;
+    state.civilianNpcs = (state.civilianNpcs || []).filter((entry) => entry.id !== npc.id);
+    delete shipSpeedById[npc.id];
+  }
 
   function encounterKey(aId, bId) {
     return [aId, bId].sort().join("|");
@@ -257,10 +575,39 @@ export function createNpcController({
     return "notice";
   }
 
+  function playerRegistryKey(ship) {
+    return String(ship?.id || "").split("-")[0] || null;
+  }
+
+  function playerCollateralCandidate(ship) {
+    if (!ship?.id) return null;
+    const registryKey = playerRegistryKey(ship);
+    const fallbackCallsign = `${titleCase(registryKey || "Ship")} Blue`;
+    return {
+      ...ship,
+      id: ship.id,
+      playerShip: true,
+      sourceShip: ship,
+      callsign: typeof playerShipCallsign === "function" ? playerShipCallsign(ship) : fallbackCallsign,
+      captainName: typeof playerShipCaptainById === "function" ? playerShipCaptainById(ship.id) : null,
+      faction: "blufreight",
+      registryKey,
+    };
+  }
+
+  function playerShipAvailableForCollateral(ship) {
+    return ship?.id
+      && ship.status !== "disabled"
+      && ship.status !== "enroute"
+      && ship.status !== "docked"
+      && ship.combatStatus !== "major_damage"
+      && ship.combatStatus !== "killed";
+  }
+
   function shipCombatProfile(npc) {
     if (!npc?.id) return DEFAULT_NPC_COMBAT_PROFILE;
     const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
-    const registryKey = NPC_SHIP_REGISTRY_KEYS[npc.id];
+    const registryKey = npc.registryKey || (npc.playerShip ? playerRegistryKey(npc) : null) || NPC_SHIP_REGISTRY_KEYS[npc.id];
     const registryProfile = registryKey ? registry?.[registryKey] : null;
     const guns = Number.isFinite(registryProfile?.guns) ? registryProfile.guns : null;
     const armor = Number.isFinite(registryProfile?.armor) ? registryProfile.armor : null;
@@ -279,6 +626,232 @@ export function createNpcController({
       if (stage === "fire" || stage === "intercept") return "verbal";
     }
     return stage;
+  }
+
+  function damageChance(guns, armor) {
+    if (guns <= 0) return 0;
+    const safeArmor = Math.max(0, armor || 0);
+    const base = safeArmor <= 0 ? 1 : guns / (guns + safeArmor);
+    const underpoweredPenalty = safeArmor > guns ? Math.min(0.09, (safeArmor - guns) * 0.01) : 0;
+    return clamp(0, 0.995, base - underpoweredPenalty);
+  }
+
+  function rollWeightedOutcome(weights) {
+    const entries = Object.entries(weights).filter(([, probability]) => probability > 0);
+    if (!entries.length) return "no_effect";
+    const total = entries.reduce((sum, [, probability]) => sum + probability, 0);
+    let roll = Math.random() * total;
+    for (const [outcome, probability] of entries) {
+      roll -= probability;
+      if (roll <= 0) return outcome;
+    }
+    return entries[entries.length - 1][0];
+  }
+
+  function directCombatWeights(attacker, defender) {
+    const attackerProfile = shipCombatProfile(attacker);
+    const defenderProfile = shipCombatProfile(defender);
+    const guns = Math.max(0, attackerProfile.guns || 0);
+    const armor = Math.max(0, defenderProfile.armor || 0);
+    const pDamage = damageChance(guns, armor);
+    const overmatch = guns - armor;
+    const killShare = clamp(0.005, 0.35, 0.06 + overmatch * 0.025);
+    const majorShare = clamp(0.15, 0.55, 0.30 + overmatch * 0.025);
+    const minorShare = Math.max(0, 1 - killShare - majorShare);
+    return {
+      kill: pDamage * killShare,
+      major_damage: pDamage * majorShare,
+      minor_damage: pDamage * minorShare,
+      no_effect: Math.max(0, 1 - pDamage),
+    };
+  }
+
+  function collateralCombatWeights(attacker, defender) {
+    const attackerProfile = shipCombatProfile(attacker);
+    const defenderProfile = shipCombatProfile(defender);
+    const pDamage = Math.min(0.2, damageChance(attackerProfile.guns || 0, defenderProfile.armor || 0) * 0.18);
+    return {
+      major_damage: pDamage * 0.25,
+      minor_damage: pDamage * 0.75,
+      no_effect: Math.max(0, 1 - pDamage),
+    };
+  }
+
+  function combatStatusRank(status) {
+    if (status === "killed") return 3;
+    if (status === "major_damage") return 2;
+    if (status === "minor_damage") return 1;
+    return 0;
+  }
+
+  function applyPlayerCollateralOutcome(shipLike, outcome) {
+    const ship = shipLike?.sourceShip || shipLike;
+    if (!ship || outcome === "no_effect") return;
+    const normalizedOutcome = outcome === "kill" ? "major_damage" : outcome;
+    if (combatStatusRank(normalizedOutcome) <= combatStatusRank(ship.combatStatus)) return;
+    ship.combatStatus = normalizedOutcome;
+    ship.lastCombatTick = state.tick;
+    if (normalizedOutcome === "major_damage") {
+      ship.status = "disabled";
+      ship.busyUntil = 0;
+      ship.departAt = 0;
+      return;
+    }
+    if (normalizedOutcome === "minor_damage" && ship.status === "idle") {
+      ship.status = "damaged";
+    }
+  }
+
+  function applyCombatOutcome(npc, outcome) {
+    if (!npc || outcome === "no_effect") return;
+    if (npc.playerShip) {
+      applyPlayerCollateralOutcome(npc, outcome);
+      return;
+    }
+    const normalizedOutcome = outcome === "kill" ? "killed" : outcome;
+    if (combatStatusRank(normalizedOutcome) <= combatStatusRank(npc.combatStatus)) return;
+    npc.combatStatus = normalizedOutcome;
+    npc.lastCombatTick = state.tick;
+    if (normalizedOutcome === "killed") {
+      npc.status = "disabled";
+      npc.departAt = Infinity;
+      npc.arrivalTick = 0;
+      return;
+    }
+    if (normalizedOutcome === "major_damage") {
+      npc.status = "disabled";
+      npc.departAt = Infinity;
+      npc.arrivalTick = 0;
+    }
+  }
+
+  function combatCapable(npc) {
+    return npc && npc.combatStatus !== "killed" && npc.combatStatus !== "major_damage";
+  }
+
+  function resolveDirectCombat(attacker, defender) {
+    const outcome = rollWeightedOutcome(directCombatWeights(attacker, defender));
+    applyCombatOutcome(defender, outcome);
+    return { attacker, defender, outcome };
+  }
+
+  function resolveCollateralCombat(attacker, defender) {
+    const outcome = rollWeightedOutcome(collateralCombatWeights(attacker, defender));
+    applyCombatOutcome(defender, outcome);
+    return { attacker, defender, outcome };
+  }
+
+  function outcomeLabel(outcome) {
+    if (outcome === "kill" || outcome === "killed") return "kill";
+    if (outcome === "major_damage") return "major damage";
+    if (outcome === "minor_damage") return "minor damage";
+    return "no effect";
+  }
+
+  function formatCombatResultLine(result, prefix = "Fire") {
+    return `[${prefix}] ${result.attacker.callsign} -> ${result.defender.callsign}: ${outcomeLabel(result.outcome)}.`;
+  }
+
+  function collateralDamageResults(results) {
+    return results.filter((result) => result.outcome !== "no_effect");
+  }
+
+  function collateralReprisalChance(outcome) {
+    if (outcome === "minor_damage") return COLLATERAL_REPRISAL_CHANCE_MINOR_DAMAGE;
+    if (outcome === "no_effect") return COLLATERAL_REPRISAL_CHANCE_NO_EFFECT;
+    return 0;
+  }
+
+  function sameFactionReprisalBlocked(attacker, target) {
+    const attackerFaction = attacker?.faction || "civilian";
+    const targetFaction = target?.faction || "civilian";
+    return attackerFaction === targetFaction && (attackerFaction === "ufp" || attackerFaction === "arcworks");
+  }
+
+  function shouldCollateralReturnFire(result, target) {
+    return combatCapable(result?.defender)
+      && combatCapable(target)
+      && hasGuns(result.defender)
+      && !sameFactionReprisalBlocked(result.defender, target)
+      && Math.random() < collateralReprisalChance(result.outcome);
+  }
+
+  function resolveCollateralVolley(attacker, primaryTarget, nodeId, excludedIds = new Set()) {
+    const idsToSkip = new Set(excludedIds);
+    if (attacker?.id) idsToSkip.add(attacker.id);
+    if (primaryTarget?.id) idsToSkip.add(primaryTarget.id);
+    const npcTargets = (state.civilianNpcs || [])
+      .filter((npc) => (
+        npc?.at === nodeId
+        && !idsToSkip.has(npc.id)
+        && npc.combatStatus !== "killed"
+      ));
+    const playerTargets = (state.ships || [])
+      .filter((ship) => (
+        ship?.at === nodeId
+        && !idsToSkip.has(ship.id)
+        && playerShipAvailableForCollateral(ship)
+      ))
+      .map(playerCollateralCandidate)
+      .filter(Boolean);
+    return [...npcTargets, ...playerTargets]
+      .map((target) => resolveCollateralCombat(attacker, target));
+  }
+
+  function resolveCollateralReprisals(triggerResults, target, nodeId, reprisalShipIds = new Set()) {
+    const reprisalEvents = [];
+    const reprisalQueue = triggerResults.map((trigger) => ({ trigger, target }));
+    while (reprisalQueue.length) {
+      const eventSeed = reprisalQueue.shift();
+      const reprisalAttacker = eventSeed.trigger.defender;
+      if (!reprisalAttacker?.id || reprisalShipIds.has(reprisalAttacker.id)) continue;
+      if (!shouldCollateralReturnFire(eventSeed.trigger, eventSeed.target)) continue;
+      reprisalShipIds.add(reprisalAttacker.id);
+      const direct = resolveDirectCombat(reprisalAttacker, eventSeed.target);
+      const collateralResults = resolveCollateralVolley(reprisalAttacker, eventSeed.target, nodeId);
+      reprisalEvents.push({
+        trigger: eventSeed.trigger,
+        direct,
+        collateral: collateralDamageResults(collateralResults),
+      });
+      collateralResults.forEach((trigger) => {
+        reprisalQueue.push({ trigger, target: reprisalAttacker });
+      });
+    }
+    return reprisalEvents;
+  }
+
+  function collateralReprisalTriggerLabel(outcome) {
+    if (outcome === "no_effect") return "shrugged off collateral fire";
+    return `took ${outcomeLabel(outcome)} collateral damage`;
+  }
+
+  function formatCollateralReprisalLine(event) {
+    return `${formatCombatResultLine(event.direct, "Reprisal")} Trigger: ${event.trigger.defender.callsign} ${collateralReprisalTriggerLabel(event.trigger.outcome)}.`;
+  }
+
+  function resolveCombatExchange(aggressor, responder, nodeId) {
+    const direct = resolveDirectCombat(aggressor, responder);
+    const collateralResults = resolveCollateralVolley(aggressor, responder, nodeId);
+    const collateral = collateralDamageResults(collateralResults);
+    const canReturn = combatCapable(responder) && hasGuns(responder);
+    const returnFire = canReturn ? resolveDirectCombat(responder, aggressor) : null;
+    const returnCollateralResults = returnFire ? resolveCollateralVolley(responder, aggressor, nodeId) : [];
+    const returnCollateral = collateralDamageResults(returnCollateralResults);
+    const reprisalShipIds = new Set([aggressor.id, responder.id]);
+    const collateralReprisals = resolveCollateralReprisals(collateralResults, aggressor, nodeId, reprisalShipIds);
+    const returnCollateralReprisals = returnFire
+      ? resolveCollateralReprisals(returnCollateralResults, responder, nodeId, reprisalShipIds)
+      : [];
+    return {
+      direct,
+      collateral,
+      returnFire,
+      returnCollateral,
+      collateralReprisals,
+      returnCollateralReprisals,
+      canReturn,
+    };
   }
 
   function playerLocalToNode(nodeId) {
@@ -329,19 +902,67 @@ export function createNpcController({
       "comms"
     );
 
-    if (encounter.stage === "fire" && hasGuns(responder) && Math.random() < 0.55) {
-      const counterfireLines = [
-        `[Fire] to ${aggressor.callsign} @ ${location}: Returning fire. Marking your drives and breaking across your bow.`,
-        `[Fire] to ${aggressor.callsign} @ ${location}: Counterfire authorized. You fire again, you drift home in pieces.`,
-        `[Fire] to ${aggressor.callsign} @ ${location}: Defensive guns active. You wanted a duel—now finish it fast.`,
-      ];
+    if (encounter.stage === "fire") {
+      const exchange = resolveCombatExchange(aggressor, responder, encounter.nodeId);
       scheduleCharacterMessage(
         3,
-        responder.captainName || responder.callsign,
-        randomPick(counterfireLines),
+        aggressor.captainName || aggressor.callsign,
+        `${formatCombatResultLine(exchange.direct)} ${exchange.direct.outcome === "major_damage" || exchange.direct.outcome === "kill" ? `${responder.callsign} cannot return fire.` : ""}`.trim(),
         "interdicting",
         "comms"
       );
+      exchange.collateral.forEach((result, idx) => {
+        scheduleCharacterMessage(
+          4 + idx,
+          result.defender.captainName || result.defender.callsign,
+          formatCombatResultLine(result, "Collateral"),
+          "damaged",
+          "comms"
+        );
+      });
+      if (exchange.returnFire) {
+        const delay = 4 + exchange.collateral.length;
+        scheduleCharacterMessage(
+          delay,
+          responder.captainName || responder.callsign,
+          formatCombatResultLine(exchange.returnFire),
+          exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
+          "comms"
+        );
+        exchange.returnCollateral.forEach((result, idx) => {
+          scheduleCharacterMessage(
+            delay + 1 + idx,
+            result.defender.captainName || result.defender.callsign,
+            formatCombatResultLine(result, "Collateral"),
+            "damaged",
+            "comms"
+          );
+        });
+      }
+      let reprisalDelay = 4 + exchange.collateral.length;
+      if (exchange.returnFire) reprisalDelay += 1 + exchange.returnCollateral.length;
+      const scheduleReprisal = (event) => {
+        scheduleCharacterMessage(
+          reprisalDelay,
+          event.direct.attacker.captainName || event.direct.attacker.callsign,
+          formatCollateralReprisalLine(event),
+          event.direct.outcome === "major_damage" || event.direct.outcome === "kill" ? "interdicting" : "returning fire",
+          "comms"
+        );
+        reprisalDelay += 1;
+        event.collateral.forEach((result) => {
+          scheduleCharacterMessage(
+            reprisalDelay,
+            result.defender.captainName || result.defender.callsign,
+            formatCombatResultLine(result, "Collateral"),
+            "damaged",
+            "comms"
+          );
+          reprisalDelay += 1;
+        });
+      };
+      exchange.collateralReprisals.forEach(scheduleReprisal);
+      exchange.returnCollateralReprisals.forEach(scheduleReprisal);
     }
   }
 
@@ -351,7 +972,7 @@ export function createNpcController({
     const npcById = new Map(npcs.map((npc) => [npc.id, npc]));
     const byNode = new Map();
     npcs.forEach((npc) => {
-      if (!npc?.at) return;
+      if (!npc?.at || !combatCapable(npc)) return;
       if (!byNode.has(npc.at)) byNode.set(npc.at, []);
       byNode.get(npc.at).push(npc);
     });
@@ -508,6 +1129,37 @@ export function createNpcController({
     npc.arrivalTick = state.tick + uplink + transitTime;
   }
 
+  function sortedConflictDebugEntries() {
+    return [...conflictEncounters.values()].sort((a, b) => b.stress - a.stress);
+  }
+
+  function formatConflictDebugEntry(entry, idx) {
+    return `${idx + 1}. ${entry.aggressorId} -> ${entry.responderId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}`;
+  }
+
+  function bumpConflictStress(index, amount = 0.4) {
+    const entries = sortedConflictDebugEntries();
+    const entry = entries[index - 1];
+    if (!entry) return [`dbConflict: no conflict pair #${index}. Run dbconflict to list active pairs.`];
+    const npcs = state.civilianNpcs || [];
+    const npcById = new Map(npcs.map((npc) => [npc.id, npc]));
+    const aggressor = npcById.get(entry.aggressorId || entry.aId);
+    const priorStage = entry.stage;
+    const priorStress = entry.stress;
+    entry.stress = Math.min(1, entry.stress + amount);
+    entry.lastSeenTick = state.tick;
+    const nextStage = capStageForAggressor(conflictStageForStress(entry.stress), aggressor);
+    if (nextStage !== entry.stage) {
+      entry.stage = nextStage;
+      if (typeof onConflictStage === "function") onConflictStage({ stage: entry.stage, nodeId: entry.nodeId, aggressorId: entry.aggressorId, responderId: entry.responderId });
+      if (playerLocalToNode(entry.nodeId)) emitConflictLine(entry, npcById);
+    }
+    return [
+      `dbConflict: stressed pair #${index} by +${amount.toFixed(2)} (${priorStress.toFixed(2)} -> ${entry.stress.toFixed(2)}, ${priorStage} -> ${entry.stage}).`,
+      formatConflictDebugEntry(entry, index - 1),
+    ];
+  }
+
   return {
     bootstrap() {
       if (Array.isArray(state.civilianNpcs) && state.civilianNpcs.length) return;
@@ -553,17 +1205,17 @@ export function createNpcController({
       const spawnBlister = () => randomPick(blisterNodeIds) || spawn();
       const spawnArcworks = () => randomPick(arcworksNodeIds) || spawn();
       state.civilianNpcs = [
-        { id: "npc-hauler-1", callsign: "Hauler Vesper-14", captainName: "Capt. Elara Kade", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-hauler-2", callsign: "Hauler Morrow-22", captainName: "Capt. Rowan Pike", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-courier-1", callsign: "Courier Kite-7", captainName: "Capt. Nia Calder", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-courier-2", callsign: "Courier Finch-3", captainName: "Capt. Joren Hale", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
-        { id: "npc-ufp-kestrel-1", callsign: "UFP Kestrel-2", captainName: "Lt. Sera Malk", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
-        { id: "npc-ufp-kestrel-2", callsign: "UFP Kestrel-3", captainName: "Lt. Arlen Dax", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
-        { id: "npc-ufp-pelican-1", callsign: "UFP Pelican-1", captainName: "Cmdr. Ilya Soren", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
-        { id: "npc-blister-dragoon-1", callsign: "Blister Dragoon-2", captainName: "Capt. Rysa Korr", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
-        { id: "npc-blister-dragoon-2", callsign: "Blister Dragoon-3", captainName: "Capt. Varek Noll", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
-        { id: "npc-arcworks-mk4-1", callsign: "Arcworks MK-IV", captainName: "Supervisor Edda Marr", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
-        { id: "npc-arcworks-mm9-1", callsign: "Arcworks MM-IX", captainName: "Supervisor Tal Ren", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
+        { id: "npc-hauler-1", callsign: "Hauler Steady-14", captainName: "Capt. Elara Kade", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-hauler-2", callsign: "Hauler Brisk-22", captainName: "Capt. Rowan Pike", faction: "civilian", role: "hauler", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-courier-1", callsign: "Courier Swift-7", captainName: "Capt. Nia Calder", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-courier-2", callsign: "Courier Quick-3", captainName: "Capt. Joren Hale", faction: "civilian", role: "courier", at: spawn(), status: "idle", departAt: 0, arrivalTick: 0 },
+        { id: "npc-ufp-kestrel-1", callsign: "Kestrel Alert-2", captainName: "Capt. Sera Malk", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
+        { id: "npc-ufp-kestrel-2", callsign: "Kestrel Keen-3", captainName: "Capt. Arlen Dax", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
+        { id: "npc-ufp-pelican-1", callsign: "Pelican Ready-1", captainName: "Capt. Ilya Soren", faction: "ufp", role: "patrol", at: spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: ufpNodeIds },
+        { id: "npc-blister-dragoon-1", callsign: "Dragoon Bold-2", captainName: "Capt. Rysa Korr", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
+        { id: "npc-blister-dragoon-2", callsign: "Dragoon Daring-3", captainName: "Capt. Varek Noll", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
+        { id: "npc-arcworks-mk4-1", callsign: "MK-IV Able-4", captainName: "Capt. Edda Marr", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
+        { id: "npc-arcworks-mm9-1", callsign: "MM-IX True-9", captainName: "Capt. Tal Ren", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
       ];
       state.civilianNpcs.forEach((npc) => {
         const wait = randomLoiterSeconds();
@@ -582,9 +1234,14 @@ export function createNpcController({
       shipSpeedById["npc-arcworks-mm9-1"] = 2;
     },
     update() {
+      updateAmbientLocationSpawns();
+      updateAmbientLocationDialogue();
+      updateAmbientLocationRemovals();
       const npcs = state.civilianNpcs || [];
-      updateConflictEncounters(npcs);
+      updateConflictEncounters(npcs.filter((npc) => !npc.ambientLocationSpawn));
       npcs.forEach((npc) => {
+        if (npc.ambientLocationSpawn) return;
+        if (!combatCapable(npc)) return;
         if (npc.faction === "ufp" || npc.faction === "blister" || npc.faction === "arcworks") {
           const nodeIds = Object.keys(getNodes());
           const allowed = nodeIds.filter((nodeId) => {
@@ -615,11 +1272,12 @@ export function createNpcController({
       });
     },
     getConflictDebugLines() {
-      const entries = [...conflictEncounters.values()];
+      const entries = sortedConflictDebugEntries();
       if (!entries.length) return ["dbConflict: no active NPC conflicts."];
-      return entries
-        .sort((a, b) => b.stress - a.stress)
-        .map((entry, idx) => `${idx + 1}. ${entry.aggressorId} -> ${entry.responderId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}`);
+      return entries.map((entry, idx) => formatConflictDebugEntry(entry, idx));
+    },
+    bumpConflictStress(index, amount) {
+      return bumpConflictStress(index, amount);
     },
   };
 }

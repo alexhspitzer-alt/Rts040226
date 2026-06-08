@@ -29,7 +29,7 @@ You can use either **short interactive input** (recommended) or **long-form comm
 
 ### Interactive flow (low typing)
 
-1. `ships`
+1. `fleet`
 2. `1` (select first ship)
 3. `A` (assign contract) or `S` (send destination) or `R` (report)
 4. If prompted, choose numbered options like `1`, `2`, `3`
@@ -43,11 +43,12 @@ You can use either **short interactive input** (recommended) or **long-form comm
 - `comms` (show known NPC comms contacts from dialogue JSON)
 - `hail <name>` (open a channel with a known character)
 - `map`
-- `ships`
-- `select <ship_id>`
+- `fleet`
+- `select <ship_id or B-1>`
 - `contracts`
-- `assign <contract_id> <ship_id>`
-- `send <ship_id> <node>`
+- `assign <contract_id> <ship_id or B-1>`
+- `send <ship_id or B-1> <node>`
+- Flexible chains such as `a B1 c3` or `F 1 a 3`
 - `escort on` / `escort off`
 - `pause`
 
@@ -61,7 +62,7 @@ This repo includes a Pages workflow at `.github/workflows/pages.yml` that deploy
 2. Open **Almanac** tab:
    - verify Indigo System category expands,
    - verify Orbit Bands contains Low/Ring/High/Outer entries.
-3. Run `ships`, select a ship, and issue `send`:
+3. Run `fleet`, select a ship, and issue `send`:
    - captain should send two departure messages,
    - first message contains acknowledgement + destination + action,
    - second message contains route callout in future tense (`will ...`).

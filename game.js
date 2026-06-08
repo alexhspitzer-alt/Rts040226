@@ -36,6 +36,7 @@ const PLAYER_NODE = "anchor_station";
 const CONSOLE_MESSAGE_GAP_MS = 750;
 const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
 const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
+const CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT = 20;
 const OPERATING_COST_PER_SHIP_PER_MINUTE = 8;
 const OPERATING_COST_INTERVAL_SECONDS = 15;
 const OPERATING_COST_PER_SHIP_PER_INTERVAL =
@@ -234,18 +235,18 @@ const NPC_CAPTAIN_FACTIONS = {
   "Capt. Rowan Pike": "civilian",
   "Capt. Nia Calder": "civilian",
   "Capt. Joren Hale": "civilian",
-  "Lt. Sera Malk": "ufp",
-  "Lt. Arlen Dax": "ufp",
-  "Cmdr. Ilya Soren": "ufp",
+  "Capt. Sera Malk": "ufp",
+  "Capt. Arlen Dax": "ufp",
+  "Capt. Ilya Soren": "ufp",
   "Capt. Rysa Korr": "blister",
   "Capt. Varek Noll": "blister",
-  "Supervisor Edda Marr": "arcworks",
-  "Supervisor Tal Ren": "arcworks",
+  "Capt. Edda Marr": "arcworks",
+  "Capt. Tal Ren": "arcworks",
 };
 
 const CONTACT_PROFILES = {
-  [THORNE_NAME]: { nodeId: "ufp_outpost_delta", shipTag: "UFP Kestrel-1", present: true },
-  [VENN_NAME]: { nodeId: "yard", shipTag: "Blister Dragoon-1", present: true },
+  [THORNE_NAME]: { nodeId: "ufp_outpost_delta", shipTag: "Kestrel Guard-1", present: true },
+  [VENN_NAME]: { nodeId: "yard", shipTag: "Dragoon Fierce-1", present: true },
   "Port Marshal Celia Wren": { nodeId: "anchor_station", present: true },
   [ARCWORKS_EXEC_NAME]: { nodeId: "indigo_station", present: true },
 };
@@ -258,6 +259,7 @@ const state = {
   risk: 22,
   escort: false,
   contracts: [],
+  contractBoardTargetOpen: null,
   completedContracts: 0,
   tutorialDone: false,
   currentScenario: 1,
@@ -279,6 +281,9 @@ const state = {
   },
   loreSummary: DEFAULT_LORE_SUMMARY,
   dialogueDb: {},
+  ambientNeutralConversation: [],
+  ambientDialoguePools: {},
+  characterNameRegistry: null,
   latencyBriefed: false,
   lastAmbientLine: null,
   lastAmbientChatterTick: -Infinity,
@@ -414,8 +419,8 @@ function stylizeConsoleText(text) {
   const escaped = escapeHtml(text);
   return escaped
     .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|\s)([AISRBDUaisrbdu]\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|[,:]\s*)([AISRBDUaisrbdu])(?=\s+(assign|information|send|recall|report|back|dock|undock)\b)/g, '$1<span class="choice">$2</span>');
+    .replace(/(^|\s)([AISRDUFCHMaisrdufchm]\.)/g, '$1<span class="choice">$2</span>')
+    .replace(/(^|[,:]\s*)([AISRDUFCHMaisrdufchm])(?=\s+(assign|information|send|recall|report|dock|undock|fleet|contracts|map|help)\b)/g, '$1<span class="choice">$2</span>');
 }
 
 const { logLine } = createConsoleLogger({
@@ -435,29 +440,109 @@ function pickLine(characterName, bucket) {
   return choices[Math.floor(Math.random() * choices.length)];
 }
 
+function playerShipIndex(shipOrId) {
+  const id = typeof shipOrId === "string" ? shipOrId : shipOrId?.id;
+  return state.ships.findIndex((entry) => entry.id === id);
+}
+
+function playerShipDisplayId(shipOrId) {
+  const idx = playerShipIndex(shipOrId);
+  return idx >= 0 ? `B-${idx + 1}` : null;
+}
+
 function formatShipId(shipId) {
+  const playerId = playerShipDisplayId(shipId);
+  if (playerId) return playerId;
   return shipId
     .split("-")
     .map((chunk) => (Number.isNaN(Number(chunk)) ? `${chunk.charAt(0).toUpperCase()}${chunk.slice(1)}` : chunk))
     .join("-");
 }
 
+function titleCaseWords(value) {
+  return String(value || "")
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function playerShipType(shipOrId) {
+  const id = typeof shipOrId === "string" ? shipOrId : shipOrId?.id;
+  const prefix = String(id || "ship").split("-")[0];
+  return titleCaseWords(prefix);
+}
+
+function playerShipCallsign(ship) {
+  const shipNumber = Math.max(1, playerShipIndex(ship) + 1);
+  return `${playerShipType(ship)} Blue-${shipNumber}`;
+}
+
+function playerShipLabelById(shipId) {
+  const ship = state.ships.find((entry) => entry.id === shipId);
+  return ship ? playerShipCallsign(ship) : formatShipId(shipId);
+}
+
+function formatNodeWithMoon(nodeId) {
+  return nodeLabel(nodeId);
+}
+
+function formatShipContext({ callsign, nodeId, status }) {
+  const location = formatNodeWithMoon(nodeId);
+  const statusLabel = status || DEFAULT_SPEAKER_STATUS;
+  return `[${callsign}, ${location} (${statusLabel})]`;
+}
+
+function playerShipStatus(ship, statusOverride = null) {
+  if (statusOverride) return statusOverride;
+  if (ship?.status === "enroute" || ship?.status === "arrived_pending_report") return "in transit";
+  return ship?.status || DEFAULT_SPEAKER_STATUS;
+}
+
+function formatPlayerShipIdentity(ship, statusOverride = null) {
+  const captain = SHIP_CAPTAINS[ship?.id] || "Capt. Unassigned";
+  const contextNode = (ship?.status === "enroute" || ship?.status === "arrived_pending_report") && ship.destination
+    ? ship.destination
+    : ship?.at;
+  return `${captain} ${formatShipContext({ callsign: playerShipCallsign(ship), nodeId: contextNode, status: playerShipStatus(ship, statusOverride) })}`;
+}
+
+function formatNpcShipContext(npc, statusOverride = null) {
+  const contextNode = npc?.status === "enroute" && npc.destination ? npc.destination : npc?.at;
+  return formatShipContext({
+    callsign: npc?.callsign || titleCaseWords(npc?.role || "Ship"),
+    nodeId: contextNode,
+    status: statusOverride || npc?.status || DEFAULT_SPEAKER_STATUS,
+  });
+}
+
+function formatNpcShipIdentity(npc, statusOverride = null) {
+  return `${npc?.captainName || "Capt. Unassigned"} ${formatNpcShipContext(npc, statusOverride)}`;
+}
+
 function speakerContext(name, statusOverride) {
+  const ambientStatusMatch = /^ambient-npc:(.+)$/i.exec(String(statusOverride || ""));
+  if (ambientStatusMatch) {
+    const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.id === ambientStatusMatch[1]);
+    if (ambientNpc) return formatNpcShipContext(ambientNpc);
+  }
+
   const shipId = Object.keys(SHIP_CAPTAINS).find((id) => SHIP_CAPTAINS[id] === name);
   if (shipId) {
     const ship = state.ships.find((s) => s.id === shipId);
     if (!ship) return "";
-    const status = statusOverride || (ship.status === "enroute" ? "in transit" : DEFAULT_SPEAKER_STATUS);
-    const location = ship.status === "enroute" && ship.destination ? nodeLabel(ship.destination) : nodeLabel(ship.at);
-    if (status === DEFAULT_SPEAKER_STATUS) return `[${formatShipId(shipId)}, ${location}]`;
-    return `[${formatShipId(shipId)}, ${location} (${status})]`;
+    const contextNode = (ship.status === "enroute" || ship.status === "arrived_pending_report") && ship.destination ? ship.destination : ship.at;
+    return formatShipContext({ callsign: playerShipCallsign(ship), nodeId: contextNode, status: playerShipStatus(ship, statusOverride) });
   }
+
+  const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.captainName === name);
+  if (ambientNpc) return formatNpcShipContext(ambientNpc, statusOverride);
 
   const contactProfile = CONTACT_PROFILES[name];
   if (contactProfile?.nodeId && nodes[contactProfile.nodeId]) {
-    const location = nodeLabel(contactProfile.nodeId);
+    const location = formatNodeWithMoon(contactProfile.nodeId);
     const shipTag = contactProfile.shipTag ? `${contactProfile.shipTag}, ` : "";
-    return `[${shipTag}${location}]`;
+    return `[${shipTag}${location} (${statusOverride || DEFAULT_SPEAKER_STATUS})]`;
   }
 
   const profile = SPEAKER_PROFILES[name];
@@ -481,7 +566,8 @@ function speakerMessageType(name) {
   if (name === BASIL_NAME) return "basil";
   if (name === BUDDE_NAME) return "budde";
 
-  const fallbackFaction = NPC_CAPTAIN_FACTIONS[name] || "";
+  const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.captainName === name);
+  const fallbackFaction = ambientNpc?.faction || NPC_CAPTAIN_FACTIONS[name] || "";
   const faction = String(state.dialogueDb[name]?.faction || fallbackFaction).toLowerCase();
   if (SHIP_CAPTAINS && Object.values(SHIP_CAPTAINS).includes(name)) return "comms-blufreight";
   if (faction === "blufreight") return "comms-blufreight";
@@ -526,7 +612,7 @@ let PlayerHailFlow;
 async function loadReferenceData() {
   try {
     const noCache = { cache: "no-store" };
-    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse] = await Promise.all([
+    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse, nameRegistryResponse] = await Promise.all([
       fetch("./bluFreight%20text%20RTS.txt", noCache),
       fetch("./indigo_dialogue_characters.json", noCache),
       fetch("./map.json", noCache),
@@ -534,6 +620,7 @@ async function loadReferenceData() {
       fetch(SCENARIO_PATH, noCache),
       fetch(ALMANAC_PATH, noCache),
       fetch("./ship_registry.json", noCache),
+      fetch("./character_name_registry.json", noCache),
     ]);
 
     if (loreResponse.ok) {
@@ -546,6 +633,10 @@ async function loadReferenceData() {
       const dialogueData = await dialogueResponse.json();
       state.dialogueDb = dialogueData?.characters || dialogueData;
       state.playerRequestDialogue = dialogueData?.hailResponses || {};
+      state.ambientNeutralConversation = Array.isArray(dialogueData?.ambientNeutralConversation?.lines)
+        ? dialogueData.ambientNeutralConversation.lines
+        : [];
+      state.ambientDialoguePools = dialogueData?.ambientDialoguePools || {};
     }
 
     if (mapResponse.ok) {
@@ -587,6 +678,9 @@ async function loadReferenceData() {
     }
     if (shipRegistryResponse.ok) {
       state.shipRegistry = await shipRegistryResponse.json();
+    }
+    if (nameRegistryResponse.ok) {
+      state.characterNameRegistry = await nameRegistryResponse.json();
     }
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
@@ -860,7 +954,7 @@ const fuelBillingActive = () => NavigationModel.fuelBillingActive();
 const BuddeAdvisor = createBuddeAdvisor({
   state,
   getNodes: () => nodes,
-  openContracts,
+  openContracts: visibleOpenContracts,
   fuelCostForRoute,
   nodeLabel,
   candidateDestinationsForShip,
@@ -887,9 +981,16 @@ const NpcController = createNpcController({
   nodeLabel,
   scheduleCharacterMessage,
   getShipRegistry: () => state.shipRegistry,
+  playerShipCallsign,
+  playerShipDisplayId,
+  playerShipCaptainById: (shipId) => SHIP_CAPTAINS[shipId] || null,
   onConflictStage: ({ stage, nodeId }) => {
-    if (stage === "intercept") applyTrafficControlLock(nodeId, 30, "intercept in progress");
-    if (stage === "fire") applyTrafficControlLock(nodeId, 120, "hazard clearance following weapons discharge");
+    if (stage === "fire") {
+      scheduleMessage(4, () => {
+        applyTrafficControlLock(nodeId, 300, "hazard clearance following weapons discharge");
+        return null;
+      }, "sys");
+    }
   },
 });
 
@@ -1028,8 +1129,50 @@ const generateContract = (...args) => contractTools.generateContract(...args);
 function openContracts() {
   return state.contracts.filter((c) => c.status === "open");
 }
+
+function playerControlledShipCount() {
+  return Array.isArray(state.ships) ? state.ships.length : 0;
+}
+
+function visibleContractCount() {
+  return playerControlledShipCount();
+}
+
+function visibleOpenContracts() {
+  return openContracts().slice(0, visibleContractCount());
+}
+
+function contractClientClass(contract) {
+  const clientKey = String(contract?.client || "none").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (clientKey === "ufp") return "contract-client-ufp";
+  if (clientKey === "civilian") return "contract-client-civilian";
+  if (clientKey === "station_municipal") return "contract-client-municipal";
+  return "contract-client-neutral";
+}
+
+function shipRecallAvailable(ship) {
+  return ship?.status === "tasked" || ship?.status === "enroute";
+}
+
 function targetOpenContractCount() {
-  return state.currentScenario >= 4 ? 6 : 4;
+  const target = playerControlledShipCount();
+  if (state.contractBoardTargetOpen !== target) state.contractBoardTargetOpen = target;
+  return state.contractBoardTargetOpen;
+}
+
+function resetContractBoardTarget() {
+  state.contractBoardTargetOpen = playerControlledShipCount();
+  return state.contractBoardTargetOpen;
+}
+
+function fillContractBoard({ forceNewTarget = false } = {}) {
+  if (forceNewTarget) resetContractBoardTarget();
+  const target = targetOpenContractCount();
+  let attempts = 0;
+  while (openContracts().length < target && attempts < CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT) {
+    attempts += 1;
+    if (!generateContract()) break;
+  }
 }
 
 function idleShip(shipId) {
@@ -1048,10 +1191,10 @@ function commandPromptLabel() {
   if (pending === "await_route_from") return "<Map routes: from>";
   if (pending === "await_route_to") return "<Map routes: to>";
   if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
-  if (pending === "await_contract") return `<${formatShipId(selectedShipId)} contracts>`;
-  if (pending === "await_destination") return `<${formatShipId(selectedShipId)} destinations>`;
-  if (pending === "await_dock_target") return `<${formatShipId(selectedShipId)} dock target>`;
-  return `<${formatShipId(selectedShipId)} actions>`;
+  if (pending === "await_contract") return `<${playerShipLabelById(selectedShipId)} contracts>`;
+  if (pending === "await_destination") return `<${playerShipLabelById(selectedShipId)} destinations>`;
+  if (pending === "await_dock_target") return `<${playerShipLabelById(selectedShipId)} dock target>`;
+  return `<${playerShipLabelById(selectedShipId)} actions>`;
 }
 
 function render() {
@@ -1063,8 +1206,9 @@ function render() {
   ui.escort.textContent = state.escort ? "On" : "Off";
 
   ui.contracts.innerHTML = "";
-  openContracts().slice(0, 7).forEach((c, idx) => {
+  visibleOpenContracts().forEach((c, idx) => {
     const li = document.createElement("li");
+    li.className = contractClientClass(c);
     const displayNumber = contractNumber(c.id) || (idx + 1);
     const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
       ? ` | cargo ${c.cargoRequirement}T`
@@ -1088,12 +1232,16 @@ function render() {
       ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
       : "";
     const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
-    li.textContent = `${idx + 1}. ${s.id} @ ${nodeLabel(s.at)} | ${displayStatus}${capacityLabel}`;
+    li.textContent = `${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${playerShipDisplayId(s) || s.id}${capacityLabel}`;
     ui.fleet.appendChild(li);
   });
   if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
   const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
   if (inboxActive) renderInbox();
+}
+
+function inboxMessageClass(messageType) {
+  return `inbox-message-${String(messageType || "sys").toLowerCase().replace(/[^a-z0-9-]+/g, "-")}`;
 }
 
 function renderInbox() {
@@ -1105,7 +1253,7 @@ function renderInbox() {
   ordered.forEach((msg, idx) => {
     const actualIndex = state.inbox.length - 1 - idx;
     const li = document.createElement("li");
-    li.className = "inbox-item";
+    li.className = `inbox-item ${inboxMessageClass(msg.messageType)}`;
     const details = document.createElement("details");
     details.className = "inbox-mail";
     details.open = openSet.has(actualIndex);
@@ -1237,7 +1385,7 @@ function postTripReportToInbox(ship, report) {
   const from = firstMateRanked.replace(/^First Mate\s+/i, "");
   const hazardsText = report.hazards?.length ? report.hazards.join("; ") : "None reported";
   const body = [
-    `Vessel: ${formatShipId(ship.id)}`,
+    `Vessel: ${playerShipCallsign(ship)}`,
     `Outcome: ${report.outcome}`,
     `Contract: ${report.contractLabel || "None"}`,
     `Distance traveled: ${report.distanceText}`,
@@ -1247,7 +1395,7 @@ function postTripReportToInbox(ship, report) {
     `Damage: ${report.damage || "None reported"}`,
     `Net proceeds after expenses: $${report.netProceeds || 0}`,
     "",
-    `— ${firstMateRanked}, ${formatShipId(ship.id)}`,
+    `— ${firstMateRanked}, ${playerShipCallsign(ship)}`,
   ].join("\n");
   state.inbox.push({
     speaker: from,
@@ -1265,15 +1413,12 @@ function postTripReportToInbox(ship, report) {
 
 function showShipsList() {
   state.ships.forEach((s, idx) => {
-    const captain = SHIP_CAPTAINS[s.id] || "Unassigned Captain";
     const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
-    const dockedSuffix = s.dockedTo ? ` -> docked to ${s.dockedTo}` : s.utilityDockedBy ? ` <- utility ${s.utilityDockedBy}` : "";
+    const dockedSuffix = s.dockedTo ? ` | docked to ${formatShipId(s.dockedTo)}` : s.utilityDockedBy ? ` | utility ${formatShipId(s.utilityDockedBy)}` : "";
     const capacityLabel = state.currentScenario >= 3 && !s.utility
       ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
       : "";
-    const showLocation = s.status === "idle" || s.status === "tasked";
-    const locationSegment = showLocation ? ` @ ${s.at}` : "";
-    logLine(`${idx + 1}. ${s.id} (${displayStatus}${dockedSuffix})${locationSegment} | ${captain}${capacityLabel}`, "sys");
+    logLine(`${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${playerShipDisplayId(s) || s.id}${dockedSuffix}${capacityLabel}`, "sys");
   });
   logLine("Select ship by typing its number or ID.", "sys");
 }
@@ -1295,7 +1440,7 @@ function dockUtilityShip(utilityShipId, targetShipId) {
   if (!utility || !utility.utility) return logLine("Selected ship cannot dock.", "error");
   if (!target || target.utility) return logLine("Invalid dock target.", "error");
   if (utility.at !== target.at) return logLine("Dock target must be at the same location.", "error");
-  if (utility.status !== "idle") return logLine(`${utility.id} is not ready to dock.`, "error");
+  if (utility.status !== "idle") return logLine(`${formatShipId(utility.id)} is not ready to dock.`, "error");
   if (utility.dockedTo || target.utilityDockedBy) return logLine("Docking unavailable: one of the ships is already docked.", "error");
 
   utility.status = "docked";
@@ -1307,7 +1452,7 @@ function dockUtilityShip(utilityShipId, targetShipId) {
   utility.at = target.at;
   utility.lastKnownAt = target.lastKnownAt || target.at;
   utility.lastContactTick = state.tick;
-  logLine(`${utility.id} docked with ${target.id}. ${target.id} now inherits utility thrust profile while docked.`, "sys");
+  logLine(`${formatShipId(utility.id)} docked with ${formatShipId(target.id)}. ${formatShipId(target.id)} now inherits utility thrust profile while docked.`, "sys");
 }
 
 function undockUtilityShip(utilityShipId) {
@@ -1315,7 +1460,7 @@ function undockUtilityShip(utilityShipId) {
   if (!utility || !utility.utility || !utility.dockedTo) return logLine("No active dock to release.", "error");
   const target = state.ships.find((ship) => ship.id === utility.dockedTo);
   if (target && (target.status === "tasked" || target.status === "enroute")) {
-    return logLine(`Cannot undock ${utility.id} while ${target.id} is in transit. Wait for arrival.`, "error");
+    return logLine(`Cannot undock ${formatShipId(utility.id)} while ${formatShipId(target.id)} is in transit. Wait for arrival.`, "error");
   }
   if (target) delete target.utilityDockedBy;
   utility.dockedTo = null;
@@ -1326,7 +1471,7 @@ function undockUtilityShip(utilityShipId) {
   if (target) utility.at = target.at;
   utility.lastKnownAt = utility.at;
   utility.lastContactTick = state.tick;
-  logLine(`${utility.id} undocked and is now idle.`, "sys");
+  logLine(`${formatShipId(utility.id)} undocked and is now idle.`, "sys");
 }
 
 function effectiveDriveShipId(shipId) {
@@ -1362,19 +1507,20 @@ function showShipMenu(shipId) {
       if (flags) flags.budde_first_shuttle_explainer = true;
     }
   }
-  let menuOptions = "A assign, S send, I information, R recall, B back to ship list.";
+  const recallOption = shipRecallAvailable(ship) ? ", R recall" : "";
+  let menuOptions = `A assign, S send, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
   if (ship.utility && ship.status === "docked") {
-    menuOptions = "U undock.";
+    menuOptions = "U undock. Global: F fleet, C contracts, M map, H help.";
   } else if (ship.utility) {
-    menuOptions = "D dock, S send, I information, R recall, B back to ship list.";
+    menuOptions = `D dock, S send, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
   }
-  logLine(`${shipId} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
+  logLine(`${formatShipId(shipId)} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
 }
 
 function showContractsForSelectedShip() {
-  const contracts = openContracts();
+  const contracts = visibleOpenContracts();
   if (!contracts.length) return logLine("No open contracts to assign.", "sys");
-  logLine(`Assign ${state.selection.selectedShipId} to what contract?`, "sys");
+  logLine(`Assign ${formatShipId(state.selection.selectedShipId)} to what contract?`, "sys");
   BuddeAdvisor.adviseContractOptions(state.selection.selectedShipId);
   contracts.forEach((c, idx) => {
     const displayNumber = contractNumber(c.id) || (idx + 1);
@@ -1411,7 +1557,7 @@ function checkScenarioCompletion() {
         syncShipLocationsToActiveMap();
       }
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
-      while (openContracts().length < targetOpenContractCount()) generateContract();
+      fillContractBoard({ forceNewTarget: true });
       logLine("Scenario 2 unlocked: Fuel, Gravity, and Actual Consequences.", "sys");
       playScenario2Intro();
     }
@@ -1439,7 +1585,7 @@ function checkScenarioCompletion() {
       }
       addScenario3Tug();
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
-      while (openContracts().length < targetOpenContractCount()) generateContract();
+      fillContractBoard({ forceNewTarget: true });
       logLine("Scenario 3 unlocked: Calibration Debt and Corrected Distances.", "sys");
       playScenario3Intro();
       promptScenario3LowOrbitTowIfAvailable();
@@ -1459,7 +1605,7 @@ function checkScenarioCompletion() {
       state.completedContracts = 0;
       setupScenario4Fleet();
       state.contracts = state.contracts.filter((contract) => contract.status !== "open");
-      while (openContracts().length < targetOpenContractCount()) generateContract();
+      fillContractBoard({ forceNewTarget: true });
       logLine("Scenario 4 unlocked: Exclusive Distribution.", "sys");
       playScenario4Intro();
     }
@@ -1503,7 +1649,7 @@ function shipReport(shipId) {
   const locationOrDestination = ship.status === "enroute"
     ? `destination=${ship.destination || ship.at}`
     : `location=${ship.at}`;
-  scheduleMessage(rtt, `Report ${ship.id}: status=${reportStatus}, ${locationOrDestination}, eta=${eta}s (RTT ${rtt}s).`, "report");
+  scheduleMessage(rtt, `Report ${formatShipId(ship.id)}: status=${reportStatus}, ${locationOrDestination}, eta=${eta}s (RTT ${rtt}s).`, "report");
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
     scheduleCharacterMessage(
@@ -1528,7 +1674,7 @@ function scheduleTransitComms(ship, destination, distance, uplink) {
   }
   scheduleMessage(
     uplink + distance + oneWaySignalToNode(destination),
-    `${ship.id} final: arrived at ${nodeLabel(destination)}. Awaiting dispatch.`,
+    `${formatShipId(ship.id)} final: arrived at ${nodeLabel(destination)}. Awaiting dispatch.`,
     "report"
   );
   if (captain) {
@@ -1588,10 +1734,10 @@ function trafficLockRemaining(nodeId) {
 function sendShip(shipId, destination) {
   const ship = state.ships.find((s) => s.id === shipId);
   const normalizedDestination = normalizeNodeInput(destination);
-  if (!ship) return logLine(`Unknown ship: ${shipId}.`, "error");
+  if (!ship) return logLine(`Unknown ship: ${formatShipId(shipId)}.`, "error");
   if (!normalizedDestination) return logLine(`Unknown destination: ${destination}.`, "error");
-  if (ship.utility && ship.status === "docked") return logLine(`${ship.id} is docked. Undock before moving independently.`, "error");
-  if (ship.status !== "idle") return logLine(`${ship.id} is busy.`, "error");
+  if (ship.utility && ship.status === "docked") return logLine(`${formatShipId(ship.id)} is docked. Undock before moving independently.`, "error");
+  if (ship.status !== "idle") return logLine(`${formatShipId(ship.id)} is busy.`, "error");
   const driveShipId = effectiveDriveShipId(ship.id);
   const uplink = oneWaySignalToShip(ship);
   const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
@@ -1648,7 +1794,7 @@ function sendShip(shipId, destination) {
   }
 
   const fuelBillingText = fuelBillingActive() ? `fuel ${shipFuelCost}` : `fuel ${shipFuelCost} (training waiver: not charged in Scenario 1)`;
-  logLine(`Transmission sent: ${ship.id} -> ${destination}. Uplink ${uplink}s, transit ${transitTime}s, route span ${routeSpan}, ${fuelBillingText}.`, "dispatch");
+  logLine(`Transmission sent: ${formatShipId(ship.id)} -> ${destination}. Uplink ${uplink}s, transit ${transitTime}s, route span ${routeSpan}, ${fuelBillingText}.`, "dispatch");
   const reportLag = oneWaySignalToNode(normalizedDestination);
   basilInform(
     `Timing estimate: uplink ${uplink}s + transit ${transitTime}s + return signal ${reportLag}s = ${uplink + transitTime + reportLag}s until arrival is confirmed here.`
@@ -1661,15 +1807,15 @@ function assignContract(contractId, shipId) {
   const contract = state.contracts.find((c) => c.id.toLowerCase() === contractId.toLowerCase() && c.status === "open");
   if (!contract) return logLine(`Contract ${contractId} not found/open.`, "error");
   const requestedShip = state.ships.find((s) => s.id === shipId);
-  if (requestedShip?.utility) return logLine(`${shipId} cannot be assigned to contracts. Use send/dock instead.`, "error");
-  if (!idleShip(shipId)) return logLine(`${shipId} is not idle.`, "error");
+  if (requestedShip?.utility) return logLine(`${formatShipId(shipId)} cannot be assigned to contracts. Use send/dock instead.`, "error");
+  if (!idleShip(shipId)) return logLine(`${formatShipId(shipId)} is not idle.`, "error");
   const ship = state.ships.find((s) => s.id === shipId);
-  if (!ship) return logLine(`Unknown ship: ${shipId}.`, "error");
+  if (!ship) return logLine(`Unknown ship: ${formatShipId(shipId)}.`, "error");
   if (state.currentScenario >= 3 && Number.isInteger(contract.cargoRequirement)) {
     const shipCapacity = ship.cargoCapacity || SHIP_CAPACITY_BY_ID[ship.id] || 0;
     if (shipCapacity < contract.cargoRequirement) {
       return logLine(
-        `${ship.id} capacity ${shipCapacity} is below required cargo ${contract.cargoRequirement} for ${contract.id}.`,
+        `${formatShipId(ship.id)} capacity ${shipCapacity} is below required cargo ${contract.cargoRequirement} for ${contract.id}.`,
         "error"
       );
     }
@@ -1701,6 +1847,7 @@ function assignContract(contractId, shipId) {
   ship.busyUntil = ship.departAt + total;
   ship.destination = contract.to;
   contract.status = "assigned";
+  fillContractBoard();
   contract.assignedShipId = ship.id;
   ship.activeContractId = contract.id;
   contract.fuelCost = fuelCost;
@@ -1721,7 +1868,7 @@ function assignContract(contractId, shipId) {
   };
 
   const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
-  logLine(`Transmission sent: ${ship.id} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
+  logLine(`Transmission sent: ${formatShipId(ship.id)} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
   maybePromptScenario3AssignedTowSupport(ship, contract, uplink);
   const returnSignal = oneWaySignalToNode(contract.to);
   basilInform(
@@ -1781,7 +1928,7 @@ function assignContract(contractId, shipId) {
       const contractStillDelivering = ["assigned", "delivered_pending_report", "completed"].includes(liveContract.status);
       const shipConsistent = liveShip.activeContractId === contract.id || liveShip.at === contract.to;
       if (!contractStillDelivering || !shipConsistent) return null;
-      return `${ship.id} delivered ${contract.id} at ${nodeLabel(contract.to)}.`;
+      return `${formatShipId(ship.id)} delivered ${contract.id} at ${nodeLabel(contract.to)}.`;
     },
     "report"
   );
@@ -1809,10 +1956,10 @@ function recallShip(shipId) {
   if (ship.status !== "tasked" && ship.status !== "enroute") {
     const uplink = oneWaySignalToShip(ship);
     const rtt = uplink * 2;
-    basilInform(`Recall request queued for ${ship.id}. Expected confirmation in ~${rtt}s.`);
+    basilInform(`Recall request queued for ${formatShipId(ship.id)}. Expected confirmation in ~${rtt}s.`);
     scheduleMessage(
       rtt,
-      `${ship.id} recall response: impossible. Ship has already completed the active leg.`,
+      `${formatShipId(ship.id)} recall response: impossible. Ship has already completed the active leg.`,
       "report"
     );
     return true;
@@ -1873,7 +2020,7 @@ function recallShip(shipId) {
   ship.lastKnownAt = recallNodeId;
   ship.lastContactTick = state.tick;
   ship.travelPlan = null;
-  logLine(`${ship.id} recalled to ${nodeLabel(recallNodeId)}. ${fuelBillingActive() ? `Fuel billed: ${recallFuel}.` : `Fuel estimate: ${recallFuel} (training waiver in effect).`}`, "dispatch");
+  logLine(`${formatShipId(ship.id)} recalled to ${nodeLabel(recallNodeId)}. ${fuelBillingActive() ? `Fuel billed: ${recallFuel}.` : `Fuel estimate: ${recallFuel} (training waiver in effect).`}`, "dispatch");
   return true;
 }
 
@@ -2000,8 +2147,7 @@ function updateSimulation() {
   });
   state.delayedMessages = state.delayedMessages.filter((m) => m.at > state.tick);
 
-  const contractAutoSpawnEnabled = state.tutorialDone || state.currentScenario >= 2;
-  if (contractAutoSpawnEnabled && openContracts().length < targetOpenContractCount() && state.tick % 10 === 0) generateContract();
+  fillContractBoard();
 
   if (state.tick % 30 === 0) {
     state.risk += Math.random() < 0.5 ? 1 : -1;
@@ -2072,11 +2218,13 @@ commandRuntime = createCommandRuntime({
   normalizeConsoleInput,
   normalizeContractIdToken,
   normalizeShipIdToken,
-  openContracts,
+  playerShipDisplayId,
+  openContracts: visibleOpenContracts,
   contractNumber,
   assignContract,
   sendShip,
   recallShip,
+  canRecallShip: (shipId) => shipRecallAvailable(state.ships.find((ship) => ship.id === shipId)),
   dockUtilityShip,
   undockUtilityShip,
   shipReport,
@@ -2097,6 +2245,7 @@ commandRuntime = createCommandRuntime({
   basilSpeak,
   scheduleMessage,
   speakerContext,
+  formatNpcShipIdentity,
   pickLine,
   speakerMessageType,
   characterSpeak,
@@ -2105,6 +2254,7 @@ commandRuntime = createCommandRuntime({
   playerHailFlow: PlayerHailFlow,
   tutorialGoal: TUTORIAL_GOAL,
   npcConflictDebugLines: () => NpcController.getConflictDebugLines(),
+  bumpNpcConflictStress: (index, amount) => NpcController.bumpConflictStress(index, amount),
 });
 NpcController.bootstrap();
 
@@ -2143,8 +2293,7 @@ async function init() {
     edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
     adjacency = buildGraph(nodes, edges);
   }
-  generateContract();
-  generateContract();
+  fillContractBoard({ forceNewTarget: true });
   state.selection.pending = "await_ship";
   basilSpeak("greetings", "Dispatch online.", "basil");
   playScenarioIntro();
