@@ -68,12 +68,14 @@ h1 {
   padding: 0.5rem;
 }
 
-.contract-client-neutral {
+#contracts li.contract-client-neutral,
+#contracts li.contract-client-civilian,
+#contracts li.contract-client-municipal {
   border-color: #8fcfc3;
   color: #8fcfc3;
 }
 
-.contract-client-ufp {
+#contracts li.contract-client-ufp {
   border-color: #ffd86a;
   color: #ffd86a;
 }

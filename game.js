@@ -1143,8 +1143,11 @@ function visibleOpenContracts() {
 }
 
 function contractClientClass(contract) {
-  const clientKey = String(contract?.client || "neutral").trim().toLowerCase().replace(/[\s-]+/g, "_");
-  return clientKey === "ufp" ? "contract-client-ufp" : "contract-client-neutral";
+  const clientKey = String(contract?.client || "none").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (clientKey === "ufp") return "contract-client-ufp";
+  if (clientKey === "civilian") return "contract-client-civilian";
+  if (clientKey === "station_municipal") return "contract-client-municipal";
+  return "contract-client-neutral";
 }
 
 function shipRecallAvailable(ship) {
