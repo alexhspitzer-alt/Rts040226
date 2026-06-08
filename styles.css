@@ -215,13 +215,43 @@ h1 {
 .inbox-item {
   padding: 0;
   overflow: hidden;
+  border-color: var(--inbox-message-color, var(--color-border-list));
+}
+
+.inbox-message-basil {
+  --inbox-message-color: var(--console-basil);
+}
+
+.inbox-message-budde {
+  --inbox-message-color: var(--console-budde);
+}
+
+.inbox-message-comms-blufreight {
+  --inbox-message-color: var(--console-blufreight-comm);
+}
+
+.inbox-message-comms,
+.inbox-message-sys {
+  --inbox-message-color: var(--console-neutral-comm);
+}
+
+.inbox-message-comms-ufp {
+  --inbox-message-color: var(--console-ufp-comm);
+}
+
+.inbox-message-comms-blister {
+  --inbox-message-color: var(--console-blister);
+}
+
+.inbox-message-comms-arcworks {
+  --inbox-message-color: var(--console-arcworks);
 }
 
 .inbox-mail > summary {
   cursor: pointer;
   list-style: none;
   padding: 0.45rem 0.55rem;
-  color: var(--color-text-inbox-summary);
+  color: var(--inbox-message-color, var(--color-text-inbox-summary));
   font-weight: 700;
 }
 
@@ -229,16 +259,9 @@ h1 {
   margin: 0;
   padding: 0.2rem 0.55rem 0.6rem;
   border-top: 1px dashed var(--color-border-dashed);
+  color: var(--inbox-message-color, var(--color-text-main));
   line-height: 1.4;
   white-space: pre-line;
-}
-
-.inbox-mail-body-basil {
-  color: var(--console-basil);
-}
-
-.inbox-mail-body-budde {
-  color: var(--console-budde);
 }
 
 .feed {

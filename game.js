@@ -1240,6 +1240,10 @@ function render() {
   if (inboxActive) renderInbox();
 }
 
+function inboxMessageClass(messageType) {
+  return `inbox-message-${String(messageType || "sys").toLowerCase().replace(/[^a-z0-9-]+/g, "-")}`;
+}
+
 function renderInbox() {
   if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
   if (!ui.inboxList) return;
@@ -1249,7 +1253,7 @@ function renderInbox() {
   ordered.forEach((msg, idx) => {
     const actualIndex = state.inbox.length - 1 - idx;
     const li = document.createElement("li");
-    li.className = "inbox-item";
+    li.className = `inbox-item ${inboxMessageClass(msg.messageType)}`;
     const details = document.createElement("details");
     details.className = "inbox-mail";
     details.open = openSet.has(actualIndex);
