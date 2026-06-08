@@ -1,6 +1,8 @@
 :root {
   color-scheme: dark;
   font-family: "IBM Plex Sans", Inter, system-ui, sans-serif;
+  --console-neutral-comm: #8fcfc3;
+  --console-ufp-comm: #ffd86a;
 }
 
 body {
@@ -68,16 +70,16 @@ h1 {
   padding: 0.5rem;
 }
 
-#contracts li.contract-client-neutral,
-#contracts li.contract-client-civilian,
-#contracts li.contract-client-municipal {
-  border-color: #8fcfc3;
-  color: #8fcfc3;
+#contracts.list li.contract-client-neutral,
+#contracts.list li.contract-client-civilian,
+#contracts.list li.contract-client-municipal {
+  border-color: var(--console-neutral-comm) !important;
+  color: var(--console-neutral-comm) !important;
 }
 
-#contracts li.contract-client-ufp {
-  border-color: #ffd86a;
-  color: #ffd86a;
+#contracts.list li.contract-client-ufp {
+  border-color: var(--console-ufp-comm) !important;
+  color: var(--console-ufp-comm) !important;
 }
 
 .terminal {
@@ -235,11 +237,11 @@ h1 {
 }
 
 .line.type-comms .body {
-  color: #8fcfc3;
+  color: var(--console-neutral-comm);
 }
 
 .line.type-comms-ufp .body {
-  color: #ffd86a;
+  color: var(--console-ufp-comm);
 }
 
 .line.type-comms-blister .body {
