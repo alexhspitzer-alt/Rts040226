@@ -717,7 +717,6 @@ function renderAlmanac() {
   Object.entries(normalizedEntries).forEach(([categoryName, categoryPayload]) => {
     const categoryNode = document.createElement("details");
     categoryNode.className = "almanac-category";
-    categoryNode.open = true;
 
     const categorySummary = document.createElement("summary");
     categorySummary.textContent = categoryName.replaceAll("_", " ");
