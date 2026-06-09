@@ -483,7 +483,6 @@ export function createCommandRuntime({
       logLine("help | status | comms | hail <name> | map [routes] | fleet | select <ship|number> | assign <contract> <ship> (either order; IDs or numbers) | send <ship> <destination> | pause", "sys");
       logLine("Global shortcuts: F fleet, C contracts, M map, H help.", "sys");
       logLine("Flexible chains: a B1 c3 or F 1 a 3. Console prints the interpreted command before executing.", "sys");
-      logLine("Debug: dbnpc | dbconflict | dbstress [number] | dbheat | dbwarm [faction] [amount].", "sys");
       logLine("Aliases: A assign, S send, contract/contracts, sel/select, B1/B-1, C1/C-1, Blue-1. Extra spaces and case are ignored.", "sys");
       return true;
     }
