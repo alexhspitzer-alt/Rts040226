@@ -1405,16 +1405,35 @@ bluFreight Accounting.`,
   logLine("Operating expense report is available in Inbox.", "sys");
 }
 
+function formatTripAverage(numerator, denominator) {
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) return "n/a";
+  return (numerator / denominator).toFixed(2);
+}
+
+function numericFuelValue(report) {
+  if (Number.isFinite(report?.fuelSpentValue)) return report.fuelSpentValue;
+  const match = String(report?.fuelSpent || "").match(/-?\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : 0;
+}
+
 function postTripReportToInbox(ship, report) {
   const firstMateRanked = SHIP_FIRST_MATES[ship.id] || `First Mate ${formatShipId(ship.id)}`;
   const from = firstMateRanked.replace(/^First Mate\s+/i, "");
   const hazardsText = report.hazards?.length ? report.hazards.join("; ") : "None reported";
+  const elapsedSeconds = Math.round(Math.max(0, Number.isFinite(report.elapsedTimeSeconds) ? report.elapsedTimeSeconds : 0));
+  const routeDistanceValue = Math.round(Math.max(0, Number.isFinite(report.routeDistance) ? report.routeDistance : 0));
+  const fuelValue = Math.max(0, numericFuelValue(report));
+  const elapsedMinutes = elapsedSeconds / 60;
   const body = [
     `Vessel: ${playerShipCallsign(ship)}`,
     `Outcome: ${report.outcome}`,
     `Contract: ${report.contractLabel || "None"}`,
     `Distance traveled: ${report.distanceText}`,
+    `Elapsed time: ${fmtTime(elapsedSeconds)} (${elapsedSeconds}s)`,
+    `Route distance: ${routeDistanceValue}`,
     `Fuel spent: ${report.fuelSpent}`,
+    `Average fuel per distance: ${formatTripAverage(fuelValue, routeDistanceValue)}`,
+    `Average fuel per minute: ${formatTripAverage(fuelValue, elapsedMinutes)}`,
     `Earnings: $${report.earnings || 0}`,
     `Hazards: ${hazardsText}`,
     `Damage: ${report.damage || "None reported"}`,
@@ -1791,6 +1810,7 @@ function sendShip(shipId, destination) {
     mode: "reposition",
     startedAt: ship.departAt,
     currentLegTransit: transitTime,
+    currentLegRouteSpan: routeSpan,
     currentLegFuel: shipFuelCost,
     recallNodeId: ship.at,
     destination: normalizedDestination,
@@ -1882,6 +1902,8 @@ function assignContract(contractId, shipId) {
     startedAt: ship.departAt,
     firstLegTransit,
     secondLegTransit: Math.max(0, total - firstLegTransit),
+    firstLegRouteSpan: toPickupSpan,
+    secondLegRouteSpan: toDropSpan,
     firstLegFuel: fuelCostForRoute(ship.at, contract.from, driveShipId),
     secondLegFuel: fuelCostForRoute(contract.from, contract.to, driveShipId),
     firstLegTo: contract.from,
@@ -2021,6 +2043,16 @@ function recallShip(shipId) {
   const reverseLegFuelFull = Math.max(0, fuelCostForRoute(currentLegTo, currentLegFrom, driveShipId));
   const returnFuel = Math.round(reverseLegFuelFull * legProgress);
   const recallFuel = proratedFuelSpent + returnFuel;
+  const currentLegSpan = Number.isFinite(plan.currentLegRouteSpan)
+    ? plan.currentLegRouteSpan
+    : Number.isFinite(plan.firstLegRouteSpan) && currentLegFrom === plan.firstLegFrom && currentLegTo === plan.firstLegTo
+      ? plan.firstLegRouteSpan
+      : Number.isFinite(plan.secondLegRouteSpan) && currentLegFrom === plan.secondLegFrom && currentLegTo === plan.secondLegTo
+        ? plan.secondLegRouteSpan
+        : safeRouteDistance(currentLegFrom, currentLegTo);
+  const partialOutboundDistance = Math.round(Math.max(0, currentLegSpan * legProgress));
+  const returnDistance = Math.round(Math.max(0, safeRouteDistance(currentLegTo, currentLegFrom) * legProgress));
+  const recallRouteDistance = partialOutboundDistance + returnDistance;
   if (fuelBillingActive()) state.cash -= recallFuel;
   if (ship.activeContractId) {
     const contract = state.contracts.find((c) => c.id === ship.activeContractId && c.status === "assigned");
@@ -2031,6 +2063,9 @@ function recallShip(shipId) {
     contractLabel: ship.activeContractId || "Cancelled active contract",
     distanceText: `Partial current leg (${Math.round(legProgress * 100)}%) + return to ${nodeLabel(recallNodeId)}`,
     fuelSpent: fuelBillingActive() ? `${recallFuel}` : `${recallFuel} (training waiver)`,
+    fuelSpentValue: recallFuel,
+    elapsedTimeSeconds: elapsed,
+    routeDistance: recallRouteDistance,
     earnings: 0,
     hazards: plan.hazards || [],
     damage: "None reported",
@@ -2081,6 +2116,9 @@ function finalizeContractDelivery(contractId) {
         ? `${plan.firstLegTo ? `${nodeLabel(deliveryShip.lastKnownAt || deliveryShip.at)} -> ${nodeLabel(plan.firstLegTo)}` : "Leg 1"}; ${plan.firstLegTo && plan.secondLegTo ? `${nodeLabel(plan.firstLegTo)} -> ${nodeLabel(plan.secondLegTo)}` : "Leg 2"}`
         : "Contract route complete",
       fuelSpent: `${missionFuelCost}`,
+      fuelSpentValue: missionFuelCost,
+      elapsedTimeSeconds: Math.max(0, (Number.isFinite(plan.completedAt) ? plan.completedAt : deliveryShip.busyUntil || state.tick) - (Number.isFinite(plan.startedAt) ? plan.startedAt : state.tick)),
+      routeDistance: Number.isFinite(plan.totalRouteSpan) ? plan.totalRouteSpan : 0,
       earnings: appliedPayout,
       hazards: plan.hazards || [],
       damage: "None reported",
