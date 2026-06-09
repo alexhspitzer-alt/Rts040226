@@ -1287,13 +1287,47 @@ function factionHeatActive() {
   return state.factionHeatEnabled && state.currentScenario >= 3;
 }
 
-function addFactionHeat(faction, amount) {
+function addFactionHeat(faction, amount, options = {}) {
   const normalized = normalizeHeatFaction(faction);
-  if (!normalized || !factionHeatActive()) return 0;
+  if (!normalized || (!options.force && !factionHeatActive())) return 0;
   const current = Number(state.factionHeat?.[normalized] || 0);
   const next = Math.min(FACTION_HEAT_MAX, Math.max(0, current + amount));
   state.factionHeat[normalized] = next;
   return next;
+}
+
+function factionHeatDebugLines() {
+  const enabledLabel = factionHeatActive() ? "enabled" : "disabled";
+  const lines = [`dbHeat: faction heat is ${enabledLabel} (scenario ${state.currentScenario}).`];
+  HEAT_FACTIONS.forEach((faction) => {
+    const heat = Number(state.factionHeat?.[faction] || 0);
+    const probability = campaignTriggerProbability(heat);
+    const campaign = activeCampaignAgainst(faction)
+      ? state.activeFactionCampaigns.find((entry) => entry.defenderFaction === faction && entry.endsAt > state.tick)
+      : null;
+    const campaignLabel = campaign
+      ? ` | active campaign: ${factionDisplayName(campaign.aggressorFaction)} attacking until ${fmtTime(campaign.endsAt)}`
+      : "";
+    lines.push(`${factionDisplayName(faction)}: heat ${heat}/${FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD} | campaign chance ${(probability * 100).toFixed(0)}%${campaignLabel}`);
+  });
+  lines.push('Debug: type "dbwarm [faction] [amount]" to add heat against UFP, Arcworks, or Blister.');
+  return lines;
+}
+
+function debugWarmFactionHeat(faction, amount = 25) {
+  const normalized = normalizeHeatFaction(faction);
+  if (!normalized) return [`dbWarm: unknown heat faction "${faction}". Use UFP, Arcworks, or Blister.`];
+  const safeAmount = Number.isFinite(amount) ? amount : 25;
+  const before = Number(state.factionHeat?.[normalized] || 0);
+  const after = addFactionHeat(normalized, safeAmount, { force: true });
+  if (factionHeatActive()) {
+    state.nextFactionCampaignRollTick = Math.min(state.nextFactionCampaignRollTick || state.tick, state.tick);
+    evaluateFactionCampaignTriggers();
+  }
+  return [
+    `dbWarm: ${factionDisplayName(normalized)} heat ${before} -> ${after} (+${safeAmount}).`,
+    ...factionHeatDebugLines(),
+  ];
 }
 
 function heatCampaignKey(aggressorFaction, defenderFaction) {
@@ -2453,6 +2487,8 @@ commandRuntime = createCommandRuntime({
   tutorialGoal: TUTORIAL_GOAL,
   npcConflictDebugLines: () => NpcController.getConflictDebugLines(),
   bumpNpcConflictStress: (index, amount) => NpcController.bumpConflictStress(index, amount),
+  factionHeatDebugLines,
+  warmFactionHeat: debugWarmFactionHeat,
 });
 NpcController.bootstrap();
 
