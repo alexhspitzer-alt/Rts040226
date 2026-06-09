@@ -483,7 +483,7 @@ export function createCommandRuntime({
       logLine("help | status | comms | hail <name> | map [routes] | fleet | select <ship|number> | assign <contract> <ship> (either order; IDs or numbers) | send <ship> <destination> | pause", "sys");
       logLine("Global shortcuts: F fleet, C contracts, M map, H help.", "sys");
       logLine("Flexible chains: a B1 c3 or F 1 a 3. Console prints the interpreted command before executing.", "sys");
-      logLine("Debug: dbnpc | dbconflict | dbheat | dbwarm [faction] [amount].", "sys");
+      logLine("Debug: dbnpc | dbconflict | dbstress [number] | dbheat | dbwarm [faction] [amount].", "sys");
       logLine("Aliases: A assign, S send, contract/contracts, sel/select, B1/B-1, C1/C-1, Blue-1. Extra spaces and case are ignored.", "sys");
       return true;
     }
@@ -605,11 +605,11 @@ export function createCommandRuntime({
       return true;
     }
 
-    if (command === "stress" && parts.length >= 2) {
+    if (command === "dbstress") {
       const index = Number(parts[1]);
-      if (!Number.isInteger(index) || index <= 0) return logLine('Usage: stress [dbConflict pair number]', "error");
+      if (!Number.isInteger(index) || index <= 0) return logLine('Usage: dbStress [dbConflict pair number]', "error");
       const lines = typeof bumpNpcConflictStress === "function" ? bumpNpcConflictStress(index) : [];
-      if (!lines?.length) return logLine("dbConflict: stress debug feed unavailable.", "error");
+      if (!lines?.length) return logLine("dbStress: stress debug feed unavailable.", "error");
       lines.forEach((line) => logLine(line, "sys"));
       return true;
     }
@@ -638,7 +638,7 @@ export function createCommandRuntime({
         return true;
       }
       lines.forEach((line) => logLine(line, "sys"));
-      logLine('Debug: type "stress [number]" to add +0.40 stress to a listed pair.', "sys");
+      logLine('Debug: type "dbStress [number]" to add +0.40 stress to a listed pair.', "sys");
       return true;
     }
 
