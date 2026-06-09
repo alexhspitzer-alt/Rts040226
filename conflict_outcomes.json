@@ -1,14 +1,15 @@
 {
   "metadata": {
-    "version": 1,
-    "description": "Faction-vs-faction conflict outcome line sets for staged escalation.",
+    "version": 3,
+    "description": "Faction-vs-faction conflict outcome line sets for staged escalation, plus speaker-specific armed prosecution dialogue sets.",
     "stages": [
       "notice",
       "verbal",
       "intercept",
       "fire",
       "resolve"
-    ]
+    ],
+    "prosecutionDialogueNote": "prosecutionDialogue sets contain roughly five aggressive target-facing combat barks plus three friendly coordination barks per requested speaker/circumstance."
   },
   "pairs": [
     {
@@ -937,6 +938,254 @@
             "Channel closed; continuing route."
           ]
         }
+      }
+    }
+  ],
+  "prosecutionDialogue": [
+    {
+      "id": "ufp_clear_blister_commercial_zones",
+      "circumstance": "UFP attempt to clear Blister ships to ensure safety of system commercial zones.",
+      "aggressorFaction": "ufp",
+      "targetFaction": "blister",
+      "theater": "system_commercial_zones",
+      "speakers": {
+        "UFP Kestrels": [
+          "Blister contact, this is Kestrel patrol. Vacate the commercial lane or be cut out of it.",
+          "Kestrel element has weapons lock. You are endangering Union commerce; break burn now.",
+          "Raid transponder identified. Turn away from merchant traffic and submit to inspection.",
+          "You are not local weather, Blister. You are a hazard, and we are clearing hazards today.",
+          "Kestrel flight prosecuting interdiction. Civilian corridor will be safe before we leave."
+        ],
+        "Condor": [
+          "Condor command declares this commercial zone under active protection. Blister hulls will withdraw.",
+          "All batteries mark raider signatures. Disable engines first; leave no ship able to chase traffic.",
+          "Blister formation, you have ten seconds to clear the lane before the cruiser makes space for you.",
+          "Condor strike group assumes safety authority. Predatory traffic is now a target class.",
+          "Commercial zone shield protocol active. Blister ships remaining in-zone will be neutralized."
+        ]
+      },
+      "friendlyChatter": {
+        "UFP Kestrels": [
+          "Kestrel flight, fan out and box the raiders from the merchant lane. Keep them scared and moving.",
+          "All UFP friendlies, Blister tags are hostile in the commercial volume. Burn clean and prosecute.",
+          "Copy patrol net, raider drives are painted. We clear them fast, then shepherd traffic back in."
+        ],
+        "Condor": [
+          "Condor to all Union assets: bracket the Blister hulls and leave the outbound gap toward empty space only.",
+          "Strike control confirms hostile raid profiles. Kestrels drive them; Condor batteries finish stragglers.",
+          "Friendly units, hold civilian-side fire discipline. Everything wearing Blister colors past the marker is yours."
+        ]
+      }
+    },
+    {
+      "id": "ufp_sovereignty_deuterium_arcworks_regions",
+      "circumstance": "UFP asserts sovereignty in deuterium processing regions Arcworks operates.",
+      "aggressorFaction": "ufp",
+      "targetFaction": "arcworks",
+      "theater": "deuterium_processing_regions",
+      "speakers": {
+        "UFP Kestrels": [
+          "Kestrel patrol to Arcworks traffic: deuterium processing space is Union jurisdiction. Comply now.",
+          "You are operating armed industrial craft inside a sovereign control volume. Reduce burn and stand down.",
+          "Arcworks hull, this refinery lane is not a company border. Prepare for UFP inspection.",
+          "Kestrel flight is enforcing Union authority over processing infrastructure. Do not test intercept range.",
+          "Your claim does not outrank system law. Hold vector or lose propulsion."
+        ],
+        "Ibis drones": [
+          "Ibis screen has your drive plume tagged. Arcworks craft will remain inside assigned vectors.",
+          "Drone swarm prosecuting compliance. Unauthorized maneuvering near deuterium plant will be corrected.",
+          "Ibis units confirm weapons safeties lifted. Submit transponder keys to UFP control.",
+          "You are surrounded by cheap machines with perfect patience. Stand down, Arcworks.",
+          "Sovereignty notice delivered. Continued resistance authorizes disabling fire from Ibis screen."
+        ],
+        "Condor": [
+          "Condor command to Arcworks militia: Union sovereignty extends over every deuterium processor in this region.",
+          "Main battery is tracking your platforms. Do not convert an ownership dispute into wreckage.",
+          "Arcworks convoy, power down weapons and open your holds for inspection under UFP authority.",
+          "This cruiser is not here to negotiate mineral law. It is here to enforce it.",
+          "Condor strike control declares the processing zone secured. Noncompliant Arcworks craft are hostile."
+        ]
+      },
+      "friendlyChatter": {
+        "UFP Kestrels": [
+          "Kestrel wing, Arcworks signatures locked in the processor lanes. Push them off the infrastructure.",
+          "All UFP craft, treat armed company hulls as sovereignty violators. Disable drives before they hug the plant.",
+          "Copy that, Union net. Arcworks escorts are targets if they stay hot; let us make the boundary obvious."
+        ],
+        "Ibis drones": [
+          "Ibis swarm to UFP control: target tables shared. Arcworks profiles are boxed and predictive tracks are green.",
+          "Friendly guns, drones are herding company craft outward. Shoot through our lane markers, not through us.",
+          "Ibis screen confirms missile primers nominal. Arcworks signatures locked; this compliance problem is small."
+        ],
+        "Condor": [
+          "Condor to Union formation: all Arcworks armed hulls inside the processor cordon are valid targets.",
+          "Kestrels, force separation. Ibis drones, strip options. Condor will hold the big guns on the platforms.",
+          "Friendly net, this is sovereignty enforcement. Keep recordings clean and firing solutions cleaner."
+        ]
+      }
+    },
+    {
+      "id": "arcworks_defends_claim_from_ufp_usurpers",
+      "circumstance": "Arcworks defends Arcworks claim territory from UFP usurpers.",
+      "aggressorFaction": "arcworks",
+      "targetFaction": "ufp",
+      "theater": "arcworks_claim_territory",
+      "speakers": {
+        "MK-IV": [
+          "MK-IV militia to UFP intruder: this claim was cut and welded before your flag arrived.",
+          "Union patrol, you are trespassing on Arcworks working territory. Leave under your own thrust.",
+          "We built these lanes with our hulls and dead crews. You do not inherit them by announcement.",
+          "MK-IV engaging claim defense. UFP craft will withdraw from company ground.",
+          "Your sovereignty paperwork has no mass. Our guns do. Reverse vector."
+        ],
+        "ML-X": [
+          "ML-X assault transport holding the line. UFP boarders will not touch Arcworks property.",
+          "Union craft, every meter ahead of you is claimed, staffed, and defended. Back out.",
+          "We carry workers, armor, and answers. Today the answer is no.",
+          "Arcworks claim defense is active. ML-X units will ram this dispute through your patrol line if required.",
+          "You came to usurper territory expecting compliance. You found a wall."
+        ],
+        "MM-IX": [
+          "MM-IX platform anchored on claim. UFP presence is unauthorized and unwelcome.",
+          "This utility hull has repaired more of this region than the Union has mapped. We are not moving.",
+          "Arcworks control marks your vector as hostile encroachment. Correct it immediately.",
+          "MM-IX batteries are live. Come closer and learn what industrial-grade means.",
+          "Claim defense broadcast: UFP craft will exit the work zone or be pulled apart like bad rigging."
+        ]
+      },
+      "friendlyChatter": {
+        "MK-IV": [
+          "Arcworks militia, UFP signatures are inside claim boundary. Lock them and push until they remember the exit.",
+          "All company hulls, keep tight to the rigs. We know this ground; make the Union chase shadows and shrapnel.",
+          "Copy claim net, every blue-white transponder past the work markers is a usurper target."
+        ],
+        "ML-X": [
+          "ML-X to Arcworks line: load breach teams, prime missiles, and let the patrol craft see we came prepared.",
+          "Company friendlies, anchor on us. If the UFP wants a wall, we brought armor enough to be one.",
+          "All Arcworks ships, hold claim geometry. UFP signatures locked; they look lighter from this range."
+        ],
+        "MM-IX": [
+          "MM-IX platform to claim defense: Union targets are painted against refinery glare. Share solutions now.",
+          "Arcworks friendlies, draw them across the service gantries. Industrial cover is still cover.",
+          "Copy local defense. UFP craft are too neat for this work zone; let us dent the polish off."
+        ]
+      }
+    },
+    {
+      "id": "arcworks_refuses_blister_tribute",
+      "circumstance": "Arcworks refuses to pay Blister tribute demands.",
+      "aggressorFaction": "arcworks",
+      "targetFaction": "blister",
+      "theater": "arcworks_routes_and_facilities",
+      "speakers": {
+        "MK-IV": [
+          "MK-IV to Blister collector: Arcworks pays wages, invoices, and debts. We do not pay tribute.",
+          "Your governor can bill the vacuum. This claim stays closed to extortion.",
+          "Blister raider, you are confusing a working company with a frightened village. Correct yourself.",
+          "No dues, no cut, no governor share. Leave before we make an example for accounting.",
+          "Arcworks denial logged. MK-IV militia is ready to repossess your courage."
+        ],
+        "ML-X": [
+          "ML-X convoy response: tribute demand rejected. Further pressure will be treated as attempted seizure.",
+          "Tell your local governor Arcworks recognizes contracts, not hungry titles.",
+          "You want payment? Salvage what you can carry after we finish firing.",
+          "This transport is armored for bad negotiations. Yours just became one.",
+          "Blister claimants will clear our route now, or be cleared from it in pieces."
+        ]
+      },
+      "friendlyChatter": {
+        "MK-IV": [
+          "Arcworks escorts, tribute collectors are live threats. No payment, no pause, no mercy for boarding clamps.",
+          "Company net, Blister ships are targets if they block the route. Light them before they start counting.",
+          "Copy all Arcworks hulls: protect the ledger by protecting the cargo. The raiders get nothing but debris."
+        ],
+        "ML-X": [
+          "ML-X to convoy guard: Blister tribute demand is denied. Prime launchers and keep the haulers covered.",
+          "All company friendlies, let the collectors close if they want. Our armor likes short conversations.",
+          "Arcworks route net, Sledge and Dragoon tags are hostile. We pay in return fire today."
+        ]
+      }
+    },
+    {
+      "id": "blister_raids_ufp_ships",
+      "circumstance": "Blister raids UFP ships.",
+      "aggressorFaction": "blister",
+      "targetFaction": "ufp",
+      "theater": "ufp_patrol_and_supply_routes",
+      "speakers": {
+        "sledges": [
+          "Sledge crew to UFP hull: drop your cargo clamps and keep the uniforms breathing.",
+          "Union ship, your patrol route crosses our table. Pay in stores or pay in plating.",
+          "Heavy hooks are armed. We are taking your supplies before your cruiser hears about it.",
+          "UFP target marked. Break formation and we only strip the lockers.",
+          "Sledge boarding burn active. Stand by for collection under local custom."
+        ],
+        "dragoons": [
+          "Dragoon element on attack vector. UFP escort, turn slow and make this cheap.",
+          "We have your flank, Union bird. Spill decoys, cargo, and pride in that order.",
+          "Blister dragoons prosecuting raid. Disable the patrol craft; scare the rest.",
+          "Your badge does not patch holes. Kill burn and accept terms.",
+          "UFP contact, this is not a battle line. This is a robbery with engines."
+        ]
+      },
+      "friendlyChatter": {
+        "sledges": [
+          "Sledge crews, Union hulls are fat with stores. Hook the slow one and let the escort panic.",
+          "Blister pack, UFP signatures locked, clamps armed. This is too easy if nobody gets poetic.",
+          "All raiders, strip supplies first and trophies second. Dead patrols bring cruisers; empty patrols bring stories."
+        ],
+        "dragoons": [
+          "Dragoon flight, UFP patrol is painted. Missiles primed; run their flank before they find their formation.",
+          "Raid net, keep the uniforms busy while the Sledges bite the cargo locks.",
+          "Copy pack lead, blue signatures are boxed. Let us make the Union buy this lane twice."
+        ]
+      }
+    },
+    {
+      "id": "blister_demands_arcworks_tribute",
+      "circumstance": "Blister demands Arcworks pay tribute to local governors.",
+      "aggressorFaction": "blister",
+      "targetFaction": "arcworks",
+      "theater": "arcworks_claim_routes",
+      "speakers": {
+        "sledge": [
+          "Sledge collector to Arcworks convoy: local governor wants his due. Open the transfer ledger.",
+          "You work this rock under our sky. Tribute keeps your crews unventilated.",
+          "Arcworks hull, stop pretending machinery is a flag. Pay the governor and pass.",
+          "We brought breaching clamps because polite invoices make you deaf.",
+          "Tribute window is open. Refusal makes your next shipment ours."
+        ],
+        "dragoons": [
+          "Dragoon riders marking Arcworks traffic. Governor tax is due before you cross this lane.",
+          "Company ships pay like everyone else, or they drift like warnings.",
+          "We are not here for your contracts. We are here for the local share.",
+          "Arcworks escort, move aside and let the accountants with guns work.",
+          "Tribute refusal authorizes pursuit. Try us and explain the debris to your hub."
+        ],
+        "Matador": [
+          "Matador command to Arcworks claimants: the governor recognizes your profits. Now recognize his tribute.",
+          "Main guns are awake. Pay the lane tithe or watch your refinery traffic stop.",
+          "Arcworks territory is useful. That is why it owes rent.",
+          "You may keep your badges, manifests, and speeches. The tribute still transfers.",
+          "Matador holds the route. No Arcworks ship passes until the governor is satisfied."
+        ]
+      },
+      "friendlyChatter": {
+        "sledge": [
+          "Sledge to governor pack: Arcworks convoy is marked. Cut the lead ship and the rest start calculating.",
+          "Collectors, clamps are green. Company escorts pay in fear if they will not pay in fuel.",
+          "All Blister friendlies, keep pressure on the Arcworks guards. Tribute sounds better over alarm bells."
+        ],
+        "dragoons": [
+          "Dragoon riders, Arcworks tags are locked. Sweep wide and make their haulers feel uninsured.",
+          "Governor net, company ships are targets until the tribute clears. Let us decorate the lane.",
+          "Copy collector lead, missiles primed. Arcworks armor looks expensive; expensive things teach well."
+        ],
+        "Matador": [
+          "Matador to Blister line: hold the route and let no Arcworks hull slip payment by speed or swagger.",
+          "All governor ships, target escorts first. Once the guards go quiet, the accountants become reasonable.",
+          "Tribute fleet, main battery has company signatures locked. Push them toward the tithe marker."
+        ]
       }
     }
   ]
