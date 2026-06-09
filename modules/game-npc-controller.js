@@ -339,6 +339,7 @@ export function createNpcController({
   playerShipCallsign,
   playerShipCaptainById,
   onConflictStage,
+  onConflictFire,
 }) {
   const recentNpcLineHistory = [];
   const conflictEncounters = new Map();
@@ -854,6 +855,36 @@ export function createNpcController({
     };
   }
 
+  function notifyConflictFire(result, nodeId, collateral = false) {
+    if (typeof onConflictFire !== "function" || !result?.attacker) return;
+    onConflictFire({
+      nodeId,
+      collateral,
+      result: {
+        attackerId: result.attacker.id,
+        attackerFaction: result.attacker.faction || "civilian",
+        defenderId: result.defender?.id || null,
+        defenderFaction: result.defender?.faction || "civilian",
+        outcome: result.outcome,
+      },
+    });
+  }
+
+  function notifyCombatExchangeHeat(exchange, nodeId) {
+    notifyConflictFire(exchange.direct, nodeId, false);
+    (exchange.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+    if (exchange.returnFire) notifyConflictFire(exchange.returnFire, nodeId, false);
+    (exchange.returnCollateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+    (exchange.collateralReprisals || []).forEach((event) => {
+      notifyConflictFire(event.direct, nodeId, false);
+      (event.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+    });
+    (exchange.returnCollateralReprisals || []).forEach((event) => {
+      notifyConflictFire(event.direct, nodeId, false);
+      (event.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+    });
+  }
+
   function playerLocalToNode(nodeId) {
     if (nodeId === "anchor_station") return true;
     return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "enroute"));
@@ -904,6 +935,7 @@ export function createNpcController({
 
     if (encounter.stage === "fire") {
       const exchange = resolveCombatExchange(aggressor, responder, encounter.nodeId);
+      notifyCombatExchangeHeat(exchange, encounter.nodeId);
       scheduleCharacterMessage(
         3,
         aggressor.captainName || aggressor.callsign,
@@ -1019,7 +1051,14 @@ export function createNpcController({
           if (nextStage !== encounter.stage && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
             encounter.stage = nextStage;
             transitions += 1;
-            if (typeof onConflictStage === "function") onConflictStage({ stage: encounter.stage, nodeId, aggressorId: encounter.aggressorId, responderId: encounter.responderId });
+            if (typeof onConflictStage === "function") onConflictStage({
+              stage: encounter.stage,
+              nodeId,
+              aggressorId: encounter.aggressorId,
+              responderId: encounter.responderId,
+              aggressorFaction: pairing.aggressor.faction || "civilian",
+              responderFaction: pairing.responder.faction || "civilian",
+            });
             if (playerLocalToNode(nodeId)) emitConflictLine(encounter, npcById);
           }
         }
@@ -1151,7 +1190,14 @@ export function createNpcController({
     const nextStage = capStageForAggressor(conflictStageForStress(entry.stress), aggressor);
     if (nextStage !== entry.stage) {
       entry.stage = nextStage;
-      if (typeof onConflictStage === "function") onConflictStage({ stage: entry.stage, nodeId: entry.nodeId, aggressorId: entry.aggressorId, responderId: entry.responderId });
+      if (typeof onConflictStage === "function") onConflictStage({
+        stage: entry.stage,
+        nodeId: entry.nodeId,
+        aggressorId: entry.aggressorId,
+        responderId: entry.responderId,
+        aggressorFaction: aggressor?.faction || "civilian",
+        responderFaction: npcById.get(entry.responderId || entry.bId)?.faction || "civilian",
+      });
       if (playerLocalToNode(entry.nodeId)) emitConflictLine(entry, npcById);
     }
     return [
