@@ -50,7 +50,6 @@ const FACTION_HEAT_MAX = 120;
 const FACTION_HEAT_STAGE_AMOUNT = { verbal: 4, intercept: 7 };
 const FACTION_HEAT_FIRE_AMOUNT = 10;
 const FACTION_HEAT_COLLATERAL_AMOUNT = 4;
-const FACTION_HEAT_CAMPAIGN_AGGRESSOR_DRIFT = 3;
 const HEAT_FACTIONS = ["ufp", "arcworks", "blister"];
 const FACTION_DISPLAY_NAMES = {
   ufp: "UFP",
@@ -1352,7 +1351,6 @@ function startFactionCampaign(defenderFaction) {
     locationNodeId: CAMPAIGN_LOCATION_NODE_ID,
     startedAt: state.tick,
     endsAt: state.tick + FACTION_HEAT_CAMPAIGN_DURATION_SECONDS,
-    nextAggressorHeatTick: state.tick + FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS,
   };
   state.activeFactionCampaigns.push(campaign);
   postCampaignNewsCard(campaign);
@@ -1398,25 +1396,14 @@ function updateFactionCampaigns() {
     }
   });
   state.activeFactionCampaigns = (state.activeFactionCampaigns || []).filter((campaign) => !campaign.resolved);
-  state.activeFactionCampaigns.forEach((campaign) => {
-    if (state.tick < (campaign.nextAggressorHeatTick || 0)) return;
-    campaign.nextAggressorHeatTick = state.tick + FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS;
-    addFactionHeat(campaign.aggressorFaction, FACTION_HEAT_CAMPAIGN_AGGRESSOR_DRIFT);
-  });
 }
 
 function applyConflictHeatStage(stage, aggressorFaction, responderFaction) {
-  if (stage === "verbal" || stage === "intercept") {
-    const amount = FACTION_HEAT_STAGE_AMOUNT[stage] || 0;
-    addFactionHeat(aggressorFaction, amount);
-    addFactionHeat(responderFaction, amount);
-    evaluateFactionCampaignTriggers();
-    return;
-  }
-  if (stage === "fire") {
-    addFactionHeat(aggressorFaction, FACTION_HEAT_FIRE_AMOUNT);
-    evaluateFactionCampaignTriggers();
-  }
+  if (stage !== "verbal" && stage !== "intercept") return;
+  const amount = FACTION_HEAT_STAGE_AMOUNT[stage] || 0;
+  addFactionHeat(aggressorFaction, amount);
+  addFactionHeat(responderFaction, amount);
+  evaluateFactionCampaignTriggers();
 }
 
 function applyConflictFireHeat(result, collateral = false) {
