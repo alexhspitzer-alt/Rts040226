@@ -850,6 +850,7 @@ export function createNpcController({
       .filter((npc) => (
         npc?.at === nodeId
         && !idsToSkip.has(npc.id)
+        && mutedNpcActiveForConflict(npc)
         && npc.combatStatus !== "killed"
       ));
     const playerTargets = (state.ships || [])
@@ -961,6 +962,11 @@ export function createNpcController({
   }
 
 
+  function scheduleNpcConflictMessage(delay, npc, message, status, type) {
+    if (npc?.mutedFromChatter) return;
+    scheduleCharacterMessage(delay, npc?.captainName || npc?.callsign, message, status, type);
+  }
+
   function emitConflictLine(encounter, npcById) {
     const aggressor = npcById.get(encounter.aggressorId || encounter.aId);
     const responder = npcById.get(encounter.responderId || encounter.bId);
@@ -983,16 +989,16 @@ export function createNpcController({
       fire: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.fire)}`,
       resolved: `[Resolved] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.resolved)}`,
     };
-    scheduleCharacterMessage(
+    scheduleNpcConflictMessage(
       1,
-      aggressor.captainName || aggressor.callsign,
+      aggressor,
       aggressorLinesByStage[encounter.stage] || aggressorLinesByStage.notice,
       encounter.stage === "fire" ? "interdicting" : "arriving",
       "comms"
     );
-    scheduleCharacterMessage(
+    scheduleNpcConflictMessage(
       2,
-      responder.captainName || responder.callsign,
+      responder,
       responderLinesByStage[encounter.stage] || responderLinesByStage.notice,
       encounter.stage === "fire" ? "evading" : "arriving",
       "comms"
@@ -1001,17 +1007,17 @@ export function createNpcController({
     if (encounter.stage === "fire") {
       const exchange = resolveCombatExchange(aggressor, responder, encounter.nodeId);
       notifyCombatExchangeHeat(exchange, encounter.nodeId);
-      scheduleCharacterMessage(
+      scheduleNpcConflictMessage(
         3,
-        aggressor.captainName || aggressor.callsign,
+        aggressor,
         `${formatCombatResultLine(exchange.direct)} ${exchange.direct.outcome === "major_damage" || exchange.direct.outcome === "kill" ? `${responder.callsign} cannot return fire.` : ""}`.trim(),
         "interdicting",
         "comms"
       );
       exchange.collateral.forEach((result, idx) => {
-        scheduleCharacterMessage(
+        scheduleNpcConflictMessage(
           4 + idx,
-          result.defender.captainName || result.defender.callsign,
+          result.defender,
           formatCombatResultLine(result, "Collateral"),
           "damaged",
           "comms"
@@ -1019,17 +1025,17 @@ export function createNpcController({
       });
       if (exchange.returnFire) {
         const delay = 4 + exchange.collateral.length;
-        scheduleCharacterMessage(
+        scheduleNpcConflictMessage(
           delay,
-          responder.captainName || responder.callsign,
+          responder,
           formatCombatResultLine(exchange.returnFire),
           exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
           "comms"
         );
         exchange.returnCollateral.forEach((result, idx) => {
-          scheduleCharacterMessage(
+          scheduleNpcConflictMessage(
             delay + 1 + idx,
-            result.defender.captainName || result.defender.callsign,
+            result.defender,
             formatCombatResultLine(result, "Collateral"),
             "damaged",
             "comms"
@@ -1039,18 +1045,18 @@ export function createNpcController({
       let reprisalDelay = 4 + exchange.collateral.length;
       if (exchange.returnFire) reprisalDelay += 1 + exchange.returnCollateral.length;
       const scheduleReprisal = (event) => {
-        scheduleCharacterMessage(
+        scheduleNpcConflictMessage(
           reprisalDelay,
-          event.direct.attacker.captainName || event.direct.attacker.callsign,
+          event.direct.attacker,
           formatCollateralReprisalLine(event),
           event.direct.outcome === "major_damage" || event.direct.outcome === "kill" ? "interdicting" : "returning fire",
           "comms"
         );
         reprisalDelay += 1;
         event.collateral.forEach((result) => {
-          scheduleCharacterMessage(
+          scheduleNpcConflictMessage(
             reprisalDelay,
-            result.defender.captainName || result.defender.callsign,
+            result.defender,
             formatCombatResultLine(result, "Collateral"),
             "damaged",
             "comms"
@@ -1179,6 +1185,72 @@ export function createNpcController({
     npc.departAt = state.tick + randomLoiterSeconds();
   }
 
+  function nodeSearchText(nodeId) {
+    const node = getNodes()?.[nodeId] || {};
+    return `${nodeId} ${node.label || ""} ${node.moonName || ""}`.toLowerCase();
+  }
+
+  function nodeMatchesAny(nodeId, patterns = []) {
+    const text = nodeSearchText(nodeId);
+    return patterns.some((pattern) => pattern.test(text));
+  }
+
+  function lowOrRingOrbitNodeIds(nodeIds) {
+    return nodeIds.filter((nodeId) => nodeMatchesAny(nodeId, [
+      /low_orbit_transfer_lane/,
+      /deep_space_transfer_lane/,
+      /indigo_station/,
+      /ufp_indigo_system_administration/,
+      /ufp_outpost_alpha/,
+      /refinery/,
+      /yard/,
+      /ufp_outpost_bravo/,
+      /arcworks_operations_hub/,
+      /arcworks_militia_barracks/,
+      /oxblood/,
+      /patch/,
+      /onion skin/,
+      /shooter/,
+      /sulphide/,
+    ]));
+  }
+
+  function outerOrbitNodeIds(nodeIds) {
+    return nodeIds.filter((nodeId) => nodeMatchesAny(nodeId, [
+      /high_orbit_transfer_lane/,
+      /condenser_columns/,
+      /ufp_science_station/,
+      /clambroth/,
+      /end-of-day/,
+      /end_of_day/,
+    ]));
+  }
+
+  function anywhereExceptOnionSkinNodeIds(nodeIds) {
+    return nodeIds.filter((nodeId) => !nodeMatchesAny(nodeId, [/onion skin/, /onion_skin/, /arcworks_operations_hub/, /arcworks_militia_barracks/]));
+  }
+
+  function anywhereExceptUfpCoreNodeIds(nodeIds) {
+    return nodeIds.filter((nodeId) => !nodeMatchesAny(nodeId, [
+      /ufp_indigo_system_administration/,
+      /ufp system administration/,
+      /ufp outpost alpha/,
+      /ufp_outpost_alpha/,
+      /ufp outpost bravo/,
+      /ufp_outpost_bravo/,
+    ]));
+  }
+
+  function matadorRouteNodeIds(nodeIds) {
+    const outer = outerOrbitNodeIds(nodeIds);
+    const anchor = nodeIds.filter((nodeId) => nodeMatchesAny(nodeId, [/anchor_station/, /anchor station/]));
+    return [...new Set([...outer, ...anchor])];
+  }
+
+  function mutedNpcActiveForConflict(npc) {
+    return !npc?.muteUntilHeatEnabled || Boolean(state.factionHeatEnabled);
+  }
+
   function pickDestination(fromNodeId, allowedNodeIds = null) {
     const adjacency = getAdjacency();
     const hasWhitelist = Array.isArray(allowedNodeIds);
@@ -1207,6 +1279,7 @@ export function createNpcController({
   }
 
   function scheduleFinalApproach(npc, fromNodeId, destinationNodeId, uplink, transitTime) {
+    if (npc?.mutedFromChatter) return;
     if (!shouldBroadcastFinalApproach(destinationNodeId)) return;
     const lead = Math.min(4, Math.max(1, transitTime - 1));
     const callAt = uplink + Math.max(0, transitTime - lead) + oneWaySignalToNode(destinationNodeId);
@@ -1327,6 +1400,12 @@ export function createNpcController({
         { id: "npc-blister-dragoon-2", callsign: "Dragoon Daring-3", captainName: "Capt. Varek Noll", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
         { id: "npc-arcworks-mk4-1", callsign: "MK-IV Able-4", captainName: "Capt. Edda Marr", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
         { id: "npc-arcworks-mm9-1", callsign: "MM-IX True-9", captainName: "Capt. Tal Ren", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
+        { id: "npc-ufp-kestrel-wide-1", callsign: "Kestrel Wide-4", captainName: "Capt. Mira Sol", faction: "ufp", role: "patrol", registryKey: "kestrel", at: randomPick(anywhereExceptOnionSkinNodeIds(nodeIds)) || spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: anywhereExceptOnionSkinNodeIds(nodeIds), routeProfile: "anywhere_except_onion_skin", mutedFromChatter: true, muteUntilHeatEnabled: true },
+        { id: "npc-arcworks-j8-1", callsign: "J-VIII Carry-8", captainName: "Capt. Oren Vale", faction: "arcworks", role: "hauler", registryKey: "j-viii", at: randomPick(anywhereExceptUfpCoreNodeIds(nodeIds)) || spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: anywhereExceptUfpCoreNodeIds(nodeIds), routeProfile: "anywhere_except_ufp_core", mutedFromChatter: true, muteUntilHeatEnabled: true },
+        { id: "npc-arcworks-mm9-wide-1", callsign: "MM-IX Rigid-6", captainName: "Capt. Mara Quell", faction: "arcworks", role: "industrial", registryKey: "mm-ix", at: randomPick(anywhereExceptUfpCoreNodeIds(nodeIds)) || spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: anywhereExceptUfpCoreNodeIds(nodeIds), routeProfile: "anywhere_except_ufp_core", mutedFromChatter: true, muteUntilHeatEnabled: true },
+        { id: "npc-blister-matador-1", callsign: "Matador Crown-1", captainName: "Capt. Daska Rill", faction: "blister", role: "raider", registryKey: "matador", at: randomPick(matadorRouteNodeIds(nodeIds)) || spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: matadorRouteNodeIds(nodeIds), routeProfile: "outer_orbit_and_anchor", mutedFromChatter: true, muteUntilHeatEnabled: true },
+        { id: "npc-civilian-trawler-low-1", callsign: "Trawler Low-17", captainName: "Capt. Sel Nadir", faction: "civilian", role: "hauler", registryKey: "trawler", at: randomPick(lowOrRingOrbitNodeIds(nodeIds)) || spawn(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: lowOrRingOrbitNodeIds(nodeIds), routeProfile: "low_and_ring_orbit", mutedFromChatter: true, muteUntilHeatEnabled: true },
+        { id: "npc-civilian-trawler-ring-1", callsign: "Trawler Ring-19", captainName: "Capt. Hessa Dorne", faction: "civilian", role: "hauler", registryKey: "trawler", at: randomPick(lowOrRingOrbitNodeIds(nodeIds)) || spawn(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: lowOrRingOrbitNodeIds(nodeIds), routeProfile: "low_and_ring_orbit", mutedFromChatter: true, muteUntilHeatEnabled: true },
       ];
       state.civilianNpcs.forEach((npc) => {
         const wait = randomLoiterSeconds();
@@ -1343,19 +1422,30 @@ export function createNpcController({
       shipSpeedById["npc-blister-dragoon-2"] = 4;
       shipSpeedById["npc-arcworks-mk4-1"] = 2;
       shipSpeedById["npc-arcworks-mm9-1"] = 2;
+      shipSpeedById["npc-ufp-kestrel-wide-1"] = 4;
+      shipSpeedById["npc-arcworks-j8-1"] = 2;
+      shipSpeedById["npc-arcworks-mm9-wide-1"] = 2;
+      shipSpeedById["npc-blister-matador-1"] = 3;
+      shipSpeedById["npc-civilian-trawler-low-1"] = 2;
+      shipSpeedById["npc-civilian-trawler-ring-1"] = 2;
     },
     update() {
       updateAmbientLocationSpawns();
       updateAmbientLocationDialogue();
       updateAmbientLocationRemovals();
       const npcs = state.civilianNpcs || [];
-      updateConflictEncounters(npcs.filter((npc) => !npc.ambientLocationSpawn));
+      updateConflictEncounters(npcs.filter((npc) => !npc.ambientLocationSpawn && mutedNpcActiveForConflict(npc)));
       npcs.forEach((npc) => {
         if (npc.ambientLocationSpawn) return;
         if (!combatCapable(npc)) return;
-        if (npc.faction === "ufp" || npc.faction === "blister" || npc.faction === "arcworks") {
+        if (npc.faction === "ufp" || npc.faction === "blister" || npc.faction === "arcworks" || npc.routeProfile) {
           const nodeIds = Object.keys(getNodes());
-          const allowed = nodeIds.filter((nodeId) => {
+          let allowed = null;
+          if (npc.routeProfile === "anywhere_except_onion_skin") allowed = anywhereExceptOnionSkinNodeIds(nodeIds);
+          else if (npc.routeProfile === "anywhere_except_ufp_core") allowed = anywhereExceptUfpCoreNodeIds(nodeIds);
+          else if (npc.routeProfile === "outer_orbit_and_anchor") allowed = matadorRouteNodeIds(nodeIds);
+          else if (npc.routeProfile === "low_and_ring_orbit") allowed = lowOrRingOrbitNodeIds(nodeIds);
+          else allowed = nodeIds.filter((nodeId) => {
             const label = String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
             if (npc.faction === "ufp") {
               return ["ufp_outpost_alpha","ufp_outpost_bravo","ufp_indigo_system_administration","ufp_outpost_delta","ufp_science_station","anchor_station","indigo_station","barons_market"].includes(nodeId)
