@@ -254,9 +254,11 @@ const CONFLICT_AGGRESSOR_LINES = {
       "You are now under active challenge. Keep hands visible and drives low.",
     ],
     fire: [
-      "Weapons discharge reported. Breaking hard.",
-      "Shots fired. Defensive pattern active.",
-      "You wanted noise—now you have sirens.",
+      "Target locked. Weapons free.",
+      "Guns hot. Fire at will.",
+      "Engaging with missiles.",
+      "Engaging with cannons.",
+      "Target painted. Firing now.",
     ],
     resolved: [
       "Contact is disengaging.",
@@ -283,9 +285,11 @@ const CONFLICT_RESPONDER_LINES = {
     "Holding vector under protest. Do not push this further.",
   ],
   fire: [
-    "Taking fire. Distress beacon active and evasive action underway.",
-    "Weapons contact! Logging telemetry and breaking away.",
-    "You opened fire. Beacon hot, lane clear, we are gone.",
+    "Countermeasures launched.",
+    "Ordnance incoming.",
+    "We're under attack! Engines to full!",
+    "Distress beacon active.",
+    "Incoming fire. Evasive burn now.",
   ],
   resolved: [
     "Copy disengagement. Resuming planned route.",

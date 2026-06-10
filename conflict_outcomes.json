@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "version": 3,
+    "version": 4,
     "description": "Faction-vs-faction conflict outcome line sets for staged escalation, plus speaker-specific armed prosecution dialogue sets.",
     "stages": [
       "notice",
@@ -9,7 +9,8 @@
       "fire",
       "resolve"
     ],
-    "prosecutionDialogueNote": "prosecutionDialogue sets contain roughly five aggressive target-facing combat barks plus three friendly coordination barks per requested speaker/circumstance."
+    "prosecutionDialogueNote": "prosecutionDialogue sets contain roughly five aggressive target-facing combat barks plus three friendly coordination barks per requested speaker/circumstance.",
+    "campaignDefenderResponsesNote": "Concise campaign defender response lines for news cards or campaign hails."
   },
   "pairs": [
     {
@@ -50,12 +51,18 @@
         },
         "fire": {
           "aggressor": [
-            "Warning fire authorized. Disable profile only.",
-            "Weapons release: target propulsion, avoid hull kill."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking patrol fire; declaring emergency.",
-            "We are hit and maneuvering defensively."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -108,12 +115,18 @@
         },
         "fire": {
           "aggressor": [
-            "Warning fire authorized. Disable profile only.",
-            "Weapons release: target propulsion, avoid hull kill."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking Arcworks fire; requesting emergency support.",
-            "Drive section impacted; issuing distress call."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -166,12 +179,18 @@
         },
         "fire": {
           "aggressor": [
-            "Warning fire authorized. Disable profile only.",
-            "Weapons release: target propulsion, avoid hull kill."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking hostile fire! Distress on open channel.",
-            "We are hit and evading."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -224,12 +243,18 @@
         },
         "fire": {
           "aggressor": [
-            "Warning fire authorized. Disable profile only.",
-            "Weapons release: target propulsion, avoid hull kill."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Received civilian distress; deconflicting lane.",
-            "Acknowledged emergency broadcast."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -282,12 +307,18 @@
         },
         "fire": {
           "aggressor": [
-            "Non-compliance forces defensive discharge.",
-            "Containment fire pattern active on drives."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking patrol fire; declaring emergency.",
-            "We are hit and maneuvering defensively."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -340,12 +371,18 @@
         },
         "fire": {
           "aggressor": [
-            "Non-compliance forces defensive discharge.",
-            "Containment fire pattern active on drives."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking Arcworks fire; requesting emergency support.",
-            "Drive section impacted; issuing distress call."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -398,12 +435,18 @@
         },
         "fire": {
           "aggressor": [
-            "Non-compliance forces defensive discharge.",
-            "Containment fire pattern active on drives."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking hostile fire! Distress on open channel.",
-            "We are hit and evading."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -456,12 +499,18 @@
         },
         "fire": {
           "aggressor": [
-            "Non-compliance forces defensive discharge.",
-            "Containment fire pattern active on drives."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Received civilian distress; deconflicting lane.",
-            "Acknowledged emergency broadcast."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -514,12 +563,18 @@
         },
         "fire": {
           "aggressor": [
-            "Warning shots out. Next spread disables engines.",
-            "Weapons hot. We'll force compliance."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking patrol fire; declaring emergency.",
-            "We are hit and maneuvering defensively."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -572,12 +627,18 @@
         },
         "fire": {
           "aggressor": [
-            "Warning shots out. Next spread disables engines.",
-            "Weapons hot. We'll force compliance."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking Arcworks fire; requesting emergency support.",
-            "Drive section impacted; issuing distress call."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -630,12 +691,18 @@
         },
         "fire": {
           "aggressor": [
-            "Warning shots out. Next spread disables engines.",
-            "Weapons hot. We'll force compliance."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking hostile fire! Distress on open channel.",
-            "We are hit and evading."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -688,12 +755,18 @@
         },
         "fire": {
           "aggressor": [
-            "Warning shots out. Next spread disables engines.",
-            "Weapons hot. We'll force compliance."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Received civilian distress; deconflicting lane.",
-            "Acknowledged emergency broadcast."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -746,12 +819,18 @@
         },
         "fire": {
           "aggressor": [
-            "We are unarmed\u2014issuing panic channel only.",
-            "No weapons available; broadcasting emergency."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking patrol fire; declaring emergency.",
-            "We are hit and maneuvering defensively."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -804,12 +883,18 @@
         },
         "fire": {
           "aggressor": [
-            "We are unarmed\u2014issuing panic channel only.",
-            "No weapons available; broadcasting emergency."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking Arcworks fire; requesting emergency support.",
-            "Drive section impacted; issuing distress call."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -862,12 +947,18 @@
         },
         "fire": {
           "aggressor": [
-            "We are unarmed\u2014issuing panic channel only.",
-            "No weapons available; broadcasting emergency."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Taking hostile fire! Distress on open channel.",
-            "We are hit and evading."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -920,12 +1011,18 @@
         },
         "fire": {
           "aggressor": [
-            "We are unarmed\u2014issuing panic channel only.",
-            "No weapons available; broadcasting emergency."
+            "Target locked. Weapons free.",
+            "Guns hot. Fire at will.",
+            "Engaging with missiles.",
+            "Engaging with cannons.",
+            "Target painted. Firing now."
           ],
           "response": [
-            "Received civilian distress; deconflicting lane.",
-            "Acknowledged emergency broadcast."
+            "Countermeasures launched.",
+            "Ordnance incoming.",
+            "We're under attack! Engines to full!",
+            "Distress beacon active.",
+            "Incoming fire. Evasive burn now."
           ]
         },
         "resolve": {
@@ -1188,5 +1285,32 @@
         ]
       }
     }
+  ],
+  "campaignDefenderResponses": [
+    "Piss off and try someone easier.",
+    "I'd like to see them try.",
+    "They've bitten off more than they can chew.",
+    "Tell them to bring more ships.",
+    "They want a campaign? We will give them a graveyard.",
+    "They can have this route when we are done using it to break them.",
+    "We are still here. That is their first problem.",
+    "Let them come closer. We have answers loaded.",
+    "They picked the wrong target and the wrong day.",
+    "We are not moving. They are welcome to learn why.",
+    "Their threats are louder than their guns.",
+    "They should have counted our batteries before starting this.",
+    "We will be waiting at the marker with engines hot.",
+    "They can explain this mistake to their survivors.",
+    "If they want the lane, they can bleed for every kilometer.",
+    "They are overextended and about to notice.",
+    "This attack ends when they run out of nerve or hulls.",
+    "They came looking for weakness and found a hard lock.",
+    "We have seen worse threats from worse captains.",
+    "Let them commit. Retreat is harder after the first burn.",
+    "They are not taking our ground by headline.",
+    "We will make this expensive enough to remember.",
+    "They are welcome to test the perimeter.",
+    "They opened the door. Now they can eat the room.",
+    "Stand firm. They have already made the fatal mistake."
   ]
 }

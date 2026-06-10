@@ -57,6 +57,33 @@ const FACTION_DISPLAY_NAMES = {
   blister: "Blister",
 };
 const CAMPAIGN_LOCATION_NODE_ID = "barons_market";
+const CAMPAIGN_DEFENDER_RESPONSE_LINES = [
+  "Piss off and try someone easier.",
+  "I'd like to see them try.",
+  "They've bitten off more than they can chew.",
+  "Tell them to bring more ships.",
+  "They want a campaign? We will give them a graveyard.",
+  "They can have this route when we are done using it to break them.",
+  "We are still here. That is their first problem.",
+  "Let them come closer. We have answers loaded.",
+  "They picked the wrong target and the wrong day.",
+  "We are not moving. They are welcome to learn why.",
+  "Their threats are louder than their guns.",
+  "They should have counted our batteries before starting this.",
+  "We will be waiting at the marker with engines hot.",
+  "They can explain this mistake to their survivors.",
+  "If they want the lane, they can bleed for every kilometer.",
+  "They are overextended and about to notice.",
+  "This attack ends when they run out of nerve or hulls.",
+  "They came looking for weakness and found a hard lock.",
+  "We have seen worse threats from worse captains.",
+  "Let them commit. Retreat is harder after the first burn.",
+  "They are not taking our ground by headline.",
+  "We will make this expensive enough to remember.",
+  "They are welcome to test the perimeter.",
+  "They opened the door. Now they can eat the room.",
+  "Stand firm. They have already made the fatal mistake."
+];
 const SCENARIO_PATH = "./scenarioDat.json";
 const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
 const LEGACY_NODE_ALIASES = {
@@ -1356,10 +1383,11 @@ function postCampaignNewsCard(campaign) {
   const location = nodeLabel(CAMPAIGN_LOCATION_NODE_ID) || "Baron's Market";
   const aggressorName = factionDisplayName(campaign.aggressorFaction);
   const defenderName = factionDisplayName(campaign.defenderFaction);
+  const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
   const item = {
     id: campaign.id,
     headline: `${aggressorName} attacks ${defenderName} at ${location}`,
-    body: `${fmtTime(state.tick)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. Campaign monitors expect the action to remain active for ${FACTION_HEAT_CAMPAIGN_DURATION_SECONDS}s.`,
+    body: `${fmtTime(state.tick)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${FACTION_HEAT_CAMPAIGN_DURATION_SECONDS}s.`,
     tick: state.tick,
     timestamp: fmtTime(state.tick),
     aggressorFaction: campaign.aggressorFaction,
