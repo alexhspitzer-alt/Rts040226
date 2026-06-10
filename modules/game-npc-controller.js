@@ -23,6 +23,120 @@ const AMBIENT_NEUTRAL_LINES = [
   "Routine wait on this end. Wake is low, drives are cool, patience is negotiable.",
 ];
 
+
+const OBSERVATION_CHATTER_CHANCE = 0.25;
+
+const OBSERVATION_OPENERS = [
+  "Anyone else",
+  "Does anyone else",
+  "Am I the only one",
+  "Traffic control seeing this too",
+  "Quick scope check",
+  "Small question",
+  "Not to alarm anyone, but",
+];
+
+const OBSERVATION_VERBS = [
+  "seeing",
+  "tracking",
+  "picking up",
+  "getting returns from",
+  "watching",
+  "reading",
+];
+
+const OBSERVATION_TAGS = {
+  sensor: {
+    objects: [
+      "that weird blip",
+      "that split return",
+      "that ghost contact",
+      "the lidar smear",
+      "the static bloom",
+    ],
+    comments: [
+      "Looks like a mullet.",
+      "That is not moving like debris should move.",
+      "It has no transponder and too much personality.",
+      "The scope dislikes it.",
+    ],
+  },
+  weather: {
+    objects: [
+      "that storm front",
+      "that pressure curl",
+      "the dust plume",
+      "the thermal bloom",
+      "the cold spot",
+    ],
+    comments: [
+      "Seems like bad luck.",
+      "That is either weather or a lawsuit forming.",
+      "No hazard yet. Strong audition, though.",
+      "I would prefer it did that somewhere else.",
+    ],
+  },
+  debris: {
+    objects: [
+      "that debris cluster",
+      "the loose cargo signature",
+      "the tumbling object",
+      "that glitter cloud",
+      "the suspiciously organized debris",
+    ],
+    comments: [
+      "Somebody lost something with opinions.",
+      "If that is cargo, it has become philosophical.",
+      "Probably harmless, which is what harmful things want us to think.",
+      "I have seen better behavior from spilled bolts.",
+    ],
+  },
+};
+
+const OBSERVATION_LOCATIONS = [
+  "off Indigo",
+  "above Baron's Market",
+  "near the Ring Transfer Lane",
+  "outside Anchor Station",
+  "over Oxblood",
+  "below the high lane",
+  "near the Corkscrew outbound marker",
+  "right where the map says nothing should be",
+];
+
+function capitalizeFirst(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+}
+
+function makeObservation(category = null) {
+  const categories = Object.keys(OBSERVATION_TAGS);
+  const tag = OBSERVATION_TAGS[category] ? OBSERVATION_TAGS[category] : OBSERVATION_TAGS[randomPick(categories)];
+  const opener = randomPick(OBSERVATION_OPENERS);
+  const verb = randomPick(OBSERVATION_VERBS);
+  const object = randomPick(tag.objects);
+  const location = randomPick(OBSERVATION_LOCATIONS);
+  const comment = randomPick(tag.comments);
+  const questionOpeners = ["Anyone else", "Does anyone else", "Am I the only one", "Not to alarm anyone, but"];
+  const openerTemplates = questionOpeners.includes(opener)
+    ? [
+      `${opener} ${verb} ${object} ${location}? ${comment}`,
+      `${opener} ${verb} ${object}? ${comment}`,
+    ]
+    : [
+      `${opener}: ${verb} ${object} ${location}. ${comment}`,
+      `${opener}: ${verb} ${object}. ${comment}`,
+    ];
+  const templates = [
+    randomPick(openerTemplates),
+    `${capitalizeFirst(verb)} ${object} ${location}. ${comment}`,
+    `${capitalizeFirst(object)} ${location}. ${comment}`,
+  ];
+
+  return randomPick(templates);
+}
+
 const AMBIENT_LOCATION_SHIP_RULES = [
   {
     key: "arcworks-core",
@@ -536,7 +650,10 @@ export function createNpcController({
   }
 
   function scheduleAmbientNeutralLine(npc) {
-    const line = randomPick(neutralDialoguePool(npc)) || randomPick(AMBIENT_NEUTRAL_LINES);
+    const useObservation = Math.random() < OBSERVATION_CHATTER_CHANCE;
+    const line = useObservation
+      ? makeObservation()
+      : randomPick(neutralDialoguePool(npc)) || randomPick(AMBIENT_NEUTRAL_LINES);
     const delay = 1;
     npc.lastDialogueTick = state.tick + delay;
     npc.dialogueCount = (npc.dialogueCount || 0) + 1;
