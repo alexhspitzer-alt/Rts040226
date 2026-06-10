@@ -222,6 +222,79 @@ function pickLineVariant(pool, excludeIndex = -1) {
 
 
 
+const FIRE_AGGRESSOR_LOCKS = [
+  "Target locked",
+  "Guns hot",
+  "Missile lock confirmed",
+  "Cannon batteries live",
+  "Target solution confirmed",
+  "Launch tubes green",
+  "Hard lock achieved",
+  "Main batteries hot",
+];
+
+const FIRE_AGGRESSOR_ACTIONS = [
+  "weapons free",
+  "fire at will",
+  "launching missiles",
+  "opening cannon fire",
+  "firing on their drive section",
+  "commence firing pass",
+  "missiles away",
+  "engage the target",
+  "send the missiles",
+  "all guns fire",
+];
+
+const FIRE_RESPONSE_ALERTS = [
+  "Countermeasures launched",
+  "Ordnance incoming",
+  "We're under attack",
+  "Missiles inbound",
+  "Cannon fire incoming",
+  "Weapons impact warning",
+  "Hostile launch detected",
+  "They have opened fire",
+  "Direct fire incoming",
+  "Hull is under fire",
+];
+
+const FIRE_RESPONSE_ACTIONS = [
+  "break hard",
+  "engines to full",
+  "distress beacon active",
+  "dumping decoys",
+  "countermeasures away",
+  "emergency burn now",
+  "evasive burn now",
+  "roll and burn clear",
+  "damage crews stand by",
+  "broadcasting distress",
+];
+
+function sentenceCase(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+}
+
+function buildFireBark(openers, actions) {
+  return `${sentenceCase(randomPick(openers))}. ${sentenceCase(randomPick(actions))}.`;
+}
+
+function buildAggressorFireBark() {
+  return buildFireBark(FIRE_AGGRESSOR_LOCKS, FIRE_AGGRESSOR_ACTIONS);
+}
+
+function buildResponderFireBark() {
+  return buildFireBark(FIRE_RESPONSE_ALERTS, FIRE_RESPONSE_ACTIONS);
+}
+
+function pickConflictBark(pool) {
+  if (typeof pool === "function") return pool();
+  return randomPick(pool);
+}
+
 const CONFLICT_AGGRESSOR_LINES = {
   civilian: {
     notice: [
@@ -253,28 +326,7 @@ const CONFLICT_AGGRESSOR_LINES = {
       "Kill the swagger, hold vector, and wait for traffic control.",
       "You are now under active challenge. Keep hands visible and drives low.",
     ],
-    fire: [
-      "Target locked. Weapons free.",
-      "Guns hot. Fire at will.",
-      "Engaging with missiles. Launching now.",
-      "Engaging with cannons. Sustained fire.",
-      "Target painted. Firing now.",
-      "Missile lock confirmed. Launching on target.",
-      "Cannon batteries live. Opening fire.",
-      "Weapons are hot. Firing on their drive section.",
-      "Target solution confirmed. All guns, fire.",
-      "Missiles away. Keep the target painted.",
-      "Opening cannon fire. Walk rounds onto target.",
-      "Fire mission active. Disable that ship.",
-      "Weapons free. Put missiles into their vector.",
-      "Target acquired. Commence firing pass.",
-      "Cannons armed. Firing burst pattern now.",
-      "Launch tubes green. Missiles away.",
-      "Hard lock achieved. Fire everything authorized.",
-      "Guns on target. Begin weapons engagement.",
-      "Firing solution stable. Send the missiles.",
-      "Main batteries hot. Engage the target.",
-    ],
+    fire: buildAggressorFireBark,
     resolved: [
       "Contact is disengaging.",
       "Disengaging. Keep your ego outside this lane.",
@@ -299,28 +351,7 @@ const CONFLICT_RESPONDER_LINES = {
     "Complying. This challenge is being recorded and forwarded.",
     "Holding vector under protest. Do not push this further.",
   ],
-  fire: [
-    "Countermeasures launched.",
-    "Ordnance incoming. Break hard.",
-    "We're under attack! Engines to full!",
-    "Distress beacon active. Taking fire.",
-    "Incoming fire. Evasive burn now.",
-    "Missiles inbound. Dumping decoys.",
-    "Cannon fire incoming. Brace and evade.",
-    "They are shooting at us. Full evasive thrust.",
-    "Weapons impact warning. Countermeasures away.",
-    "Under missile attack. Spoofers active.",
-    "Taking cannon fire. Get us out of their arc.",
-    "Incoming weapons fire. Emergency burn now.",
-    "Hostile launch detected. Countermeasures out.",
-    "We are being targeted. Distress beacon is live.",
-    "Shots incoming. Roll and burn clear.",
-    "Missile plume detected. Engines to emergency power.",
-    "Hull is under fire. Broadcasting distress.",
-    "Weapons incoming. Decoys and chaff away.",
-    "They have opened fire. Evasive pattern now.",
-    "Direct fire incoming. Damage crews stand by.",
-  ],
+  fire: buildResponderFireBark,
   resolved: [
     "Copy disengagement. Resuming planned route.",
     "Disengagement acknowledged. Returning to traffic pattern.",
@@ -939,18 +970,18 @@ export function createNpcController({
     const aggressorFaction = aggressor.faction || "civilian";
     const aggressorPool = aggressorFaction === "civilian" ? CONFLICT_AGGRESSOR_LINES.civilian : CONFLICT_AGGRESSOR_LINES.armed;
     const aggressorLinesByStage = {
-      notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick(aggressorPool.notice)}`,
-      verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick(aggressorPool.verbal)}`,
-      intercept: `[${aggressorFaction === "civilian" ? "Verbal" : stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick((aggressorPool.intercept || aggressorPool.verbal))}`,
-      fire: `[${aggressorFaction === "civilian" ? "Verbal" : stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick((aggressorPool.fire || aggressorPool.verbal))}`,
-      resolved: `[Resolved] to ${responder.callsign} @ ${location}: ${randomPick((aggressorPool.resolved || ["Contact is disengaging."]))}`,
+      notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: ${pickConflictBark(aggressorPool.notice)}`,
+      verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: ${pickConflictBark(aggressorPool.verbal)}`,
+      intercept: `[${aggressorFaction === "civilian" ? "Verbal" : stageLabel}] to ${responder.callsign} @ ${location}: ${pickConflictBark((aggressorPool.intercept || aggressorPool.verbal))}`,
+      fire: `[${aggressorFaction === "civilian" ? "Verbal" : stageLabel}] to ${responder.callsign} @ ${location}: ${pickConflictBark((aggressorPool.fire || aggressorPool.verbal))}`,
+      resolved: `[Resolved] to ${responder.callsign} @ ${location}: ${pickConflictBark((aggressorPool.resolved || ["Contact is disengaging."]))}`,
     };
     const responderLinesByStage = {
-      notice: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.notice)}`,
-      verbal: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.verbal)}`,
-      intercept: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.intercept)}`,
-      fire: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.fire)}`,
-      resolved: `[Resolved] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.resolved)}`,
+      notice: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.notice)}`,
+      verbal: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.verbal)}`,
+      intercept: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.intercept)}`,
+      fire: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.fire)}`,
+      resolved: `[Resolved] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.resolved)}`,
     };
     scheduleCharacterMessage(
       1,
