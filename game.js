@@ -695,12 +695,13 @@ function characterSpeak(characterName, bucket, fallback, type = "comms", statusO
   logLine(`${characterName} ${context}: ${text}`, lineType);
 }
 
-function scheduleCharacterMessage(delay, characterName, text, statusOverride = null, type = "comms") {
+function scheduleCharacterMessage(delay, characterName, text, statusOverride = null, type = "comms", shouldDeliver = null) {
   const isBluFreightCaptain = Object.values(SHIP_CAPTAINS).includes(characterName);
   const resolvedType = type === "comms"
     ? (isBluFreightCaptain ? "comms-blufreight" : speakerMessageType(characterName))
     : type;
   scheduleMessage(delay, () => {
+    if (typeof shouldDeliver === "function" && !shouldDeliver()) return null;
     if (!isContactPresent(characterName)) return null;
     return `${characterName} ${speakerContext(characterName, statusOverride)}: ${text}`;
   }, resolvedType);

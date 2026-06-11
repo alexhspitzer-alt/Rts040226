@@ -983,7 +983,14 @@ export function createNpcController({
     npc.lastDialogueTick = state.tick + delay;
     npc.dialogueCount = (npc.dialogueCount || 0) + 1;
     npc.nextDialogueTick = nextAmbientDialogueTick();
-    scheduleCharacterMessage(delay, npc.captainName || npc.callsign, line, `ambient-npc:${npc.id}`, commsTypeForFaction(npc.faction));
+    scheduleCharacterMessage(
+      delay,
+      npc.captainName || npc.callsign,
+      line,
+      `ambient-npc:${npc.id}`,
+      commsTypeForFaction(npc.faction),
+      () => playerLocalToNode(npc.at)
+    );
   }
 
   function spawnAmbientLocationShip(nodeId) {
@@ -1670,7 +1677,7 @@ export function createNpcController({
 
   function playerLocalToNode(nodeId) {
     if (nodeId === "anchor_station") return true;
-    return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "enroute"));
+    return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "arrived_pending_report"));
   }
   function conflictDecayPerHeartbeat() {
     const nodeCount = Object.keys(getNodes() || {}).length;
@@ -1679,9 +1686,17 @@ export function createNpcController({
   }
 
 
-  function scheduleNpcConflictMessage(delay, npc, message, status, type) {
+  function scheduleNpcConflictMessage(delay, npc, message, status, type, nodeId = null) {
     if (npc?.mutedFromChatter) return;
-    scheduleCharacterMessage(delay, npc?.captainName || npc?.callsign, message, status, type);
+    const localNodeId = nodeId || npc?.at || null;
+    scheduleCharacterMessage(
+      delay,
+      npc?.captainName || npc?.callsign,
+      message,
+      status,
+      type,
+      localNodeId ? () => playerLocalToNode(localNodeId) : null
+    );
   }
 
   function emitConflictLine(encounter, npcById) {
