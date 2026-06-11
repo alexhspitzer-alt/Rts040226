@@ -437,6 +437,40 @@ const CONFLICT_GAIN_BASE = 0.12;
 const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
 const COLLATERAL_REPRISAL_CHANCE_NO_EFFECT = 0.03;
 const COLLATERAL_REPRISAL_CHANCE_MINOR_DAMAGE = 0.35;
+const CAMPAIGN_ATTACK_WINDOW_SECONDS = 60;
+const CAMPAIGN_ATTACKS_PER_WINDOW = 6;
+const CAMPAIGN_ATTACKER_COOLDOWN_SECONDS = 25;
+const CAMPAIGN_ATTACK_TICK_SECONDS = 10;
+const CAMPAIGN_HEAT_HOSTILITY_MAX = 0.16;
+
+const CAMPAIGN_ATTACKER_CLASSES = {
+  capital: [
+    { registryKey: "condor", className: "Condor", speed: 3 },
+    { registryKey: "matador", className: "Matador", speed: 3 },
+    { registryKey: "ml-x", className: "ML-X", speed: 1 },
+  ],
+  support: [
+    { registryKey: "pelican", className: "Pelican", speed: 2 },
+    { registryKey: "mm-ix", className: "MM-IX", speed: 2 },
+    { registryKey: "sledge", className: "Sledge", speed: 2 },
+  ],
+  light: [
+    { registryKey: "kestrel", className: "Kestrel", speed: 6 },
+    { registryKey: "ibis", className: "Ibis", speed: 4 },
+    { registryKey: "mk-iv", className: "MK-IV", speed: 3 },
+    { registryKey: "dragoon", className: "Dragoon", speed: 4 },
+  ],
+};
+
+const CAMPAIGN_SHIP_COUNT_BY_CLASS = {
+  capital: { min: 1, max: 3 },
+  support: { min: 2, max: 4 },
+  light: { min: 3, max: 5 },
+};
+const CAMPAIGN_MIN_DURATION_SECONDS = 180;
+const CAMPAIGN_MAX_DURATION_SECONDS = 540;
+const CAMPAIGN_MIN_SHIPS = 7;
+const CAMPAIGN_MAX_SHIPS = 11;
 
 function randomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -949,9 +983,20 @@ export function createNpcController({
     return 0.1;
   }
 
+  function heatHostilityToward(targetFaction, sourceFaction) {
+    if (!targetFaction || targetFaction === "civilian" || targetFaction === sourceFaction) return 0;
+    const heat = Number(state.factionHeat?.[targetFaction] || 0);
+    if (!Number.isFinite(heat) || heat <= 0) return 0;
+    return clamp(0, CAMPAIGN_HEAT_HOSTILITY_MAX, (heat / 120) * CAMPAIGN_HEAT_HOSTILITY_MAX);
+  }
+
+  function localHostilityScore(source, target) {
+    return factionHostility(source?.faction, target?.faction) + heatHostilityToward(target?.faction, source?.faction);
+  }
+
   function chooseAggressor(a, b) {
-    const ab = factionHostility(a.faction, b.faction);
-    const ba = factionHostility(b.faction, a.faction);
+    const ab = localHostilityScore(a, b);
+    const ba = localHostilityScore(b, a);
     if (ab > ba) return { aggressor: a, responder: b, hostility: ab };
     if (ba > ab) return { aggressor: b, responder: a, hostility: ba };
     return String(a.id) <= String(b.id)
@@ -1222,6 +1267,32 @@ export function createNpcController({
     return `${formatCombatResultLine(event.direct, "Reprisal")} Trigger: ${event.trigger.defender.callsign} ${collateralReprisalTriggerLabel(event.trigger.outcome)}.`;
   }
 
+  function scheduleCombatExchangeMessages(exchange, nodeId, initialDelay = 1, directPrefix = "Fire") {
+    scheduleNpcConflictMessage(
+      initialDelay,
+      exchange.direct.attacker,
+      `${formatCombatResultLine(exchange.direct, directPrefix)} ${exchange.direct.outcome === "major_damage" || exchange.direct.outcome === "kill" ? `${exchange.direct.defender.callsign} cannot return fire.` : ""}`.trim(),
+      "interdicting",
+      "comms"
+    );
+    exchange.collateral.forEach((result, idx) => {
+      scheduleNpcConflictMessage(initialDelay + 1 + idx, result.defender, formatCombatResultLine(result, "Collateral"), "damaged", "comms");
+    });
+    if (exchange.returnFire) {
+      const delay = initialDelay + 1 + exchange.collateral.length;
+      scheduleNpcConflictMessage(
+        delay,
+        exchange.returnFire.attacker,
+        formatCombatResultLine(exchange.returnFire, "Return fire"),
+        exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
+        "comms"
+      );
+      exchange.returnCollateral.forEach((result, idx) => {
+        scheduleNpcConflictMessage(delay + 1 + idx, result.defender, formatCombatResultLine(result, "Collateral"), "damaged", "comms");
+      });
+    }
+  }
+
   function resolveCombatExchange(aggressor, responder, nodeId) {
     const direct = resolveDirectCombat(aggressor, responder);
     const collateralResults = resolveCollateralVolley(aggressor, responder, nodeId);
@@ -1273,6 +1344,155 @@ export function createNpcController({
     (exchange.returnCollateralReprisals || []).forEach((event) => {
       notifyConflictFire(event.direct, nodeId, false);
       (event.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+    });
+  }
+
+  function campaignCountPlan(durationSeconds) {
+    const durationRatio = clamp(
+      0,
+      1,
+      (durationSeconds - CAMPAIGN_MIN_DURATION_SECONDS) / (CAMPAIGN_MAX_DURATION_SECONDS - CAMPAIGN_MIN_DURATION_SECONDS)
+    );
+    const targetTotal = Math.round(CAMPAIGN_MIN_SHIPS + durationRatio * (CAMPAIGN_MAX_SHIPS - CAMPAIGN_MIN_SHIPS));
+    const counts = Object.fromEntries(
+      Object.entries(CAMPAIGN_SHIP_COUNT_BY_CLASS).map(([group, range]) => [group, range.min])
+    );
+    let remaining = targetTotal - Object.values(counts).reduce((sum, count) => sum + count, 0);
+    while (remaining > 0) {
+      const availableGroups = Object.entries(CAMPAIGN_SHIP_COUNT_BY_CLASS)
+        .filter(([group, range]) => counts[group] < range.max)
+        .map(([group]) => group);
+      const group = randomPick(availableGroups);
+      if (!group) break;
+      counts[group] += 1;
+      remaining -= 1;
+    }
+    return counts;
+  }
+
+  function makeCampaignAttacker(campaign, template, ordinal) {
+    const id = `${campaign.id}-${template.registryKey}-${ordinal}`.replace(/[^a-z0-9_-]/gi, "-").toLowerCase();
+    const callsign = `${template.className} Campaign-${ordinal}`;
+    return {
+      id,
+      callsign,
+      captainName: `${template.className} Attack Lead ${ordinal}`,
+      faction: campaign.aggressorFaction,
+      campaignFaction: campaign.aggressorFaction,
+      role: "campaign_attacker",
+      registryKey: template.registryKey,
+      at: campaign.locationNodeId,
+      status: "idle",
+      departAt: Infinity,
+      arrivalTick: 0,
+      allowedNodeIds: [campaign.locationNodeId],
+      campaignId: campaign.id,
+      mutedFromChatter: false,
+    };
+  }
+
+  function activeCampaignNpcs(campaign, factionRole = null) {
+    return (state.civilianNpcs || []).filter((npc) => {
+      if (!npc || !combatCapable(npc) || npc.at !== campaign.locationNodeId) return false;
+      if (factionRole === "attacker") return npc.campaignId === campaign.id;
+      if (factionRole === "defender") return npc.faction === campaign.defenderFaction && npc.campaignId !== campaign.id;
+      return true;
+    });
+  }
+
+  function spawnCampaignAttackers(campaign) {
+    const counts = campaignCountPlan(Number(campaign.durationSeconds || 180));
+    const spawnedIds = [];
+    let ordinal = 1;
+    Object.entries(counts).forEach(([group, count]) => {
+      for (let i = 0; i < count; i += 1) {
+        const template = randomPick(CAMPAIGN_ATTACKER_CLASSES[group]);
+        if (!template) continue;
+        const npc = makeCampaignAttacker(campaign, template, ordinal);
+        ordinal += 1;
+        state.civilianNpcs.push(npc);
+        shipSpeedById[npc.id] = template.speed;
+        spawnedIds.push(npc.id);
+      }
+    });
+    campaign.attackerShipIds = spawnedIds;
+    campaign.attackWindowStartedAt = state.tick;
+    campaign.attackWindowShots = 0;
+    campaign.attackerCooldowns = {};
+    campaign.nextAttackTick = state.tick + CAMPAIGN_ATTACK_TICK_SECONDS;
+    return spawnedIds;
+  }
+
+  function ensureCampaignDefendersAtLocation(campaign) {
+    const defenders = (state.civilianNpcs || []).filter((npc) => (
+      npc?.faction === campaign.defenderFaction
+      && npc.campaignId !== campaign.id
+      && combatCapable(npc)
+    ));
+    const alreadyLocal = defenders.filter((npc) => npc.at === campaign.locationNodeId);
+    if (alreadyLocal.length || !defenders.length) return alreadyLocal;
+    const defender = randomPick(defenders);
+    defender.at = campaign.locationNodeId;
+    defender.destination = null;
+    defender.status = "idle";
+    defender.departAt = campaign.endsAt || Infinity;
+    defender.arrivalTick = 0;
+    return [defender];
+  }
+
+  function campaignCanFire(campaign, attacker) {
+    if (!attacker?.id) return false;
+    if (state.tick - (campaign.attackWindowStartedAt || campaign.startedAt || state.tick) >= CAMPAIGN_ATTACK_WINDOW_SECONDS) {
+      campaign.attackWindowStartedAt = state.tick;
+      campaign.attackWindowShots = 0;
+    }
+    if ((campaign.attackWindowShots || 0) >= CAMPAIGN_ATTACKS_PER_WINDOW) return false;
+    return state.tick >= (campaign.attackerCooldowns?.[attacker.id] || 0);
+  }
+
+  function recordCampaignFire(campaign, attacker) {
+    campaign.attackWindowShots = (campaign.attackWindowShots || 0) + 1;
+    campaign.attackerCooldowns = campaign.attackerCooldowns || {};
+    campaign.attackerCooldowns[attacker.id] = state.tick + CAMPAIGN_ATTACKER_COOLDOWN_SECONDS;
+  }
+
+  function campaignOpeningFire(campaign) {
+    const attackers = activeCampaignNpcs(campaign, "attacker");
+    const defenders = ensureCampaignDefendersAtLocation(campaign).filter((npc) => hasGuns(npc));
+    defenders.forEach((defender, idx) => {
+      const target = randomPick(attackers.filter(combatCapable));
+      if (!target) return;
+      const exchange = resolveCombatExchange(defender, target, campaign.locationNodeId);
+      notifyCombatExchangeHeat(exchange, campaign.locationNodeId);
+      if (playerLocalToNode(campaign.locationNodeId)) scheduleCombatExchangeMessages(exchange, campaign.locationNodeId, 2 + idx, "Defender fire");
+    });
+  }
+
+  function updateCampaignCombat() {
+    (state.activeFactionCampaigns || []).forEach((campaign) => {
+      if (!campaign || campaign.resolved || campaign.endsAt <= state.tick) return;
+      if (!campaign.attackerShipIds?.length) spawnCampaignAttackers(campaign);
+      if (state.tick < (campaign.nextAttackTick || 0)) return;
+      campaign.nextAttackTick = state.tick + CAMPAIGN_ATTACK_TICK_SECONDS;
+      const attackers = activeCampaignNpcs(campaign, "attacker").filter((npc) => campaignCanFire(campaign, npc));
+      const defenders = activeCampaignNpcs(campaign, "defender");
+      const attacker = randomPick(attackers);
+      const target = randomPick(defenders);
+      if (!attacker || !target) return;
+      recordCampaignFire(campaign, attacker);
+      const exchange = resolveCombatExchange(attacker, target, campaign.locationNodeId);
+      notifyCombatExchangeHeat(exchange, campaign.locationNodeId);
+      if (playerLocalToNode(campaign.locationNodeId)) scheduleCombatExchangeMessages(exchange, campaign.locationNodeId, 1, "Campaign fire");
+    });
+  }
+
+  function removeCampaignAttackers(campaign) {
+    const ids = new Set(campaign?.attackerShipIds || []);
+    if (!ids.size) return;
+    state.civilianNpcs = (state.civilianNpcs || []).filter((npc) => {
+      if (!ids.has(npc.id)) return true;
+      delete shipSpeedById[npc.id];
+      return false;
     });
   }
 
@@ -1758,10 +1978,11 @@ export function createNpcController({
       updateAmbientLocationSpawns();
       updateAmbientLocationDialogue();
       updateAmbientLocationRemovals();
+      updateCampaignCombat();
       const npcs = state.civilianNpcs || [];
-      updateConflictEncounters(npcs.filter((npc) => !npc.ambientLocationSpawn && mutedNpcActiveForConflict(npc)));
+      updateConflictEncounters(npcs.filter((npc) => !npc.ambientLocationSpawn && !npc.campaignId && mutedNpcActiveForConflict(npc)));
       npcs.forEach((npc) => {
-        if (npc.ambientLocationSpawn) return;
+        if (npc.ambientLocationSpawn || npc.campaignId) return;
         if (!combatCapable(npc)) return;
         if (npc.faction === "ufp" || npc.faction === "blister" || npc.faction === "arcworks" || npc.routeProfile) {
           const nodeIds = Object.keys(getNodes());
@@ -1796,6 +2017,15 @@ export function createNpcController({
           idleNpcAtNode(npc, npc.destination || npc.at);
         }
       });
+    },
+    startCampaign(campaign) {
+      if (!campaign?.id || !campaign.locationNodeId) return [];
+      const spawned = spawnCampaignAttackers(campaign);
+      campaignOpeningFire(campaign);
+      return spawned;
+    },
+    endCampaign(campaign) {
+      removeCampaignAttackers(campaign);
     },
     getConflictDebugLines() {
       const entries = sortedConflictDebugEntries();

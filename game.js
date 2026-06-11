@@ -42,7 +42,8 @@ const OPERATING_COST_INTERVAL_SECONDS = 15;
 const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
-const FACTION_HEAT_CAMPAIGN_DURATION_SECONDS = 180;
+const FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS = 180;
+const FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS = 540;
 const FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS = 10;
 const FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD = 100;
 const FACTION_HEAT_CAMPAIGN_ROLL_FLOOR = 25;
@@ -56,7 +57,38 @@ const FACTION_DISPLAY_NAMES = {
   arcworks: "Arcworks",
   blister: "Blister",
 };
-const CAMPAIGN_LOCATION_NODE_ID = "barons_market";
+const CAMPAIGN_HOME_BASE_NODE_IDS = {
+  ufp: [
+    "ufp_indigo_system_administration",
+    "ufp_outpost_alpha",
+    "ufp_outpost_bravo",
+    "ufp_outpost_delta",
+    "ufp_science_station",
+    "anchor_station",
+    "indigo_station",
+    "barons_market",
+  ],
+  arcworks: [
+    "arcworks_operations_hub",
+    "arcworks_militia_barracks",
+    "arcworks_fuel_depot",
+    "onion_skin",
+    "refinery",
+    "condenser_columns",
+    "barons_market",
+    "indigo_station",
+  ],
+  blister: [
+    "deep_space_transfer_lane",
+    "high_orbit_transfer_lane",
+    "ring_transfer_lane",
+    "low_orbit_transfer_lane",
+    "yard",
+    "refinery",
+    "barons_market",
+  ],
+};
+const CAMPAIGN_FALLBACK_LOCATION_NODE_ID = "barons_market";
 const CAMPAIGN_DEFENDER_RESPONSE_LINES = [
   "Piss off and try someone easier.",
   "I'd like to see them try.",
@@ -1357,7 +1389,7 @@ function factionHeatDebugLines() {
       ? state.activeFactionCampaigns.find((entry) => entry.defenderFaction === faction && entry.endsAt > state.tick)
       : null;
     const campaignLabel = campaign
-      ? ` | active campaign: ${factionDisplayName(campaign.aggressorFaction)} attacking until ${fmtTime(campaign.endsAt)}`
+      ? ` | active campaign: ${factionDisplayName(campaign.aggressorFaction)} attacking ${nodeLabel(campaign.locationNodeId) || "local assets"} until ${fmtTime(campaign.endsAt)}`
       : "";
     lines.push(`${factionDisplayName(faction)}: heat ${heat}/${FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD} | campaign chance ${(probability * 100).toFixed(0)}%${campaignLabel}`);
   });
@@ -1403,15 +1435,33 @@ function chooseCampaignAggressor(defenderFaction) {
   return weighted[Math.floor(Math.random() * weighted.length)] || candidates[0];
 }
 
+function pickCampaignDurationSeconds() {
+  return FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS
+    + Math.floor(Math.random() * (FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS - FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS + 1));
+}
+
+function campaignHomeBaseCandidates(defenderFaction) {
+  const defender = normalizeHeatFaction(defenderFaction);
+  const explicit = CAMPAIGN_HOME_BASE_NODE_IDS[defender] || [];
+  return explicit.filter((nodeId) => Boolean(nodes[nodeId]));
+}
+
+function chooseCampaignLocation(defenderFaction) {
+  const candidates = campaignHomeBaseCandidates(defenderFaction);
+  if (candidates.length) return candidates[Math.floor(Math.random() * candidates.length)];
+  if (nodes[CAMPAIGN_FALLBACK_LOCATION_NODE_ID]) return CAMPAIGN_FALLBACK_LOCATION_NODE_ID;
+  return Object.keys(nodes)[0] || CAMPAIGN_FALLBACK_LOCATION_NODE_ID;
+}
+
 function postCampaignNewsCard(campaign) {
-  const location = nodeLabel(CAMPAIGN_LOCATION_NODE_ID) || "Baron's Market";
+  const location = nodeLabel(campaign.locationNodeId) || "Baron's Market";
   const aggressorName = factionDisplayName(campaign.aggressorFaction);
   const defenderName = factionDisplayName(campaign.defenderFaction);
   const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
   const item = {
     id: campaign.id,
     headline: `${aggressorName} attacks ${defenderName} at ${location}`,
-    body: `${fmtTime(state.tick)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${FACTION_HEAT_CAMPAIGN_DURATION_SECONDS}s.`,
+    body: `${fmtTime(state.tick)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${campaign.durationSeconds}s.`,
     tick: state.tick,
     timestamp: fmtTime(state.tick),
     aggressorFaction: campaign.aggressorFaction,
@@ -1429,16 +1479,19 @@ function startFactionCampaign(defenderFaction) {
   if (!defender || activeCampaignAgainst(defender)) return null;
   const aggressor = chooseCampaignAggressor(defender);
   if (!aggressor) return null;
+  const durationSeconds = pickCampaignDurationSeconds();
   const campaign = {
     id: `campaign-${state.tick}-${aggressor}-${defender}`,
     key: heatCampaignKey(aggressor, defender),
     aggressorFaction: aggressor,
     defenderFaction: defender,
-    locationNodeId: CAMPAIGN_LOCATION_NODE_ID,
+    locationNodeId: chooseCampaignLocation(defender),
     startedAt: state.tick,
-    endsAt: state.tick + FACTION_HEAT_CAMPAIGN_DURATION_SECONDS,
+    durationSeconds,
+    endsAt: state.tick + durationSeconds,
   };
   state.activeFactionCampaigns.push(campaign);
+  if (NpcController?.startCampaign) NpcController.startCampaign(campaign);
   postCampaignNewsCard(campaign);
   return campaign;
 }
@@ -1466,7 +1519,7 @@ function updateFactionCampaigns() {
     if (campaign.endsAt <= state.tick && !campaign.resolved) {
       campaign.resolved = true;
       if (campaign.defenderFaction) state.factionHeat[campaign.defenderFaction] = 0;
-      const location = nodeLabel(campaign.locationNodeId || CAMPAIGN_LOCATION_NODE_ID) || "Baron's Market";
+      const location = nodeLabel(campaign.locationNodeId || CAMPAIGN_FALLBACK_LOCATION_NODE_ID) || "Baron's Market";
       state.news.push({
         id: `${campaign.id}-resolved`,
         headline: `${factionDisplayName(campaign.aggressorFaction)} campaign at ${location} winds down`,
@@ -1477,6 +1530,7 @@ function updateFactionCampaigns() {
         defenderFaction: campaign.defenderFaction,
         location,
       });
+      if (NpcController?.endCampaign) NpcController.endCampaign(campaign);
       renderNews();
       logLine(`News update: ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} has ended.`, "sys");
     }
