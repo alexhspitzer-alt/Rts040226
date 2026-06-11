@@ -198,6 +198,26 @@ h1 {
   font-weight: 700;
 }
 
+.news-item {
+  padding: 0.5rem 0.55rem;
+}
+
+.news-item strong {
+  display: block;
+  color: var(--color-text-link);
+  margin-bottom: 0.3rem;
+}
+
+.news-item p {
+  margin: 0;
+  color: var(--color-text-main);
+  line-height: 1.35;
+}
+
+.news-item-empty {
+  color: var(--color-text-muted);
+}
+
 .almanac-entry > summary {
   padding: 0.4rem 0.55rem;
   color: var(--color-text-link);

@@ -23,6 +23,326 @@ const AMBIENT_NEUTRAL_LINES = [
   "Routine wait on this end. Wake is low, drives are cool, patience is negotiable.",
 ];
 
+
+const OBSERVATION_CHATTER_CHANCE = 0.25;
+const QUESTION_CHATTER_CHANCE = 0.25;
+
+const OBSERVATION_OPENERS = [
+  "Anyone else",
+  "Does anyone else",
+  "Am I the only one",
+  "Traffic control seeing this too",
+  "Quick scope check",
+  "Small question",
+  "Not to alarm anyone, but",
+];
+
+const OBSERVATION_VERBS = [
+  "seeing",
+  "tracking",
+  "picking up",
+  "getting returns from",
+  "watching",
+  "reading",
+];
+
+const OBSERVATION_TAGS = {
+  sensor: {
+    objects: [
+      "that weird blip",
+      "that split return",
+      "that ghost contact",
+      "the lidar smear",
+      "the static bloom",
+    ],
+    comments: [
+      "Looks like a mullet.",
+      "That is not moving like debris should move.",
+      "It has no transponder and too much personality.",
+      "The scope dislikes it.",
+    ],
+  },
+  weather: {
+    objects: [
+      "that storm front",
+      "that pressure curl",
+      "the dust plume",
+      "the thermal bloom",
+      "the cold spot",
+    ],
+    comments: [
+      "Seems like bad luck.",
+      "That is either weather or a lawsuit forming.",
+      "No hazard yet. Strong audition, though.",
+      "I would prefer it did that somewhere else.",
+    ],
+  },
+  debris: {
+    objects: [
+      "that debris cluster",
+      "the loose cargo signature",
+      "the tumbling object",
+      "that glitter cloud",
+      "the suspiciously organized debris",
+    ],
+    comments: [
+      "Somebody lost something with opinions.",
+      "If that is cargo, it has become philosophical.",
+      "Probably harmless, which is what harmful things want us to think.",
+      "I have seen better behavior from spilled bolts.",
+    ],
+  },
+};
+
+const OBSERVATION_LOCATIONS = [
+  "off Indigo",
+  "above Baron's Market",
+  "near the Ring Transfer Lane",
+  "outside Anchor Station",
+  "over Oxblood",
+  "below the high lane",
+  "near the Corkscrew outbound marker",
+  "right where the map says nothing should be",
+];
+
+function capitalizeFirst(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+}
+
+function makeObservation(category = null) {
+  const categories = Object.keys(OBSERVATION_TAGS);
+  const tag = OBSERVATION_TAGS[category] ? OBSERVATION_TAGS[category] : OBSERVATION_TAGS[randomPick(categories)];
+  const opener = randomPick(OBSERVATION_OPENERS);
+  const verb = randomPick(OBSERVATION_VERBS);
+  const object = randomPick(tag.objects);
+  const location = randomPick(OBSERVATION_LOCATIONS);
+  const comment = randomPick(tag.comments);
+  const questionOpeners = ["Anyone else", "Does anyone else", "Am I the only one", "Not to alarm anyone, but"];
+  const openerTemplates = questionOpeners.includes(opener)
+    ? [
+      `${opener} ${verb} ${object} ${location}? ${comment}`,
+      `${opener} ${verb} ${object}? ${comment}`,
+    ]
+    : [
+      `${opener}: ${verb} ${object} ${location}. ${comment}`,
+      `${opener}: ${verb} ${object}. ${comment}`,
+    ];
+  const templates = [
+    randomPick(openerTemplates),
+    `${capitalizeFirst(verb)} ${object} ${location}. ${comment}`,
+    `${capitalizeFirst(object)} ${location}. ${comment}`,
+  ];
+
+  return randomPick(templates);
+}
+
+
+const QUESTION_BANKS = {
+  food: {
+    openers: [
+      "Any recommendations for",
+      "Anyone know where to get",
+      "Looking for",
+      "Trying to find",
+      "Can anyone recommend",
+      "Before morale gets worse, anyone know where to find",
+      "Station traffic, requesting leads on",
+      "Does anyone here trust",
+    ],
+    needs: [
+      "good huevos rancheros",
+      "coffee that tastes less like battery rinse",
+      "breakfast near the docks",
+      "noodles open past second shift",
+      "fried plantains that are not load-bearing",
+      "soup with visible ingredients",
+      "a bar with actual chairs",
+      "dumplings from a vendor with survivable reviews",
+      "something green and recently alive",
+      "eggs that did not come from a printer",
+      "a sandwich that understands gravity",
+      "cheap rice bowls near the commercial locks",
+      "tea that does not taste like warm gasket water",
+      "a pastry not wrapped in compliance plastic",
+    ],
+    locations: [
+      "on Anchor Station",
+      "near Baron's Market",
+      "at Indigo Station",
+      "around the Oxblood dock ring",
+      "near the refinery concourse",
+      "inside the low orbit transfer office",
+      "by the tug berths",
+      "near the commercial locks",
+      "under the old arrivals board",
+      "somewhere with chairs and fewer alarms",
+    ],
+    tags: [
+      "Low gravity acceptable. Low hygiene negotiable.",
+      "Crew morale is entering the soup phase.",
+      "Bonus if they do not ask what ship I came in on.",
+      "Preferably somewhere that accepts tired people as currency.",
+      "My last vending machine interaction was personal.",
+      "Asking before the captain starts eating checklist laminate.",
+      "Will trade gossip, filters, or one sincere apology.",
+      "Please do not recommend the place with the decorative shrimp tank again.",
+      "I am not strong enough for another protein rectangle.",
+    ],
+  },
+  repair: {
+    openers: [
+      "Looking for",
+      "Anyone know",
+      "Does anyone have",
+      "Can anyone recommend",
+      "Trying to find",
+      "Station traffic, requesting",
+      "Before we call this character-building, does anyone know",
+      "Asking before maintenance becomes a spiritual issue",
+    ],
+    needs: [
+      "someone who knows how to fix a thermoacoustic generator panel",
+      "a shop that can reseal a cracked heat exchanger",
+      "a tech willing to look at a whining pump bearing",
+      "replacement ceramic bushings for a tug coupler",
+      "a pressure-rated patch kit that is not expired",
+      "a dockside welder who answers comms",
+      "someone with a clean diagnostic rig",
+      "a spare actuator for an old Blue-series cargo clamp",
+      "a mechanic who understands pre-war refrigeration loops",
+      "a panel shop that will not laugh at legacy wiring",
+      "coolant hose by the meter",
+      "a replacement valve that does not come with a curse",
+      "a used intake fan with most of its dignity",
+      "someone who can convince a cargo latch to believe in itself",
+    ],
+    locations: [
+      "near Anchor Station",
+      "at Baron's Market",
+      "around Oxblood",
+      "on Indigo Station",
+      "near the refinery stacks",
+      "by the cargo elevators",
+      "inside the old maintenance arcade",
+      "somewhere that is not technically a scrapyard",
+      "behind the dockmaster's office",
+      "near any shop with lights still on",
+    ],
+    tags: [
+      "Preferably someone who will not call it vintage.",
+      "No questions about how it happened.",
+      "It is making a sound the manual describes as impossible.",
+      "We already tried hitting it. That was phase one.",
+      "Need skill, not confidence. Already have confidence.",
+      "Cash is available. Pride is not.",
+      "The smell is new, which feels diagnostically relevant.",
+      "It still works if nobody looks directly at it.",
+      "The panel is warm in a way I would describe as personal.",
+      "Manual says replace assembly. Manual has clearly never had a budget.",
+    ],
+  },
+  personal: {
+    openers: [
+      "Anyone know",
+      "Looking for",
+      "Trying to find",
+      "Does anyone have",
+      "Can anyone recommend",
+      "Station traffic, deeply regrettable question",
+      "Before this becomes a legal matter, anyone know",
+      "Asking for someone who has made poor choices",
+    ],
+    needs: [
+      "someone's ex-girlfriend who still has a cargo locker key",
+      "a roommate willing to move out before docking fees become shared property",
+      "a trading card collection appraiser who understands emotional damage",
+      "a person named Kel who may or may not owe me a helmet",
+      "someone who can mediate a dispute over freezer space",
+      "a buyer for several thousand pre-collapse trading cards",
+      "a witness who remembers who owned the purple suitcase",
+      "a way to return a jacket without restarting a relationship",
+      "someone who knows if holographic rookies are still worth anything",
+      "a neutral third party for a roommate with ferret energy",
+      "a place to sell cards without being judged by a twelve-year-old",
+      "someone who can explain why my ex is listed as emergency contact on a tug lease",
+      "a polite way to ask a former roommate where the good wrench went",
+      "anyone who collects tournament misprints and bad decisions",
+    ],
+    locations: [
+      "on Anchor Station",
+      "near Baron's Market",
+      "at Indigo Station",
+      "around the Oxblood dock ring",
+      "near the old market concourse",
+      "by the tug berths",
+      "inside the cheap lockers",
+      "near customs but not too near customs",
+      "somewhere discreet",
+      "preferably off-channel, actually",
+    ],
+    tags: [
+      "Payment available in cash or humiliation.",
+      "No authorities unless emotionally necessary.",
+      "This is not an emergency, but it is getting louder.",
+      "Please do not ask follow-up questions on main channel.",
+      "I have been told this is technically my fault.",
+      "The cards are sleeved. The feelings are not.",
+      "I need someone calm, cheap, and not friends with Mara.",
+      "Prefer answers from people with no stake in the breakup.",
+      "If you know what this is about, no you don't.",
+      "I am trying to make the responsible choice before lunch.",
+    ],
+  },
+};
+
+const QUESTION_MIX_INS = {
+  food: [
+    "Bonus if the place is not next to my ex's favorite noodle counter.",
+    "Will also accept trades for unopened card sleeves.",
+    "Repair shop nearby would help, since the captain broke morale and the kettle.",
+    "Need somewhere my roommate has not been banned from.",
+  ],
+  repair: [
+    "Nearby food recommendations also accepted for the crew member holding the panel shut.",
+    "Bonus if the shop accepts trading cards as collateral, hypothetically.",
+    "Preferably not operated by my former roommate.",
+    "If Mara works there, forget I asked.",
+  ],
+  personal: [
+    "Food recommendations nearby also welcome because this may take a while.",
+    "A repair shop with a forgiving back room would also solve part of this.",
+    "Will trade coolant hose, dumplings, or rare foils.",
+    "If this is about the dockside incident, different incident.",
+  ],
+};
+
+function makeStationQuestion(category = null, opts = {}) {
+  const categories = Object.keys(QUESTION_BANKS);
+  const primary = QUESTION_BANKS[category] ? category : randomPick(categories);
+  const bank = QUESTION_BANKS[primary];
+  const opener = randomPick(bank.openers);
+  const need = randomPick(bank.needs);
+  const location = randomPick(bank.locations);
+  const tagChance = opts.tagChance ?? 0.72;
+  const mixChance = opts.mixChance ?? 0.24;
+  const tag = Math.random() < tagChance ? ` ${randomPick(bank.tags)}` : "";
+  const templates = [
+    `${opener} ${need} ${location}?${tag}`,
+    `${opener} ${need}?${tag}`,
+    `${capitalizeFirst(need)} ${location}. Anyone have a lead?${tag}`,
+    `${opener} ${location} for ${need}?${tag}`,
+  ];
+  let line = randomPick(templates);
+
+  if (Math.random() < mixChance) {
+    line += ` ${randomPick(QUESTION_MIX_INS[primary])}`;
+  }
+
+  return line.replace(/\s+/g, " ").trim();
+}
+
 const AMBIENT_LOCATION_SHIP_RULES = [
   {
     key: "arcworks-core",
@@ -222,6 +542,79 @@ function pickLineVariant(pool, excludeIndex = -1) {
 
 
 
+const FIRE_AGGRESSOR_LOCKS = [
+  "Target locked",
+  "Guns hot",
+  "Missile lock confirmed",
+  "Cannon batteries live",
+  "Target solution confirmed",
+  "Launch tubes green",
+  "Hard lock achieved",
+  "Main batteries hot",
+];
+
+const FIRE_AGGRESSOR_ACTIONS = [
+  "weapons free",
+  "fire at will",
+  "launching missiles",
+  "opening cannon fire",
+  "firing on their drive section",
+  "commence firing pass",
+  "missiles away",
+  "engage the target",
+  "send the missiles",
+  "all guns fire",
+];
+
+const FIRE_RESPONSE_ALERTS = [
+  "Countermeasures launched",
+  "Ordnance incoming",
+  "We're under attack",
+  "Missiles inbound",
+  "Cannon fire incoming",
+  "Weapons impact warning",
+  "Hostile launch detected",
+  "They have opened fire",
+  "Direct fire incoming",
+  "Hull is under fire",
+];
+
+const FIRE_RESPONSE_ACTIONS = [
+  "break hard",
+  "engines to full",
+  "distress beacon active",
+  "dumping decoys",
+  "countermeasures away",
+  "emergency burn now",
+  "evasive burn now",
+  "roll and burn clear",
+  "damage crews stand by",
+  "broadcasting distress",
+];
+
+function sentenceCase(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+}
+
+function buildFireBark(openers, actions) {
+  return `${sentenceCase(randomPick(openers))}. ${sentenceCase(randomPick(actions))}.`;
+}
+
+function buildAggressorFireBark() {
+  return buildFireBark(FIRE_AGGRESSOR_LOCKS, FIRE_AGGRESSOR_ACTIONS);
+}
+
+function buildResponderFireBark() {
+  return buildFireBark(FIRE_RESPONSE_ALERTS, FIRE_RESPONSE_ACTIONS);
+}
+
+function pickConflictBark(pool) {
+  if (typeof pool === "function") return pool();
+  return randomPick(pool);
+}
+
 const CONFLICT_AGGRESSOR_LINES = {
   civilian: {
     notice: [
@@ -253,11 +646,7 @@ const CONFLICT_AGGRESSOR_LINES = {
       "Kill the swagger, hold vector, and wait for traffic control.",
       "You are now under active challenge. Keep hands visible and drives low.",
     ],
-    fire: [
-      "Weapons discharge reported. Breaking hard.",
-      "Shots fired. Defensive pattern active.",
-      "You wanted noise—now you have sirens.",
-    ],
+    fire: buildAggressorFireBark,
     resolved: [
       "Contact is disengaging.",
       "Disengaging. Keep your ego outside this lane.",
@@ -282,11 +671,7 @@ const CONFLICT_RESPONDER_LINES = {
     "Complying. This challenge is being recorded and forwarded.",
     "Holding vector under protest. Do not push this further.",
   ],
-  fire: [
-    "Taking fire. Distress beacon active and evasive action underway.",
-    "Weapons contact! Logging telemetry and breaking away.",
-    "You opened fire. Beacon hot, lane clear, we are gone.",
-  ],
+  fire: buildResponderFireBark,
   resolved: [
     "Copy disengagement. Resuming planned route.",
     "Disengagement acknowledged. Returning to traffic pattern.",
@@ -339,6 +724,7 @@ export function createNpcController({
   playerShipCallsign,
   playerShipCaptainById,
   onConflictStage,
+  onConflictFire,
 }) {
   const recentNpcLineHistory = [];
   const conflictEncounters = new Map();
@@ -470,7 +856,12 @@ export function createNpcController({
   }
 
   function scheduleAmbientNeutralLine(npc) {
-    const line = randomPick(neutralDialoguePool(npc)) || randomPick(AMBIENT_NEUTRAL_LINES);
+    const chatterRoll = Math.random();
+    const line = chatterRoll < OBSERVATION_CHATTER_CHANCE
+      ? makeObservation()
+      : chatterRoll < OBSERVATION_CHATTER_CHANCE + QUESTION_CHATTER_CHANCE
+        ? makeStationQuestion()
+        : randomPick(neutralDialoguePool(npc)) || randomPick(AMBIENT_NEUTRAL_LINES);
     const delay = 1;
     npc.lastDialogueTick = state.tick + delay;
     npc.dialogueCount = (npc.dialogueCount || 0) + 1;
@@ -784,6 +1175,7 @@ export function createNpcController({
       .filter((npc) => (
         npc?.at === nodeId
         && !idsToSkip.has(npc.id)
+        && mutedNpcActiveForConflict(npc)
         && npc.combatStatus !== "killed"
       ));
     const playerTargets = (state.ships || [])
@@ -854,6 +1246,36 @@ export function createNpcController({
     };
   }
 
+  function notifyConflictFire(result, nodeId, collateral = false) {
+    if (typeof onConflictFire !== "function" || !result?.attacker) return;
+    onConflictFire({
+      nodeId,
+      collateral,
+      result: {
+        attackerId: result.attacker.id,
+        attackerFaction: result.attacker.faction || "civilian",
+        defenderId: result.defender?.id || null,
+        defenderFaction: result.defender?.faction || "civilian",
+        outcome: result.outcome,
+      },
+    });
+  }
+
+  function notifyCombatExchangeHeat(exchange, nodeId) {
+    notifyConflictFire(exchange.direct, nodeId, false);
+    (exchange.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+    if (exchange.returnFire) notifyConflictFire(exchange.returnFire, nodeId, false);
+    (exchange.returnCollateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+    (exchange.collateralReprisals || []).forEach((event) => {
+      notifyConflictFire(event.direct, nodeId, false);
+      (event.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+    });
+    (exchange.returnCollateralReprisals || []).forEach((event) => {
+      notifyConflictFire(event.direct, nodeId, false);
+      (event.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+    });
+  }
+
   function playerLocalToNode(nodeId) {
     if (nodeId === "anchor_station") return true;
     return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "enroute"));
@@ -865,6 +1287,11 @@ export function createNpcController({
   }
 
 
+  function scheduleNpcConflictMessage(delay, npc, message, status, type) {
+    if (npc?.mutedFromChatter) return;
+    scheduleCharacterMessage(delay, npc?.captainName || npc?.callsign, message, status, type);
+  }
+
   function emitConflictLine(encounter, npcById) {
     const aggressor = npcById.get(encounter.aggressorId || encounter.aId);
     const responder = npcById.get(encounter.responderId || encounter.bId);
@@ -874,29 +1301,29 @@ export function createNpcController({
     const aggressorFaction = aggressor.faction || "civilian";
     const aggressorPool = aggressorFaction === "civilian" ? CONFLICT_AGGRESSOR_LINES.civilian : CONFLICT_AGGRESSOR_LINES.armed;
     const aggressorLinesByStage = {
-      notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick(aggressorPool.notice)}`,
-      verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick(aggressorPool.verbal)}`,
-      intercept: `[${aggressorFaction === "civilian" ? "Verbal" : stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick((aggressorPool.intercept || aggressorPool.verbal))}`,
-      fire: `[${aggressorFaction === "civilian" ? "Verbal" : stageLabel}] to ${responder.callsign} @ ${location}: ${randomPick((aggressorPool.fire || aggressorPool.verbal))}`,
-      resolved: `[Resolved] to ${responder.callsign} @ ${location}: ${randomPick((aggressorPool.resolved || ["Contact is disengaging."]))}`,
+      notice: `[${stageLabel}] to ${responder.callsign} @ ${location}: ${pickConflictBark(aggressorPool.notice)}`,
+      verbal: `[${stageLabel}] to ${responder.callsign} @ ${location}: ${pickConflictBark(aggressorPool.verbal)}`,
+      intercept: `[${aggressorFaction === "civilian" ? "Verbal" : stageLabel}] to ${responder.callsign} @ ${location}: ${pickConflictBark((aggressorPool.intercept || aggressorPool.verbal))}`,
+      fire: `[${aggressorFaction === "civilian" ? "Verbal" : stageLabel}] to ${responder.callsign} @ ${location}: ${pickConflictBark((aggressorPool.fire || aggressorPool.verbal))}`,
+      resolved: `[Resolved] to ${responder.callsign} @ ${location}: ${pickConflictBark((aggressorPool.resolved || ["Contact is disengaging."]))}`,
     };
     const responderLinesByStage = {
-      notice: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.notice)}`,
-      verbal: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.verbal)}`,
-      intercept: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.intercept)}`,
-      fire: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.fire)}`,
-      resolved: `[Resolved] to ${aggressor.callsign} @ ${location}: ${randomPick(CONFLICT_RESPONDER_LINES.resolved)}`,
+      notice: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.notice)}`,
+      verbal: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.verbal)}`,
+      intercept: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.intercept)}`,
+      fire: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.fire)}`,
+      resolved: `[Resolved] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.resolved)}`,
     };
-    scheduleCharacterMessage(
+    scheduleNpcConflictMessage(
       1,
-      aggressor.captainName || aggressor.callsign,
+      aggressor,
       aggressorLinesByStage[encounter.stage] || aggressorLinesByStage.notice,
       encounter.stage === "fire" ? "interdicting" : "arriving",
       "comms"
     );
-    scheduleCharacterMessage(
+    scheduleNpcConflictMessage(
       2,
-      responder.captainName || responder.callsign,
+      responder,
       responderLinesByStage[encounter.stage] || responderLinesByStage.notice,
       encounter.stage === "fire" ? "evading" : "arriving",
       "comms"
@@ -904,17 +1331,18 @@ export function createNpcController({
 
     if (encounter.stage === "fire") {
       const exchange = resolveCombatExchange(aggressor, responder, encounter.nodeId);
-      scheduleCharacterMessage(
+      notifyCombatExchangeHeat(exchange, encounter.nodeId);
+      scheduleNpcConflictMessage(
         3,
-        aggressor.captainName || aggressor.callsign,
+        aggressor,
         `${formatCombatResultLine(exchange.direct)} ${exchange.direct.outcome === "major_damage" || exchange.direct.outcome === "kill" ? `${responder.callsign} cannot return fire.` : ""}`.trim(),
         "interdicting",
         "comms"
       );
       exchange.collateral.forEach((result, idx) => {
-        scheduleCharacterMessage(
+        scheduleNpcConflictMessage(
           4 + idx,
-          result.defender.captainName || result.defender.callsign,
+          result.defender,
           formatCombatResultLine(result, "Collateral"),
           "damaged",
           "comms"
@@ -922,17 +1350,17 @@ export function createNpcController({
       });
       if (exchange.returnFire) {
         const delay = 4 + exchange.collateral.length;
-        scheduleCharacterMessage(
+        scheduleNpcConflictMessage(
           delay,
-          responder.captainName || responder.callsign,
+          responder,
           formatCombatResultLine(exchange.returnFire),
           exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
           "comms"
         );
         exchange.returnCollateral.forEach((result, idx) => {
-          scheduleCharacterMessage(
+          scheduleNpcConflictMessage(
             delay + 1 + idx,
-            result.defender.captainName || result.defender.callsign,
+            result.defender,
             formatCombatResultLine(result, "Collateral"),
             "damaged",
             "comms"
@@ -942,18 +1370,18 @@ export function createNpcController({
       let reprisalDelay = 4 + exchange.collateral.length;
       if (exchange.returnFire) reprisalDelay += 1 + exchange.returnCollateral.length;
       const scheduleReprisal = (event) => {
-        scheduleCharacterMessage(
+        scheduleNpcConflictMessage(
           reprisalDelay,
-          event.direct.attacker.captainName || event.direct.attacker.callsign,
+          event.direct.attacker,
           formatCollateralReprisalLine(event),
           event.direct.outcome === "major_damage" || event.direct.outcome === "kill" ? "interdicting" : "returning fire",
           "comms"
         );
         reprisalDelay += 1;
         event.collateral.forEach((result) => {
-          scheduleCharacterMessage(
+          scheduleNpcConflictMessage(
             reprisalDelay,
-            result.defender.captainName || result.defender.callsign,
+            result.defender,
             formatCombatResultLine(result, "Collateral"),
             "damaged",
             "comms"
@@ -1019,7 +1447,14 @@ export function createNpcController({
           if (nextStage !== encounter.stage && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
             encounter.stage = nextStage;
             transitions += 1;
-            if (typeof onConflictStage === "function") onConflictStage({ stage: encounter.stage, nodeId, aggressorId: encounter.aggressorId, responderId: encounter.responderId });
+            if (typeof onConflictStage === "function") onConflictStage({
+              stage: encounter.stage,
+              nodeId,
+              aggressorId: encounter.aggressorId,
+              responderId: encounter.responderId,
+              aggressorFaction: pairing.aggressor.faction || "civilian",
+              responderFaction: pairing.responder.faction || "civilian",
+            });
             if (playerLocalToNode(nodeId)) emitConflictLine(encounter, npcById);
           }
         }
@@ -1075,6 +1510,72 @@ export function createNpcController({
     npc.departAt = state.tick + randomLoiterSeconds();
   }
 
+  function nodeSearchText(nodeId) {
+    const node = getNodes()?.[nodeId] || {};
+    return `${nodeId} ${node.label || ""} ${node.moonName || ""}`.toLowerCase();
+  }
+
+  function nodeMatchesAny(nodeId, patterns = []) {
+    const text = nodeSearchText(nodeId);
+    return patterns.some((pattern) => pattern.test(text));
+  }
+
+  function lowOrRingOrbitNodeIds(nodeIds) {
+    return nodeIds.filter((nodeId) => nodeMatchesAny(nodeId, [
+      /low_orbit_transfer_lane/,
+      /deep_space_transfer_lane/,
+      /indigo_station/,
+      /ufp_indigo_system_administration/,
+      /ufp_outpost_alpha/,
+      /refinery/,
+      /yard/,
+      /ufp_outpost_bravo/,
+      /arcworks_operations_hub/,
+      /arcworks_militia_barracks/,
+      /oxblood/,
+      /patch/,
+      /onion skin/,
+      /shooter/,
+      /sulphide/,
+    ]));
+  }
+
+  function outerOrbitNodeIds(nodeIds) {
+    return nodeIds.filter((nodeId) => nodeMatchesAny(nodeId, [
+      /high_orbit_transfer_lane/,
+      /condenser_columns/,
+      /ufp_science_station/,
+      /clambroth/,
+      /end-of-day/,
+      /end_of_day/,
+    ]));
+  }
+
+  function anywhereExceptOnionSkinNodeIds(nodeIds) {
+    return nodeIds.filter((nodeId) => !nodeMatchesAny(nodeId, [/onion skin/, /onion_skin/, /arcworks_operations_hub/, /arcworks_militia_barracks/]));
+  }
+
+  function anywhereExceptUfpCoreNodeIds(nodeIds) {
+    return nodeIds.filter((nodeId) => !nodeMatchesAny(nodeId, [
+      /ufp_indigo_system_administration/,
+      /ufp system administration/,
+      /ufp outpost alpha/,
+      /ufp_outpost_alpha/,
+      /ufp outpost bravo/,
+      /ufp_outpost_bravo/,
+    ]));
+  }
+
+  function matadorRouteNodeIds(nodeIds) {
+    const outer = outerOrbitNodeIds(nodeIds);
+    const anchor = nodeIds.filter((nodeId) => nodeMatchesAny(nodeId, [/anchor_station/, /anchor station/]));
+    return [...new Set([...outer, ...anchor])];
+  }
+
+  function mutedNpcActiveForConflict(npc) {
+    return !npc?.muteUntilHeatEnabled || Boolean(state.factionHeatEnabled);
+  }
+
   function pickDestination(fromNodeId, allowedNodeIds = null) {
     const adjacency = getAdjacency();
     const hasWhitelist = Array.isArray(allowedNodeIds);
@@ -1103,6 +1604,7 @@ export function createNpcController({
   }
 
   function scheduleFinalApproach(npc, fromNodeId, destinationNodeId, uplink, transitTime) {
+    if (npc?.mutedFromChatter) return;
     if (!shouldBroadcastFinalApproach(destinationNodeId)) return;
     const lead = Math.min(4, Math.max(1, transitTime - 1));
     const callAt = uplink + Math.max(0, transitTime - lead) + oneWaySignalToNode(destinationNodeId);
@@ -1151,7 +1653,14 @@ export function createNpcController({
     const nextStage = capStageForAggressor(conflictStageForStress(entry.stress), aggressor);
     if (nextStage !== entry.stage) {
       entry.stage = nextStage;
-      if (typeof onConflictStage === "function") onConflictStage({ stage: entry.stage, nodeId: entry.nodeId, aggressorId: entry.aggressorId, responderId: entry.responderId });
+      if (typeof onConflictStage === "function") onConflictStage({
+        stage: entry.stage,
+        nodeId: entry.nodeId,
+        aggressorId: entry.aggressorId,
+        responderId: entry.responderId,
+        aggressorFaction: aggressor?.faction || "civilian",
+        responderFaction: npcById.get(entry.responderId || entry.bId)?.faction || "civilian",
+      });
       if (playerLocalToNode(entry.nodeId)) emitConflictLine(entry, npcById);
     }
     return [
@@ -1216,6 +1725,12 @@ export function createNpcController({
         { id: "npc-blister-dragoon-2", callsign: "Dragoon Daring-3", captainName: "Capt. Varek Noll", faction: "blister", role: "raider", at: spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: blisterNodeIds },
         { id: "npc-arcworks-mk4-1", callsign: "MK-IV Able-4", captainName: "Capt. Edda Marr", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
         { id: "npc-arcworks-mm9-1", callsign: "MM-IX True-9", captainName: "Capt. Tal Ren", faction: "arcworks", role: "industrial", at: spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: arcworksNodeIds },
+        { id: "npc-ufp-kestrel-wide-1", callsign: "Kestrel Wide-4", captainName: "Capt. Mira Sol", faction: "ufp", role: "patrol", registryKey: "kestrel", at: randomPick(anywhereExceptOnionSkinNodeIds(nodeIds)) || spawnUfp(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: anywhereExceptOnionSkinNodeIds(nodeIds), routeProfile: "anywhere_except_onion_skin", mutedFromChatter: true, muteUntilHeatEnabled: true },
+        { id: "npc-arcworks-j8-1", callsign: "J-VIII Carry-8", captainName: "Capt. Oren Vale", faction: "arcworks", role: "hauler", registryKey: "j-viii", at: randomPick(anywhereExceptUfpCoreNodeIds(nodeIds)) || spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: anywhereExceptUfpCoreNodeIds(nodeIds), routeProfile: "anywhere_except_ufp_core", mutedFromChatter: true, muteUntilHeatEnabled: true },
+        { id: "npc-arcworks-mm9-wide-1", callsign: "MM-IX Rigid-6", captainName: "Capt. Mara Quell", faction: "arcworks", role: "industrial", registryKey: "mm-ix", at: randomPick(anywhereExceptUfpCoreNodeIds(nodeIds)) || spawnArcworks(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: anywhereExceptUfpCoreNodeIds(nodeIds), routeProfile: "anywhere_except_ufp_core", mutedFromChatter: true, muteUntilHeatEnabled: true },
+        { id: "npc-blister-matador-1", callsign: "Matador Crown-1", captainName: "Capt. Daska Rill", faction: "blister", role: "raider", registryKey: "matador", at: randomPick(matadorRouteNodeIds(nodeIds)) || spawnBlister(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: matadorRouteNodeIds(nodeIds), routeProfile: "outer_orbit_and_anchor", mutedFromChatter: true, muteUntilHeatEnabled: true },
+        { id: "npc-civilian-trawler-low-1", callsign: "Trawler Low-17", captainName: "Capt. Sel Nadir", faction: "civilian", role: "hauler", registryKey: "trawler", at: randomPick(lowOrRingOrbitNodeIds(nodeIds)) || spawn(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: lowOrRingOrbitNodeIds(nodeIds), routeProfile: "low_and_ring_orbit", mutedFromChatter: true, muteUntilHeatEnabled: true },
+        { id: "npc-civilian-trawler-ring-1", callsign: "Trawler Ring-19", captainName: "Capt. Hessa Dorne", faction: "civilian", role: "hauler", registryKey: "trawler", at: randomPick(lowOrRingOrbitNodeIds(nodeIds)) || spawn(), status: "idle", departAt: 0, arrivalTick: 0, allowedNodeIds: lowOrRingOrbitNodeIds(nodeIds), routeProfile: "low_and_ring_orbit", mutedFromChatter: true, muteUntilHeatEnabled: true },
       ];
       state.civilianNpcs.forEach((npc) => {
         const wait = randomLoiterSeconds();
@@ -1232,19 +1747,30 @@ export function createNpcController({
       shipSpeedById["npc-blister-dragoon-2"] = 4;
       shipSpeedById["npc-arcworks-mk4-1"] = 2;
       shipSpeedById["npc-arcworks-mm9-1"] = 2;
+      shipSpeedById["npc-ufp-kestrel-wide-1"] = 4;
+      shipSpeedById["npc-arcworks-j8-1"] = 2;
+      shipSpeedById["npc-arcworks-mm9-wide-1"] = 2;
+      shipSpeedById["npc-blister-matador-1"] = 3;
+      shipSpeedById["npc-civilian-trawler-low-1"] = 2;
+      shipSpeedById["npc-civilian-trawler-ring-1"] = 2;
     },
     update() {
       updateAmbientLocationSpawns();
       updateAmbientLocationDialogue();
       updateAmbientLocationRemovals();
       const npcs = state.civilianNpcs || [];
-      updateConflictEncounters(npcs.filter((npc) => !npc.ambientLocationSpawn));
+      updateConflictEncounters(npcs.filter((npc) => !npc.ambientLocationSpawn && mutedNpcActiveForConflict(npc)));
       npcs.forEach((npc) => {
         if (npc.ambientLocationSpawn) return;
         if (!combatCapable(npc)) return;
-        if (npc.faction === "ufp" || npc.faction === "blister" || npc.faction === "arcworks") {
+        if (npc.faction === "ufp" || npc.faction === "blister" || npc.faction === "arcworks" || npc.routeProfile) {
           const nodeIds = Object.keys(getNodes());
-          const allowed = nodeIds.filter((nodeId) => {
+          let allowed = null;
+          if (npc.routeProfile === "anywhere_except_onion_skin") allowed = anywhereExceptOnionSkinNodeIds(nodeIds);
+          else if (npc.routeProfile === "anywhere_except_ufp_core") allowed = anywhereExceptUfpCoreNodeIds(nodeIds);
+          else if (npc.routeProfile === "outer_orbit_and_anchor") allowed = matadorRouteNodeIds(nodeIds);
+          else if (npc.routeProfile === "low_and_ring_orbit") allowed = lowOrRingOrbitNodeIds(nodeIds);
+          else allowed = nodeIds.filter((nodeId) => {
             const label = String(getNodes()?.[nodeId]?.label || nodeLabel(nodeId) || "");
             if (npc.faction === "ufp") {
               return ["ufp_outpost_alpha","ufp_outpost_bravo","ufp_indigo_system_administration","ufp_outpost_delta","ufp_science_station","anchor_station","indigo_station","barons_market"].includes(nodeId)

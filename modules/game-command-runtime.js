@@ -43,6 +43,8 @@ export function createCommandRuntime({
   tutorialGoal,
   npcConflictDebugLines,
   bumpNpcConflictStress,
+  factionHeatDebugLines,
+  warmFactionHeat,
 }) {
 
   function titleCaseWords(value) {
@@ -602,11 +604,11 @@ export function createCommandRuntime({
       return true;
     }
 
-    if (command === "stress" && parts.length >= 2) {
+    if (command === "dbstress") {
       const index = Number(parts[1]);
-      if (!Number.isInteger(index) || index <= 0) return logLine('Usage: stress [dbConflict pair number]', "error");
+      if (!Number.isInteger(index) || index <= 0) return logLine('Usage: dbStress [dbConflict pair number]', "error");
       const lines = typeof bumpNpcConflictStress === "function" ? bumpNpcConflictStress(index) : [];
-      if (!lines?.length) return logLine("dbConflict: stress debug feed unavailable.", "error");
+      if (!lines?.length) return logLine("dbStress: stress debug feed unavailable.", "error");
       lines.forEach((line) => logLine(line, "sys"));
       return true;
     }
@@ -635,7 +637,45 @@ export function createCommandRuntime({
         return true;
       }
       lines.forEach((line) => logLine(line, "sys"));
-      logLine('Debug: type "stress [number]" to add +0.40 stress to a listed pair.', "sys");
+      logLine('Debug: type "dbStress [number]" to add +0.40 stress to a listed pair.', "sys");
+      return true;
+    }
+
+    if (command === "dbheat") {
+      const lines = typeof factionHeatDebugLines === "function" ? factionHeatDebugLines() : [];
+      if (!lines?.length) {
+        logLine("dbHeat: faction heat debug feed unavailable.", "sys");
+        return true;
+      }
+      lines.forEach((line) => logLine(line, "sys"));
+      return true;
+    }
+
+    if (command === "dbwarm") {
+      if (typeof warmFactionHeat !== "function") {
+        logLine("dbWarm: faction heat debug feed unavailable.", "error");
+        return true;
+      }
+      const args = parts.slice(1);
+      if (!args.length) {
+        logLine('Usage: dbwarm [faction] [amount] (example: dbwarm blister 25)', "error");
+        return true;
+      }
+      const firstAmount = Number(args[0]);
+      const lastAmount = Number(args[args.length - 1]);
+      const amountFirst = Number.isFinite(firstAmount);
+      const amountLast = args.length > 1 && Number.isFinite(lastAmount);
+      const faction = amountFirst
+        ? args.slice(1).join(" ")
+        : amountLast
+          ? args.slice(0, -1).join(" ")
+          : args.join(" ");
+      const amount = amountFirst ? firstAmount : amountLast ? lastAmount : 25;
+      if (!faction || !Number.isFinite(amount)) {
+        logLine('Usage: dbwarm [faction] [amount] (example: dbwarm blister 25)', "error");
+        return true;
+      }
+      warmFactionHeat(faction, amount).forEach((line) => logLine(line, "sys"));
       return true;
     }
 
