@@ -51,6 +51,8 @@ const FACTION_HEAT_MAX = 120;
 const FACTION_HEAT_STAGE_AMOUNT = { verbal: 4, intercept: 7 };
 const FACTION_HEAT_FIRE_AMOUNT = 10;
 const FACTION_HEAT_COLLATERAL_AMOUNT = 4;
+const FACTION_HEAT_CAMPAIGN_FIRE_AMOUNT = 1;
+const FACTION_HEAT_CAMPAIGN_COLLATERAL_AMOUNT = 0;
 const HEAT_FACTIONS = ["ufp", "arcworks", "blister"];
 const FACTION_DISPLAY_NAMES = {
   ufp: "UFP",
@@ -1097,8 +1099,8 @@ const NpcController = createNpcController({
       }, "sys");
     }
   },
-  onConflictFire: ({ result, collateral }) => {
-    applyConflictFireHeat(result, collateral);
+  onConflictFire: ({ result, collateral, campaignCombat }) => {
+    applyConflictFireHeat(result, collateral, { campaignCombat });
   },
 });
 
@@ -1577,8 +1579,12 @@ function applyConflictHeatStage(stage, aggressorFaction, responderFaction) {
   evaluateFactionCampaignTriggers();
 }
 
-function applyConflictFireHeat(result, collateral = false) {
-  const amount = collateral ? FACTION_HEAT_COLLATERAL_AMOUNT : FACTION_HEAT_FIRE_AMOUNT;
+function applyConflictFireHeat(result, collateral = false, options = {}) {
+  const campaignCombat = Boolean(options.campaignCombat);
+  const amount = campaignCombat
+    ? (collateral ? FACTION_HEAT_CAMPAIGN_COLLATERAL_AMOUNT : FACTION_HEAT_CAMPAIGN_FIRE_AMOUNT)
+    : (collateral ? FACTION_HEAT_COLLATERAL_AMOUNT : FACTION_HEAT_FIRE_AMOUNT);
+  if (amount <= 0) return;
   addFactionHeat(result?.attackerFaction, amount);
   evaluateFactionCampaignTriggers();
 }

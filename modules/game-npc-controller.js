@@ -1487,11 +1487,13 @@ export function createNpcController({
     };
   }
 
-  function notifyConflictFire(result, nodeId, collateral = false) {
+  function notifyConflictFire(result, nodeId, collateral = false, campaignId = null) {
     if (typeof onConflictFire !== "function" || !result?.attacker) return;
     onConflictFire({
       nodeId,
       collateral,
+      campaignId,
+      campaignCombat: Boolean(campaignId),
       result: {
         attackerId: result.attacker.id,
         attackerFaction: result.attacker.faction || "civilian",
@@ -1502,18 +1504,18 @@ export function createNpcController({
     });
   }
 
-  function notifyCombatExchangeHeat(exchange, nodeId) {
-    notifyConflictFire(exchange.direct, nodeId, false);
-    (exchange.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
-    if (exchange.returnFire) notifyConflictFire(exchange.returnFire, nodeId, false);
-    (exchange.returnCollateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+  function notifyCombatExchangeHeat(exchange, nodeId, campaignId = null) {
+    notifyConflictFire(exchange.direct, nodeId, false, campaignId);
+    (exchange.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true, campaignId));
+    if (exchange.returnFire) notifyConflictFire(exchange.returnFire, nodeId, false, campaignId);
+    (exchange.returnCollateral || []).forEach((result) => notifyConflictFire(result, nodeId, true, campaignId));
     (exchange.collateralReprisals || []).forEach((event) => {
-      notifyConflictFire(event.direct, nodeId, false);
-      (event.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+      notifyConflictFire(event.direct, nodeId, false, campaignId);
+      (event.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true, campaignId));
     });
     (exchange.returnCollateralReprisals || []).forEach((event) => {
-      notifyConflictFire(event.direct, nodeId, false);
-      (event.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true));
+      notifyConflictFire(event.direct, nodeId, false, campaignId);
+      (event.collateral || []).forEach((result) => notifyConflictFire(result, nodeId, true, campaignId));
     });
   }
 
@@ -1633,7 +1635,7 @@ export function createNpcController({
       const target = randomPick(attackers.filter(combatCapable));
       if (!target) return;
       const exchange = resolveCombatExchange(defender, target, campaign.locationNodeId);
-      notifyCombatExchangeHeat(exchange, campaign.locationNodeId);
+      notifyCombatExchangeHeat(exchange, campaign.locationNodeId, campaign.id);
       if (playerLocalToNode(campaign.locationNodeId)) scheduleCombatExchangeMessages(exchange, campaign.locationNodeId, 2 + idx, "Defender fire");
     });
   }
@@ -1651,7 +1653,7 @@ export function createNpcController({
       if (!attacker || !target) return;
       recordCampaignFire(campaign, attacker);
       const exchange = resolveCombatExchange(attacker, target, campaign.locationNodeId);
-      notifyCombatExchangeHeat(exchange, campaign.locationNodeId);
+      notifyCombatExchangeHeat(exchange, campaign.locationNodeId, campaign.id);
       if (playerLocalToNode(campaign.locationNodeId)) scheduleCombatExchangeMessages(exchange, campaign.locationNodeId, 1, "Campaign fire");
     });
   }
