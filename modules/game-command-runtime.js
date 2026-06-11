@@ -45,6 +45,7 @@ export function createCommandRuntime({
   bumpNpcConflictStress,
   factionHeatDebugLines,
   warmFactionHeat,
+  launchFactionCampaign,
 }) {
 
   function titleCaseWords(value) {
@@ -648,6 +649,15 @@ export function createCommandRuntime({
         return true;
       }
       lines.forEach((line) => logLine(line, "sys"));
+      return true;
+    }
+
+    if (command === "dbcamp") {
+      if (typeof launchFactionCampaign !== "function") {
+        logLine("dbCamp: campaign debug launcher unavailable.", "error");
+        return true;
+      }
+      launchFactionCampaign().forEach((line) => logLine(line, "sys"));
       return true;
     }
 

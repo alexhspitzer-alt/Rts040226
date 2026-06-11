@@ -1393,8 +1393,32 @@ function factionHeatDebugLines() {
       : "";
     lines.push(`${factionDisplayName(faction)}: heat ${heat}/${FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD} | campaign chance ${(probability * 100).toFixed(0)}%${campaignLabel}`);
   });
-  lines.push('Debug: type "dbwarm [faction] [amount]" to add heat against UFP, Arcworks, or Blister.');
+  lines.push('Debug: type "dbwarm [faction] [amount]" to add heat against UFP, Arcworks, or Blister; type "dbcamp" to launch a campaign against the hottest faction.');
   return lines;
+}
+
+function highestHeatFaction() {
+  return HEAT_FACTIONS.reduce((best, faction) => {
+    const bestHeat = Number(state.factionHeat?.[best] || 0);
+    const heat = Number(state.factionHeat?.[faction] || 0);
+    return heat > bestHeat ? faction : best;
+  }, HEAT_FACTIONS[0]);
+}
+
+function debugLaunchFactionCampaign() {
+  const defender = highestHeatFaction();
+  const heat = Number(state.factionHeat?.[defender] || 0);
+  const campaign = startFactionCampaign(defender, { force: true });
+  if (!campaign) {
+    return [
+      `dbCamp: unable to launch campaign against ${factionDisplayName(defender)} (heat ${heat}). A campaign may already be active.`,
+      ...factionHeatDebugLines(),
+    ];
+  }
+  return [
+    `dbCamp: launched ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} at ${nodeLabel(campaign.locationNodeId) || campaign.locationNodeId} for ${campaign.durationSeconds}s (selected heat ${heat}).`,
+    ...factionHeatDebugLines(),
+  ];
 }
 
 function debugWarmFactionHeat(faction, amount = 25) {
@@ -1473,8 +1497,8 @@ function postCampaignNewsCard(campaign) {
   logLine(`News update: ${item.headline}.`, "sys");
 }
 
-function startFactionCampaign(defenderFaction) {
-  if (!factionHeatActive()) return null;
+function startFactionCampaign(defenderFaction, options = {}) {
+  if (!options.force && !factionHeatActive()) return null;
   const defender = normalizeHeatFaction(defenderFaction);
   if (!defender || activeCampaignAgainst(defender)) return null;
   const aggressor = chooseCampaignAggressor(defender);
@@ -2634,6 +2658,7 @@ commandRuntime = createCommandRuntime({
   bumpNpcConflictStress: (index, amount) => NpcController.bumpConflictStress(index, amount),
   factionHeatDebugLines,
   warmFactionHeat: debugWarmFactionHeat,
+  launchFactionCampaign: debugLaunchFactionCampaign,
 });
 NpcController.bootstrap();
 
