@@ -1675,9 +1675,15 @@ export function createNpcController({
     });
   }
 
+  function playerShipListensAtNode(ship, nodeId) {
+    if (!ship || ship.at !== nodeId) return false;
+    if (ship.status === "enroute") return false;
+    return ["idle", "tasked", "arrived_pending_report", "docked", "damaged", "disabled"].includes(ship.status);
+  }
+
   function playerLocalToNode(nodeId) {
     if (nodeId === "anchor_station") return true;
-    return Array.isArray(state.ships) && state.ships.some((ship) => ship.at === nodeId && (ship.status === "idle" || ship.status === "tasked" || ship.status === "arrived_pending_report"));
+    return Array.isArray(state.ships) && state.ships.some((ship) => playerShipListensAtNode(ship, nodeId));
   }
   function conflictDecayPerHeartbeat() {
     const nodeCount = Object.keys(getNodes() || {}).length;
