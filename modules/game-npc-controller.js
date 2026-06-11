@@ -4,12 +4,16 @@ const NPC_LOITER_MODE = 200;
 const NPC_LINE_REPEAT_WINDOW = 120;
 const CONFLICT_HEARTBEAT_SECONDS = 10;
 
-const AMBIENT_LOCATION_SPAWN_INTERVAL = 20;
-const AMBIENT_LOCATION_SPAWN_CHANCE = 0.35;
-const AMBIENT_LOCATION_MAX_SHIPS = 8;
+const AMBIENT_LOCATION_SPAWN_INTERVAL = 12;
+const AMBIENT_LOCATION_SPAWN_CHANCE = 0.75;
+const AMBIENT_LOCATION_MAX_SHIPS = 24;
 const AMBIENT_LOCATION_MAX_PER_NODE = 4;
-const AMBIENT_LOCATION_DIALOGUE_MIN = 180;
-const AMBIENT_LOCATION_DIALOGUE_MAX = 360;
+const AMBIENT_HOME_BASE_CAP_BONUS = 2;
+const AMBIENT_HOME_BASE_FACTION_SHIP_CHANCE = 0.75;
+const AMBIENT_HOME_BASE_MIN_FACTION_SHIPS = 2;
+const AMBIENT_LOCATION_DIALOGUE_MIN = 360;
+const AMBIENT_LOCATION_DIALOGUE_MAX = 720;
+const AMBIENT_LOCATION_DIALOGUE_GLOBAL_MIN_GAP = 45;
 const AMBIENT_LOCATION_REMOVE_INTERVAL = 30;
 const AMBIENT_LOCATION_REMOVE_CHANCE = 0.25;
 const AMBIENT_LOCATION_REMOVE_DIALOGUE_GRACE = 60;
@@ -342,6 +346,38 @@ function makeStationQuestion(category = null, opts = {}) {
 
   return line.replace(/\s+/g, " ").trim();
 }
+
+const AMBIENT_HOME_BASE_NODE_IDS = {
+  ufp: [
+    "ufp_indigo_system_administration",
+    "ufp_outpost_alpha",
+    "ufp_outpost_bravo",
+    "ufp_outpost_delta",
+    "ufp_science_station",
+    "anchor_station",
+    "indigo_station",
+    "barons_market",
+  ],
+  arcworks: [
+    "arcworks_operations_hub",
+    "arcworks_militia_barracks",
+    "arcworks_fuel_depot",
+    "onion_skin",
+    "refinery",
+    "condenser_columns",
+    "barons_market",
+    "indigo_station",
+  ],
+  blister: [
+    "deep_space_transfer_lane",
+    "high_orbit_transfer_lane",
+    "ring_transfer_lane",
+    "low_orbit_transfer_lane",
+    "yard",
+    "refinery",
+    "barons_market",
+  ],
+};
 
 const AMBIENT_LOCATION_SHIP_RULES = [
   {
@@ -768,6 +804,7 @@ export function createNpcController({
   let nextAmbientLocationRemoveTick = 0;
   let ambientLocationSpawnSerial = 1;
   let ambientIbisFlockSerial = 1;
+  let nextAmbientLocationDialogueBroadcastTick = 0;
   const ambientLocationSpawnCooldowns = new Map();
   const usedAmbientCaptainNames = new Set();
 
@@ -791,6 +828,25 @@ export function createNpcController({
     return AMBIENT_LOCATION_SHIP_RULES.find((rule) => rule.matches(nodeId, label)) || null;
   }
 
+  function homeBaseFactionsForNode(nodeId) {
+    return Object.entries(AMBIENT_HOME_BASE_NODE_IDS)
+      .filter(([, nodeIds]) => nodeIds.includes(nodeId))
+      .map(([faction]) => faction);
+  }
+
+  function isAmbientHomeBaseNode(nodeId) {
+    return homeBaseFactionsForNode(nodeId).length > 0;
+  }
+
+  function ambientCapForNode(nodeId) {
+    return AMBIENT_LOCATION_MAX_PER_NODE + (isAmbientHomeBaseNode(nodeId) ? AMBIENT_HOME_BASE_CAP_BONUS : 0);
+  }
+
+  function homeBaseNodeIds() {
+    const nodeSet = new Set(Object.values(AMBIENT_HOME_BASE_NODE_IDS).flat());
+    return [...nodeSet].filter((nodeId) => getNodes()?.[nodeId] && ambientRuleForNode(nodeId));
+  }
+
   function occupiedPlayerNodeIds() {
     const occupied = new Set();
     (state.ships || []).forEach((ship) => {
@@ -806,6 +862,14 @@ export function createNpcController({
 
   function countAmbientNpcsAt(nodeId) {
     return ambientNpcs().filter((npc) => npc.at === nodeId).length;
+  }
+
+  function countAmbientNpcsAtByFaction(nodeId, faction) {
+    return ambientNpcs().filter((npc) => npc.at === nodeId && npc.faction === faction).length;
+  }
+
+  function countCivilianAmbientNpcsAt(nodeId) {
+    return countAmbientNpcsAtByFaction(nodeId, "civilian");
   }
 
   function randomAmbientCallsign(className) {
@@ -825,6 +889,24 @@ export function createNpcController({
     const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
     const registryFaction = ship?.registryKey ? registry?.[ship.registryKey]?.faction : null;
     return normalizeFactionName(registryFaction || ship?.faction);
+  }
+
+  function chooseAmbientShipForNode(nodeId, rule) {
+    const ships = Array.isArray(rule?.ships) ? rule.ships : [];
+    const civilianShips = ships.filter((ship) => factionForShipType(ship) === "civilian");
+    const cap = ambientCapForNode(nodeId);
+    const localCount = countAmbientNpcsAt(nodeId);
+    const needsCivilianReserve = countCivilianAmbientNpcsAt(nodeId) === 0;
+    if (needsCivilianReserve && localCount >= cap - 1 && civilianShips.length) return weightedPick(civilianShips);
+
+    const homeFactions = homeBaseFactionsForNode(nodeId);
+    const needsHomeFaction = homeFactions.some((faction) => countAmbientNpcsAtByFaction(nodeId, faction) < AMBIENT_HOME_BASE_MIN_FACTION_SHIPS);
+    if (homeFactions.length && needsHomeFaction && Math.random() < AMBIENT_HOME_BASE_FACTION_SHIP_CHANCE) {
+      const homeFactionShips = ships.filter((ship) => homeFactions.includes(factionForShipType(ship)));
+      if (homeFactionShips.length) return weightedPick(homeFactionShips);
+    }
+
+    return weightedPick(ships);
   }
 
   function formatAmbientCaptainName(name) {
@@ -906,7 +988,7 @@ export function createNpcController({
   function spawnAmbientLocationShip(nodeId) {
     const rule = ambientRuleForNode(nodeId);
     if (!rule) return null;
-    const ship = weightedPick(rule.ships);
+    const ship = chooseAmbientShipForNode(nodeId, rule);
     if (!ship) return null;
     const id = `npc-local-${ship.registryKey}-${ambientLocationSpawnSerial}`;
     ambientLocationSpawnSerial += 1;
@@ -931,7 +1013,8 @@ export function createNpcController({
     state.civilianNpcs.push(npc);
     const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
     shipSpeedById[id] = registry?.[ship.registryKey]?.speed || ship.speed || 3;
-    ambientLocationSpawnCooldowns.set(nodeId, state.tick + randomInt(50, 100));
+    const cooldownMax = isAmbientHomeBaseNode(nodeId) ? 55 : 100;
+    ambientLocationSpawnCooldowns.set(nodeId, state.tick + randomInt(25, cooldownMax));
     return npc;
   }
 
@@ -939,9 +1022,14 @@ export function createNpcController({
     if (state.tick < nextAmbientLocationSpawnTick) return;
     nextAmbientLocationSpawnTick = state.tick + AMBIENT_LOCATION_SPAWN_INTERVAL;
     if (ambientNpcs().length >= AMBIENT_LOCATION_MAX_SHIPS) return;
-    const candidates = occupiedPlayerNodeIds().filter((nodeId) => {
+    const candidatePool = [
+      ...occupiedPlayerNodeIds(),
+      ...homeBaseNodeIds(),
+      ...homeBaseNodeIds(),
+    ];
+    const candidates = candidatePool.filter((nodeId) => {
       if (!ambientRuleForNode(nodeId)) return false;
-      if (countAmbientNpcsAt(nodeId) >= AMBIENT_LOCATION_MAX_PER_NODE) return false;
+      if (countAmbientNpcsAt(nodeId) >= ambientCapForNode(nodeId)) return false;
       return state.tick >= (ambientLocationSpawnCooldowns.get(nodeId) || 0);
     });
     if (!candidates.length || Math.random() > AMBIENT_LOCATION_SPAWN_CHANCE) return;
@@ -951,7 +1039,11 @@ export function createNpcController({
   function updateAmbientLocationDialogue() {
     ambientNpcs().forEach((npc) => {
       if (npc.status !== "idle" || !npc.at) return;
-      if (state.tick >= (npc.nextDialogueTick || 0) && playerLocalToNode(npc.at)) scheduleAmbientNeutralLine(npc);
+      if (state.tick < nextAmbientLocationDialogueBroadcastTick) return;
+      if (state.tick >= (npc.nextDialogueTick || 0) && playerLocalToNode(npc.at)) {
+        scheduleAmbientNeutralLine(npc);
+        nextAmbientLocationDialogueBroadcastTick = state.tick + AMBIENT_LOCATION_DIALOGUE_GLOBAL_MIN_GAP;
+      }
     });
   }
 
@@ -962,7 +1054,8 @@ export function createNpcController({
     const removable = ambientNpcs().filter((npc) => {
       const oldEnough = state.tick - (npc.spawnedAtTick || 0) >= AMBIENT_LOCATION_MIN_AGE_BEFORE_REMOVE;
       const dialogueSafe = state.tick - (npc.lastDialogueTick ?? -Infinity) >= AMBIENT_LOCATION_REMOVE_DIALOGUE_GRACE;
-      return oldEnough && dialogueSafe;
+      const protectsCivilianReserve = npc.faction === "civilian" && countCivilianAmbientNpcsAt(npc.at) <= 1;
+      return oldEnough && dialogueSafe && !protectsCivilianReserve;
     });
     const npc = randomPick(removable);
     if (!npc) return;
