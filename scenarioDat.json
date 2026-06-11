@@ -116,7 +116,6 @@
     },
     "oneTimeFlags": {
       "intro_budde_welcome": false,
-      "intro_cost_cutting": false,
       "intro_fuel_is_real": false,
       "intro_gravity_lesson": false,
       "intro_rule_of_thumb": false,
@@ -133,18 +132,11 @@
         "context": "Play once at the start of scenario 2, before player input.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
-        "text": "Hello. I am BUDDE, the Benchmark Unified Directions Dedicated Engine. I optimize routes, burns, and transfer geometry across the Indigo system, and I am responsible for identifying avoidable waste in time, fuel, and motion. When multiple viable paths exist, I will identify which one performs better and by how wrong other choices are."
-      },
-      {
-        "id": "intro_cost_cutting",
-        "context": "Play immediately after BUDDE's welcome line.",
-        "speaker": "BUDDE",
-        "playOncePerScenario": true,
-        "text": "Operational reminder: bluFreight vessels are constrained by their actual ability to accelerate mass, as reflected in their speed ratings. If a route feels slow, that is because physics remains uncooperative rather than because dispatch has offended the calendar."
+        "text": "Hello. I am BUDDE, the Benchmark Unified Directions Dedicated Engine. I optimize routes, burns, and transfer geometry across the Indigo system, and I am responsible for identifying avoidable waste in time, fuel, and motion."
       },
       {
         "id": "intro_fuel_is_real",
-        "context": "Play after cost-cutting explanation.",
+        "context": "Play after BUDDE welcome line.",
         "speaker": "BUDDE",
         "playOncePerScenario": true,
         "text": "Fuel is no longer free. You are now responsible not only for getting ships to their destination, but for doing so without converting your margin into exhaust."

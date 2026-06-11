@@ -42,6 +42,48 @@ const OPERATING_COST_INTERVAL_SECONDS = 15;
 const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
+const FACTION_HEAT_CAMPAIGN_DURATION_SECONDS = 180;
+const FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS = 10;
+const FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD = 100;
+const FACTION_HEAT_CAMPAIGN_ROLL_FLOOR = 25;
+const FACTION_HEAT_MAX = 120;
+const FACTION_HEAT_STAGE_AMOUNT = { verbal: 4, intercept: 7 };
+const FACTION_HEAT_FIRE_AMOUNT = 10;
+const FACTION_HEAT_COLLATERAL_AMOUNT = 4;
+const HEAT_FACTIONS = ["ufp", "arcworks", "blister"];
+const FACTION_DISPLAY_NAMES = {
+  ufp: "UFP",
+  arcworks: "Arcworks",
+  blister: "Blister",
+};
+const CAMPAIGN_LOCATION_NODE_ID = "barons_market";
+const CAMPAIGN_DEFENDER_RESPONSE_LINES = [
+  "Piss off and try someone easier.",
+  "I'd like to see them try.",
+  "They've bitten off more than they can chew.",
+  "Tell them to bring more ships.",
+  "They want a campaign? We will give them a graveyard.",
+  "They can have this route when we are done using it to break them.",
+  "We are still here. That is their first problem.",
+  "Let them come closer. We have answers loaded.",
+  "They picked the wrong target and the wrong day.",
+  "We are not moving. They are welcome to learn why.",
+  "Their threats are louder than their guns.",
+  "They should have counted our batteries before starting this.",
+  "We will be waiting at the marker with engines hot.",
+  "They can explain this mistake to their survivors.",
+  "If they want the lane, they can bleed for every kilometer.",
+  "They are overextended and about to notice.",
+  "This attack ends when they run out of nerve or hulls.",
+  "They came looking for weakness and found a hard lock.",
+  "We have seen worse threats from worse captains.",
+  "Let them commit. Retreat is harder after the first burn.",
+  "They are not taking our ground by headline.",
+  "We will make this expensive enough to remember.",
+  "They are welcome to test the perimeter.",
+  "They opened the door. Now they can eat the room.",
+  "Stand firm. They have already made the fatal mistake."
+];
 const SCENARIO_PATH = "./scenarioDat.json";
 const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
 const LEGACY_NODE_ALIASES = {
@@ -309,6 +351,11 @@ const state = {
   inbox: [],
   unreadInboxCount: 0,
   inboxOpenIndexes: [],
+  news: [],
+  factionHeatEnabled: false,
+  factionHeat: { ufp: 0, arcworks: 0, blister: 0 },
+  activeFactionCampaigns: [],
+  nextFactionCampaignRollTick: 0,
   operatingExpenseAccrued: 0,
   operatingExpenseWindowStartTick: 0,
   trafficLocks: {},
@@ -335,6 +382,7 @@ const ui = {
   almanacRoot: document.getElementById("almanac-root"),
   inboxList: document.getElementById("inbox-list"),
   inboxUnread: document.getElementById("inbox-unread"),
+  newsList: document.getElementById("news-list"),
   tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
   tabPanels: Array.from(document.querySelectorAll(".tab-panel")),
 };
@@ -562,15 +610,30 @@ function activeCommsContacts() {
   return Object.keys(state.dialogueDb).filter((name) => name !== BASIL_NAME && name !== BUDDE_NAME && isContactPresent(name));
 }
 
+function characterRegistryCategory(name) {
+  const canonicalNames = state.characterNameRegistry?.canonicalUsedNames;
+  if (!Array.isArray(canonicalNames)) return "";
+  const entry = canonicalNames.find((candidate) => candidate?.name === name);
+  return String(entry?.category || "").toLowerCase();
+}
+
+function isBluFreightPersonnel(name) {
+  if (!name || name === BASIL_NAME || name === BUDDE_NAME) return false;
+  if (name === "Gregory Trundle") return true;
+  if (SHIP_CAPTAINS && Object.values(SHIP_CAPTAINS).includes(name)) return true;
+  const faction = String(state.dialogueDb?.[name]?.faction || "").toLowerCase();
+  if (faction === "blufreight") return true;
+  return characterRegistryCategory(name).startsWith("blufreight_");
+}
+
 function speakerMessageType(name) {
   if (name === BASIL_NAME) return "basil";
   if (name === BUDDE_NAME) return "budde";
 
   const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.captainName === name);
   const fallbackFaction = ambientNpc?.faction || NPC_CAPTAIN_FACTIONS[name] || "";
-  const faction = String(state.dialogueDb[name]?.faction || fallbackFaction).toLowerCase();
-  if (SHIP_CAPTAINS && Object.values(SHIP_CAPTAINS).includes(name)) return "comms-blufreight";
-  if (faction === "blufreight") return "comms-blufreight";
+  const faction = String(state.dialogueDb?.[name]?.faction || fallbackFaction).toLowerCase();
+  if (isBluFreightPersonnel(name)) return "comms-blufreight";
   if (faction === "ufp") return "comms-ufp";
   if (faction === "blister") return "comms-blister";
   if (faction === "arcworks") return "comms-arcworks";
@@ -702,14 +765,13 @@ function renderAlmanac() {
   Object.entries(normalizedEntries).forEach(([categoryName, categoryPayload]) => {
     const categoryNode = document.createElement("details");
     categoryNode.className = "almanac-category";
-    categoryNode.open = true;
 
     const categorySummary = document.createElement("summary");
     categorySummary.textContent = categoryName.replaceAll("_", " ");
     categoryNode.appendChild(categorySummary);
 
     if (Array.isArray(categoryPayload)) {
-      addAlmanacItems(categoryNode, "Entries", categoryPayload);
+      addAlmanacItems(categoryNode, null, categoryPayload);
     } else if (categoryPayload && typeof categoryPayload === "object") {
       Object.entries(categoryPayload).forEach(([groupName, groupEntries]) => {
         addAlmanacItems(categoryNode, groupName, groupEntries);
@@ -756,17 +818,20 @@ function buildAlmanacViewModel(entries) {
       "Factions, Institutions, and Clients": [...factions, ...clients],
     },
     "Ships and Classes": Array.isArray(entries?.ships_and_classes) ? entries.ships_and_classes : [],
+    "Cargo Types": Array.isArray(entries?.cargo_types) ? entries.cargo_types : [],
   };
 }
 
 function addAlmanacItems(parentNode, groupName, entries) {
   if (!Array.isArray(entries) || !entries.length) return;
-  const groupNode = document.createElement("details");
-  groupNode.className = "almanac-group";
+  const containerNode = groupName ? document.createElement("details") : parentNode;
+  if (groupName) {
+    containerNode.className = "almanac-group";
 
-  const groupSummary = document.createElement("summary");
-  groupSummary.textContent = groupName;
-  groupNode.appendChild(groupSummary);
+    const groupSummary = document.createElement("summary");
+    groupSummary.textContent = groupName;
+    containerNode.appendChild(groupSummary);
+  }
 
   entries.forEach((entry) => {
     const itemNode = document.createElement("details");
@@ -780,10 +845,10 @@ function addAlmanacItems(parentNode, groupName, entries) {
     description.className = "almanac-entry-description";
     description.textContent = entry?.description || "No description available.";
     itemNode.appendChild(description);
-    groupNode.appendChild(itemNode);
+    containerNode.appendChild(itemNode);
   });
 
-  parentNode.appendChild(groupNode);
+  if (groupName) parentNode.appendChild(containerNode);
 }
 
 function playScenarioIntro() {
@@ -984,13 +1049,17 @@ const NpcController = createNpcController({
   playerShipCallsign,
   playerShipDisplayId,
   playerShipCaptainById: (shipId) => SHIP_CAPTAINS[shipId] || null,
-  onConflictStage: ({ stage, nodeId }) => {
+  onConflictStage: ({ stage, nodeId, aggressorFaction, responderFaction }) => {
+    applyConflictHeatStage(stage, aggressorFaction, responderFaction);
     if (stage === "fire") {
       scheduleMessage(4, () => {
         applyTrafficControlLock(nodeId, 300, "hazard clearance following weapons discharge");
         return null;
       }, "sys");
     }
+  },
+  onConflictFire: ({ result, collateral }) => {
+    applyConflictFireHeat(result, collateral);
   },
 });
 
@@ -1236,12 +1305,220 @@ function render() {
     ui.fleet.appendChild(li);
   });
   if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
+  renderNews();
   const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
   if (inboxActive) renderInbox();
 }
 
+function inboxDisplayMessageType(msg) {
+  const sender = msg?.from || msg?.speaker;
+  const messageType = msg?.messageType || (sender ? speakerMessageType(sender) : "sys");
+  if ((!msg?.messageType || msg.messageType === "sys") && isBluFreightPersonnel(sender)) return "comms-blufreight";
+  return messageType;
+}
+
 function inboxMessageClass(messageType) {
   return `inbox-message-${String(messageType || "sys").toLowerCase().replace(/[^a-z0-9-]+/g, "-")}`;
+}
+
+function normalizeHeatFaction(faction) {
+  const text = String(faction || "").toLowerCase();
+  if (text === "ufp" || text.includes("union of free planets")) return "ufp";
+  if (text === "arcworks") return "arcworks";
+  if (text === "blister") return "blister";
+  return null;
+}
+
+function factionDisplayName(faction) {
+  const normalized = normalizeHeatFaction(faction);
+  return FACTION_DISPLAY_NAMES[normalized] || String(faction || "Unknown faction");
+}
+
+function factionHeatActive() {
+  return state.factionHeatEnabled && state.currentScenario >= 3;
+}
+
+function addFactionHeat(faction, amount, options = {}) {
+  const normalized = normalizeHeatFaction(faction);
+  if (!normalized || (!options.force && !factionHeatActive())) return 0;
+  const current = Number(state.factionHeat?.[normalized] || 0);
+  const next = Math.min(FACTION_HEAT_MAX, Math.max(0, current + amount));
+  state.factionHeat[normalized] = next;
+  return next;
+}
+
+function factionHeatDebugLines() {
+  const enabledLabel = factionHeatActive() ? "enabled" : "disabled";
+  const lines = [`dbHeat: faction heat is ${enabledLabel} (scenario ${state.currentScenario}).`];
+  HEAT_FACTIONS.forEach((faction) => {
+    const heat = Number(state.factionHeat?.[faction] || 0);
+    const probability = campaignTriggerProbability(heat);
+    const campaign = activeCampaignAgainst(faction)
+      ? state.activeFactionCampaigns.find((entry) => entry.defenderFaction === faction && entry.endsAt > state.tick)
+      : null;
+    const campaignLabel = campaign
+      ? ` | active campaign: ${factionDisplayName(campaign.aggressorFaction)} attacking until ${fmtTime(campaign.endsAt)}`
+      : "";
+    lines.push(`${factionDisplayName(faction)}: heat ${heat}/${FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD} | campaign chance ${(probability * 100).toFixed(0)}%${campaignLabel}`);
+  });
+  lines.push('Debug: type "dbwarm [faction] [amount]" to add heat against UFP, Arcworks, or Blister.');
+  return lines;
+}
+
+function debugWarmFactionHeat(faction, amount = 25) {
+  const normalized = normalizeHeatFaction(faction);
+  if (!normalized) return [`dbWarm: unknown heat faction "${faction}". Use UFP, Arcworks, or Blister.`];
+  const safeAmount = Number.isFinite(amount) ? amount : 25;
+  const before = Number(state.factionHeat?.[normalized] || 0);
+  const after = addFactionHeat(normalized, safeAmount, { force: true });
+  if (factionHeatActive()) {
+    state.nextFactionCampaignRollTick = Math.min(state.nextFactionCampaignRollTick || state.tick, state.tick);
+    evaluateFactionCampaignTriggers();
+  }
+  return [
+    `dbWarm: ${factionDisplayName(normalized)} heat ${before} -> ${after} (+${safeAmount}).`,
+    ...factionHeatDebugLines(),
+  ];
+}
+
+function heatCampaignKey(aggressorFaction, defenderFaction) {
+  return `${normalizeHeatFaction(aggressorFaction)}->${normalizeHeatFaction(defenderFaction)}`;
+}
+
+function activeCampaignAgainst(defenderFaction) {
+  const defender = normalizeHeatFaction(defenderFaction);
+  return state.activeFactionCampaigns.some((campaign) => campaign.defenderFaction === defender && campaign.endsAt > state.tick);
+}
+
+function chooseCampaignAggressor(defenderFaction) {
+  const defender = normalizeHeatFaction(defenderFaction);
+  const candidates = HEAT_FACTIONS.filter((faction) => faction !== defender);
+  if (!candidates.length) return null;
+  const weighted = [];
+  candidates.forEach((faction) => {
+    const heat = Number(state.factionHeat?.[faction] || 0);
+    const weight = Math.max(1, Math.round(1 + heat / 20));
+    for (let i = 0; i < weight; i += 1) weighted.push(faction);
+  });
+  return weighted[Math.floor(Math.random() * weighted.length)] || candidates[0];
+}
+
+function postCampaignNewsCard(campaign) {
+  const location = nodeLabel(CAMPAIGN_LOCATION_NODE_ID) || "Baron's Market";
+  const aggressorName = factionDisplayName(campaign.aggressorFaction);
+  const defenderName = factionDisplayName(campaign.defenderFaction);
+  const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
+  const item = {
+    id: campaign.id,
+    headline: `${aggressorName} attacks ${defenderName} at ${location}`,
+    body: `${fmtTime(state.tick)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${FACTION_HEAT_CAMPAIGN_DURATION_SECONDS}s.`,
+    tick: state.tick,
+    timestamp: fmtTime(state.tick),
+    aggressorFaction: campaign.aggressorFaction,
+    defenderFaction: campaign.defenderFaction,
+    location,
+  };
+  state.news.push(item);
+  renderNews();
+  logLine(`News update: ${item.headline}.`, "sys");
+}
+
+function startFactionCampaign(defenderFaction) {
+  if (!factionHeatActive()) return null;
+  const defender = normalizeHeatFaction(defenderFaction);
+  if (!defender || activeCampaignAgainst(defender)) return null;
+  const aggressor = chooseCampaignAggressor(defender);
+  if (!aggressor) return null;
+  const campaign = {
+    id: `campaign-${state.tick}-${aggressor}-${defender}`,
+    key: heatCampaignKey(aggressor, defender),
+    aggressorFaction: aggressor,
+    defenderFaction: defender,
+    locationNodeId: CAMPAIGN_LOCATION_NODE_ID,
+    startedAt: state.tick,
+    endsAt: state.tick + FACTION_HEAT_CAMPAIGN_DURATION_SECONDS,
+  };
+  state.activeFactionCampaigns.push(campaign);
+  postCampaignNewsCard(campaign);
+  return campaign;
+}
+
+function campaignTriggerProbability(heat) {
+  if (heat >= FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD) return 1;
+  if (heat < FACTION_HEAT_CAMPAIGN_ROLL_FLOOR) return 0;
+  return Math.min(0.75, Math.max(0.02, (heat - FACTION_HEAT_CAMPAIGN_ROLL_FLOOR) / (FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD - FACTION_HEAT_CAMPAIGN_ROLL_FLOOR)));
+}
+
+function evaluateFactionCampaignTriggers() {
+  if (!factionHeatActive() || state.tick < state.nextFactionCampaignRollTick) return;
+  state.nextFactionCampaignRollTick = state.tick + FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS;
+  HEAT_FACTIONS.forEach((faction) => {
+    if (activeCampaignAgainst(faction)) return;
+    const heat = Number(state.factionHeat?.[faction] || 0);
+    const probability = campaignTriggerProbability(heat);
+    if (probability > 0 && Math.random() < probability) startFactionCampaign(faction);
+  });
+}
+
+function updateFactionCampaigns() {
+  if (!factionHeatActive()) return;
+  (state.activeFactionCampaigns || []).forEach((campaign) => {
+    if (campaign.endsAt <= state.tick && !campaign.resolved) {
+      campaign.resolved = true;
+      if (campaign.defenderFaction) state.factionHeat[campaign.defenderFaction] = 0;
+      const location = nodeLabel(campaign.locationNodeId || CAMPAIGN_LOCATION_NODE_ID) || "Baron's Market";
+      state.news.push({
+        id: `${campaign.id}-resolved`,
+        headline: `${factionDisplayName(campaign.aggressorFaction)} campaign at ${location} winds down`,
+        body: `${fmtTime(state.tick)} — The ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} at ${location} has ended. Heat on ${factionDisplayName(campaign.defenderFaction)} has reset.`,
+        tick: state.tick,
+        timestamp: fmtTime(state.tick),
+        aggressorFaction: campaign.aggressorFaction,
+        defenderFaction: campaign.defenderFaction,
+        location,
+      });
+      renderNews();
+      logLine(`News update: ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} has ended.`, "sys");
+    }
+  });
+  state.activeFactionCampaigns = (state.activeFactionCampaigns || []).filter((campaign) => !campaign.resolved);
+}
+
+function applyConflictHeatStage(stage, aggressorFaction, responderFaction) {
+  if (stage !== "verbal" && stage !== "intercept") return;
+  const amount = FACTION_HEAT_STAGE_AMOUNT[stage] || 0;
+  addFactionHeat(aggressorFaction, amount);
+  addFactionHeat(responderFaction, amount);
+  evaluateFactionCampaignTriggers();
+}
+
+function applyConflictFireHeat(result, collateral = false) {
+  const amount = collateral ? FACTION_HEAT_COLLATERAL_AMOUNT : FACTION_HEAT_FIRE_AMOUNT;
+  addFactionHeat(result?.attackerFaction, amount);
+  evaluateFactionCampaignTriggers();
+}
+
+function renderNews() {
+  if (!ui.newsList) return;
+  ui.newsList.innerHTML = "";
+  const ordered = [...(state.news || [])].reverse();
+  ordered.forEach((item) => {
+    const li = document.createElement("li");
+    li.className = "news-item";
+    const title = document.createElement("strong");
+    title.textContent = `${item.timestamp || fmtTime(item.tick || state.tick)} | ${item.headline || "News update"}`;
+    const body = document.createElement("p");
+    body.textContent = item.body || "";
+    li.appendChild(title);
+    li.appendChild(body);
+    ui.newsList.appendChild(li);
+  });
+  if (!ordered.length) {
+    const li = document.createElement("li");
+    li.className = "news-item news-item-empty";
+    li.textContent = "No current system-wide campaign news.";
+    ui.newsList.appendChild(li);
+  }
 }
 
 function renderInbox() {
@@ -1253,7 +1530,8 @@ function renderInbox() {
   ordered.forEach((msg, idx) => {
     const actualIndex = state.inbox.length - 1 - idx;
     const li = document.createElement("li");
-    li.className = `inbox-item ${inboxMessageClass(msg.messageType)}`;
+    const messageType = inboxDisplayMessageType(msg);
+    li.className = `inbox-item ${inboxMessageClass(messageType)}`;
     const details = document.createElement("details");
     details.className = "inbox-mail";
     details.open = openSet.has(actualIndex);
@@ -1273,7 +1551,7 @@ function renderInbox() {
     details.appendChild(summary);
 
     const body = document.createElement("p");
-    body.className = `inbox-mail-body inbox-mail-body-${msg.messageType || "sys"}`;
+    body.className = `inbox-mail-body inbox-mail-body-${messageType || "sys"}`;
     body.textContent = msg.body || msg.text || "";
     details.appendChild(body);
 
@@ -1296,6 +1574,8 @@ function activateTab(tabName) {
   if (tabName === "inbox") {
     state.unreadInboxCount = 0;
     renderInbox();
+  } else if (tabName === "news") {
+    renderNews();
   } else if (ui.inboxUnread) {
     ui.inboxUnread.textContent = String(state.unreadInboxCount);
   }
@@ -1368,7 +1648,7 @@ function postOperatingExpenseReport() {
 
 — Gregory Trundle
 bluFreight Accounting.`,
-    messageType: "sys",
+    messageType: speakerMessageType("Gregory Trundle"),
     tick: state.tick,
     timestamp: fmtTime(state.tick),
   });
@@ -1380,16 +1660,35 @@ bluFreight Accounting.`,
   logLine("Operating expense report is available in Inbox.", "sys");
 }
 
+function formatTripAverage(numerator, denominator) {
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) return "n/a";
+  return (numerator / denominator).toFixed(2);
+}
+
+function numericFuelValue(report) {
+  if (Number.isFinite(report?.fuelSpentValue)) return report.fuelSpentValue;
+  const match = String(report?.fuelSpent || "").match(/-?\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : 0;
+}
+
 function postTripReportToInbox(ship, report) {
   const firstMateRanked = SHIP_FIRST_MATES[ship.id] || `First Mate ${formatShipId(ship.id)}`;
   const from = firstMateRanked.replace(/^First Mate\s+/i, "");
   const hazardsText = report.hazards?.length ? report.hazards.join("; ") : "None reported";
+  const elapsedSeconds = Math.round(Math.max(0, Number.isFinite(report.elapsedTimeSeconds) ? report.elapsedTimeSeconds : 0));
+  const routeDistanceValue = Math.round(Math.max(0, Number.isFinite(report.routeDistance) ? report.routeDistance : 0));
+  const fuelValue = Math.max(0, numericFuelValue(report));
+  const elapsedMinutes = elapsedSeconds / 60;
   const body = [
     `Vessel: ${playerShipCallsign(ship)}`,
     `Outcome: ${report.outcome}`,
     `Contract: ${report.contractLabel || "None"}`,
     `Distance traveled: ${report.distanceText}`,
+    `Elapsed time: ${fmtTime(elapsedSeconds)} (${elapsedSeconds}s)`,
+    `Route distance: ${routeDistanceValue}`,
     `Fuel spent: ${report.fuelSpent}`,
+    `Average fuel per distance: ${formatTripAverage(fuelValue, routeDistanceValue)}`,
+    `Average fuel per minute: ${formatTripAverage(fuelValue, elapsedMinutes)}`,
     `Earnings: $${report.earnings || 0}`,
     `Hazards: ${hazardsText}`,
     `Damage: ${report.damage || "None reported"}`,
@@ -1572,6 +1871,9 @@ function checkScenarioCompletion() {
       if (state.scenario2Dialogue?.oneTimeFlags) {
         state.scenario2Dialogue.oneTimeFlags.tutorial_complete_scenario2 = true;
       }
+      state.factionHeatEnabled = true;
+      state.nextFactionCampaignRollTick = state.tick + FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS;
+      logLine("Faction heat enabled: inter-faction campaigns can now escalate from system heat.", "sys");
     }
     if (!state.scenario3Activated) {
       state.scenario3Activated = true;
@@ -1766,6 +2068,7 @@ function sendShip(shipId, destination) {
     mode: "reposition",
     startedAt: ship.departAt,
     currentLegTransit: transitTime,
+    currentLegRouteSpan: routeSpan,
     currentLegFuel: shipFuelCost,
     recallNodeId: ship.at,
     destination: normalizedDestination,
@@ -1857,6 +2160,8 @@ function assignContract(contractId, shipId) {
     startedAt: ship.departAt,
     firstLegTransit,
     secondLegTransit: Math.max(0, total - firstLegTransit),
+    firstLegRouteSpan: toPickupSpan,
+    secondLegRouteSpan: toDropSpan,
     firstLegFuel: fuelCostForRoute(ship.at, contract.from, driveShipId),
     secondLegFuel: fuelCostForRoute(contract.from, contract.to, driveShipId),
     firstLegTo: contract.from,
@@ -1996,6 +2301,16 @@ function recallShip(shipId) {
   const reverseLegFuelFull = Math.max(0, fuelCostForRoute(currentLegTo, currentLegFrom, driveShipId));
   const returnFuel = Math.round(reverseLegFuelFull * legProgress);
   const recallFuel = proratedFuelSpent + returnFuel;
+  const currentLegSpan = Number.isFinite(plan.currentLegRouteSpan)
+    ? plan.currentLegRouteSpan
+    : Number.isFinite(plan.firstLegRouteSpan) && currentLegFrom === plan.firstLegFrom && currentLegTo === plan.firstLegTo
+      ? plan.firstLegRouteSpan
+      : Number.isFinite(plan.secondLegRouteSpan) && currentLegFrom === plan.secondLegFrom && currentLegTo === plan.secondLegTo
+        ? plan.secondLegRouteSpan
+        : safeRouteDistance(currentLegFrom, currentLegTo);
+  const partialOutboundDistance = Math.round(Math.max(0, currentLegSpan * legProgress));
+  const returnDistance = Math.round(Math.max(0, safeRouteDistance(currentLegTo, currentLegFrom) * legProgress));
+  const recallRouteDistance = partialOutboundDistance + returnDistance;
   if (fuelBillingActive()) state.cash -= recallFuel;
   if (ship.activeContractId) {
     const contract = state.contracts.find((c) => c.id === ship.activeContractId && c.status === "assigned");
@@ -2006,6 +2321,9 @@ function recallShip(shipId) {
     contractLabel: ship.activeContractId || "Cancelled active contract",
     distanceText: `Partial current leg (${Math.round(legProgress * 100)}%) + return to ${nodeLabel(recallNodeId)}`,
     fuelSpent: fuelBillingActive() ? `${recallFuel}` : `${recallFuel} (training waiver)`,
+    fuelSpentValue: recallFuel,
+    elapsedTimeSeconds: elapsed,
+    routeDistance: recallRouteDistance,
     earnings: 0,
     hazards: plan.hazards || [],
     damage: "None reported",
@@ -2056,6 +2374,9 @@ function finalizeContractDelivery(contractId) {
         ? `${plan.firstLegTo ? `${nodeLabel(deliveryShip.lastKnownAt || deliveryShip.at)} -> ${nodeLabel(plan.firstLegTo)}` : "Leg 1"}; ${plan.firstLegTo && plan.secondLegTo ? `${nodeLabel(plan.firstLegTo)} -> ${nodeLabel(plan.secondLegTo)}` : "Leg 2"}`
         : "Contract route complete",
       fuelSpent: `${missionFuelCost}`,
+      fuelSpentValue: missionFuelCost,
+      elapsedTimeSeconds: Math.max(0, (Number.isFinite(plan.completedAt) ? plan.completedAt : deliveryShip.busyUntil || state.tick) - (Number.isFinite(plan.startedAt) ? plan.startedAt : state.tick)),
+      routeDistance: Number.isFinite(plan.totalRouteSpan) ? plan.totalRouteSpan : 0,
       earnings: appliedPayout,
       hazards: plan.hazards || [],
       damage: "None reported",
@@ -2077,6 +2398,8 @@ function updateSimulation() {
     postOperatingExpenseReport();
   }
   NpcController.update();
+  updateFactionCampaigns();
+  evaluateFactionCampaignTriggers();
   state.ships.forEach((ship) => {
     if (ship.utility && ship.status === "docked" && ship.dockedTo) {
       const host = state.ships.find((entry) => entry.id === ship.dockedTo);
@@ -2255,6 +2578,8 @@ commandRuntime = createCommandRuntime({
   tutorialGoal: TUTORIAL_GOAL,
   npcConflictDebugLines: () => NpcController.getConflictDebugLines(),
   bumpNpcConflictStress: (index, amount) => NpcController.bumpConflictStress(index, amount),
+  factionHeatDebugLines,
+  warmFactionHeat: debugWarmFactionHeat,
 });
 NpcController.bootstrap();
 
@@ -2295,7 +2620,7 @@ async function init() {
   }
   fillContractBoard({ forceNewTarget: true });
   state.selection.pending = "await_ship";
-  basilSpeak("greetings", "Dispatch online.", "basil");
+  basilInform("Dispatch online. I've sent operating instructions to your inbox because management has asked me to stop spamming the console with monologues.", "basil");
   playScenarioIntro();
   logLine("Tutorial online. Select ship by typing its number or ID.", "sys");
   showShipsList();
