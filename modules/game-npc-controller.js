@@ -25,6 +25,7 @@ const AMBIENT_NEUTRAL_LINES = [
 
 
 const OBSERVATION_CHATTER_CHANCE = 0.25;
+const QUESTION_CHATTER_CHANCE = 0.25;
 
 const OBSERVATION_OPENERS = [
   "Anyone else",
@@ -135,6 +136,211 @@ function makeObservation(category = null) {
   ];
 
   return randomPick(templates);
+}
+
+
+const QUESTION_BANKS = {
+  food: {
+    openers: [
+      "Any recommendations for",
+      "Anyone know where to get",
+      "Looking for",
+      "Trying to find",
+      "Can anyone recommend",
+      "Before morale gets worse, anyone know where to find",
+      "Station traffic, requesting leads on",
+      "Does anyone here trust",
+    ],
+    needs: [
+      "good huevos rancheros",
+      "coffee that tastes less like battery rinse",
+      "breakfast near the docks",
+      "noodles open past second shift",
+      "fried plantains that are not load-bearing",
+      "soup with visible ingredients",
+      "a bar with actual chairs",
+      "dumplings from a vendor with survivable reviews",
+      "something green and recently alive",
+      "eggs that did not come from a printer",
+      "a sandwich that understands gravity",
+      "cheap rice bowls near the commercial locks",
+      "tea that does not taste like warm gasket water",
+      "a pastry not wrapped in compliance plastic",
+    ],
+    locations: [
+      "on Anchor Station",
+      "near Baron's Market",
+      "at Indigo Station",
+      "around the Oxblood dock ring",
+      "near the refinery concourse",
+      "inside the low orbit transfer office",
+      "by the tug berths",
+      "near the commercial locks",
+      "under the old arrivals board",
+      "somewhere with chairs and fewer alarms",
+    ],
+    tags: [
+      "Low gravity acceptable. Low hygiene negotiable.",
+      "Crew morale is entering the soup phase.",
+      "Bonus if they do not ask what ship I came in on.",
+      "Preferably somewhere that accepts tired people as currency.",
+      "My last vending machine interaction was personal.",
+      "Asking before the captain starts eating checklist laminate.",
+      "Will trade gossip, filters, or one sincere apology.",
+      "Please do not recommend the place with the decorative shrimp tank again.",
+      "I am not strong enough for another protein rectangle.",
+    ],
+  },
+  repair: {
+    openers: [
+      "Looking for",
+      "Anyone know",
+      "Does anyone have",
+      "Can anyone recommend",
+      "Trying to find",
+      "Station traffic, requesting",
+      "Before we call this character-building, does anyone know",
+      "Asking before maintenance becomes a spiritual issue",
+    ],
+    needs: [
+      "someone who knows how to fix a thermoacoustic generator panel",
+      "a shop that can reseal a cracked heat exchanger",
+      "a tech willing to look at a whining pump bearing",
+      "replacement ceramic bushings for a tug coupler",
+      "a pressure-rated patch kit that is not expired",
+      "a dockside welder who answers comms",
+      "someone with a clean diagnostic rig",
+      "a spare actuator for an old Blue-series cargo clamp",
+      "a mechanic who understands pre-war refrigeration loops",
+      "a panel shop that will not laugh at legacy wiring",
+      "coolant hose by the meter",
+      "a replacement valve that does not come with a curse",
+      "a used intake fan with most of its dignity",
+      "someone who can convince a cargo latch to believe in itself",
+    ],
+    locations: [
+      "near Anchor Station",
+      "at Baron's Market",
+      "around Oxblood",
+      "on Indigo Station",
+      "near the refinery stacks",
+      "by the cargo elevators",
+      "inside the old maintenance arcade",
+      "somewhere that is not technically a scrapyard",
+      "behind the dockmaster's office",
+      "near any shop with lights still on",
+    ],
+    tags: [
+      "Preferably someone who will not call it vintage.",
+      "No questions about how it happened.",
+      "It is making a sound the manual describes as impossible.",
+      "We already tried hitting it. That was phase one.",
+      "Need skill, not confidence. Already have confidence.",
+      "Cash is available. Pride is not.",
+      "The smell is new, which feels diagnostically relevant.",
+      "It still works if nobody looks directly at it.",
+      "The panel is warm in a way I would describe as personal.",
+      "Manual says replace assembly. Manual has clearly never had a budget.",
+    ],
+  },
+  personal: {
+    openers: [
+      "Anyone know",
+      "Looking for",
+      "Trying to find",
+      "Does anyone have",
+      "Can anyone recommend",
+      "Station traffic, deeply regrettable question",
+      "Before this becomes a legal matter, anyone know",
+      "Asking for someone who has made poor choices",
+    ],
+    needs: [
+      "someone's ex-girlfriend who still has a cargo locker key",
+      "a roommate willing to move out before docking fees become shared property",
+      "a trading card collection appraiser who understands emotional damage",
+      "a person named Kel who may or may not owe me a helmet",
+      "someone who can mediate a dispute over freezer space",
+      "a buyer for several thousand pre-collapse trading cards",
+      "a witness who remembers who owned the purple suitcase",
+      "a way to return a jacket without restarting a relationship",
+      "someone who knows if holographic rookies are still worth anything",
+      "a neutral third party for a roommate with ferret energy",
+      "a place to sell cards without being judged by a twelve-year-old",
+      "someone who can explain why my ex is listed as emergency contact on a tug lease",
+      "a polite way to ask a former roommate where the good wrench went",
+      "anyone who collects tournament misprints and bad decisions",
+    ],
+    locations: [
+      "on Anchor Station",
+      "near Baron's Market",
+      "at Indigo Station",
+      "around the Oxblood dock ring",
+      "near the old market concourse",
+      "by the tug berths",
+      "inside the cheap lockers",
+      "near customs but not too near customs",
+      "somewhere discreet",
+      "preferably off-channel, actually",
+    ],
+    tags: [
+      "Payment available in cash or humiliation.",
+      "No authorities unless emotionally necessary.",
+      "This is not an emergency, but it is getting louder.",
+      "Please do not ask follow-up questions on main channel.",
+      "I have been told this is technically my fault.",
+      "The cards are sleeved. The feelings are not.",
+      "I need someone calm, cheap, and not friends with Mara.",
+      "Prefer answers from people with no stake in the breakup.",
+      "If you know what this is about, no you don't.",
+      "I am trying to make the responsible choice before lunch.",
+    ],
+  },
+};
+
+const QUESTION_MIX_INS = {
+  food: [
+    "Bonus if the place is not next to my ex's favorite noodle counter.",
+    "Will also accept trades for unopened card sleeves.",
+    "Repair shop nearby would help, since the captain broke morale and the kettle.",
+    "Need somewhere my roommate has not been banned from.",
+  ],
+  repair: [
+    "Nearby food recommendations also accepted for the crew member holding the panel shut.",
+    "Bonus if the shop accepts trading cards as collateral, hypothetically.",
+    "Preferably not operated by my former roommate.",
+    "If Mara works there, forget I asked.",
+  ],
+  personal: [
+    "Food recommendations nearby also welcome because this may take a while.",
+    "A repair shop with a forgiving back room would also solve part of this.",
+    "Will trade coolant hose, dumplings, or rare foils.",
+    "If this is about the dockside incident, different incident.",
+  ],
+};
+
+function makeStationQuestion(category = null, opts = {}) {
+  const categories = Object.keys(QUESTION_BANKS);
+  const primary = QUESTION_BANKS[category] ? category : randomPick(categories);
+  const bank = QUESTION_BANKS[primary];
+  const opener = randomPick(bank.openers);
+  const need = randomPick(bank.needs);
+  const location = randomPick(bank.locations);
+  const tagChance = opts.tagChance ?? 0.72;
+  const mixChance = opts.mixChance ?? 0.24;
+  const tag = Math.random() < tagChance ? ` ${randomPick(bank.tags)}` : "";
+  const templates = [
+    `${opener} ${need} ${location}?${tag}`,
+    `${opener} ${need}?${tag}`,
+    `${capitalizeFirst(need)} ${location}. Anyone have a lead?${tag}`,
+    `${opener} ${location} for ${need}?${tag}`,
+  ];
+  let line = randomPick(templates);
+
+  if (Math.random() < mixChance) {
+    line += ` ${randomPick(QUESTION_MIX_INS[primary])}`;
+  }
+
+  return line.replace(/\s+/g, " ").trim();
 }
 
 const AMBIENT_LOCATION_SHIP_RULES = [
@@ -650,10 +856,12 @@ export function createNpcController({
   }
 
   function scheduleAmbientNeutralLine(npc) {
-    const useObservation = Math.random() < OBSERVATION_CHATTER_CHANCE;
-    const line = useObservation
+    const chatterRoll = Math.random();
+    const line = chatterRoll < OBSERVATION_CHATTER_CHANCE
       ? makeObservation()
-      : randomPick(neutralDialoguePool(npc)) || randomPick(AMBIENT_NEUTRAL_LINES);
+      : chatterRoll < OBSERVATION_CHATTER_CHANCE + QUESTION_CHATTER_CHANCE
+        ? makeStationQuestion()
+        : randomPick(neutralDialoguePool(npc)) || randomPick(AMBIENT_NEUTRAL_LINES);
     const delay = 1;
     npc.lastDialogueTick = state.tick + delay;
     npc.dialogueCount = (npc.dialogueCount || 0) + 1;
