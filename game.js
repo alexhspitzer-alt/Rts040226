@@ -118,6 +118,7 @@ const CAMPAIGN_DEFENDER_RESPONSE_LINES = [
 ];
 const SCENARIO_PATH = "./scenarioDat.json";
 const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
+const CONFLICT_OUTCOMES_PATH = "./conflict_outcomes.json";
 const LEGACY_NODE_ALIASES = {
   anchor: "anchor_station",
   cinder_hub: "refinery",
@@ -363,6 +364,7 @@ const state = {
   lastAmbientChatterTick: -Infinity,
   mapData: null,
   shipRegistry: null,
+  conflictOutcomes: null,
   buddeData: null,
   civilianNpcs: [],
   scenarioDialogue: {},
@@ -707,7 +709,7 @@ let PlayerHailFlow;
 async function loadReferenceData() {
   try {
     const noCache = { cache: "no-store" };
-    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse, nameRegistryResponse] = await Promise.all([
+    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse, nameRegistryResponse, conflictOutcomesResponse] = await Promise.all([
       fetch("./bluFreight%20text%20RTS.txt", noCache),
       fetch("./indigo_dialogue_characters.json", noCache),
       fetch("./map.json", noCache),
@@ -716,6 +718,7 @@ async function loadReferenceData() {
       fetch(ALMANAC_PATH, noCache),
       fetch("./ship_registry.json", noCache),
       fetch("./character_name_registry.json", noCache),
+      fetch(CONFLICT_OUTCOMES_PATH, noCache),
     ]);
 
     if (loreResponse.ok) {
@@ -776,6 +779,9 @@ async function loadReferenceData() {
     }
     if (nameRegistryResponse.ok) {
       state.characterNameRegistry = await nameRegistryResponse.json();
+    }
+    if (conflictOutcomesResponse.ok) {
+      state.conflictOutcomes = await conflictOutcomesResponse.json();
     }
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
@@ -1078,6 +1084,7 @@ const NpcController = createNpcController({
   nodeLabel,
   scheduleCharacterMessage,
   getShipRegistry: () => state.shipRegistry,
+  getConflictOutcomes: () => state.conflictOutcomes,
   playerShipCallsign,
   playerShipDisplayId,
   playerShipCaptainById: (shipId) => SHIP_CAPTAINS[shipId] || null,

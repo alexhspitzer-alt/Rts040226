@@ -791,6 +791,7 @@ export function createNpcController({
   nodeLabel,
   scheduleCharacterMessage,
   getShipRegistry,
+  getConflictOutcomes,
   playerShipCallsign,
   playerShipCaptainById,
   onConflictStage,
@@ -1360,8 +1361,43 @@ export function createNpcController({
     return `${formatCombatResultLine(event.direct, "Reprisal")} Trigger: ${event.trigger.defender.callsign} ${collateralReprisalTriggerLabel(event.trigger.outcome)}.`;
   }
 
+  function prosecutionSpeakerKeyCandidates(npc) {
+    const registryKey = String(npc?.registryKey || "").toLowerCase();
+    const callsign = String(npc?.callsign || "").toLowerCase();
+    if (registryKey === "kestrel" || callsign.includes("kestrel")) return ["UFP Kestrels", "Kestrels", "Kestrel"];
+    if (registryKey === "ibis" || callsign.includes("ibis")) return ["Ibis drones", "Ibis"];
+    if (registryKey === "condor" || callsign.includes("condor")) return ["Condor"];
+    if (registryKey === "mk-iv" || callsign.includes("mk-iv")) return ["MK-IV"];
+    if (registryKey === "ml-x" || callsign.includes("ml-x")) return ["ML-X"];
+    if (registryKey === "mm-ix" || callsign.includes("mm-ix")) return ["MM-IX"];
+    if (registryKey === "sledge" || callsign.includes("sledge")) return ["sledge", "sledges", "Sledge", "Sledges"];
+    if (registryKey === "dragoon" || callsign.includes("dragoon")) return ["dragoons", "Dragoon", "Dragoons"];
+    if (registryKey === "matador" || callsign.includes("matador")) return ["Matador"];
+    return [];
+  }
+
+  function prosecutionDialogueSet(attacker, target) {
+    const attackerFaction = attacker?.campaignFaction || attacker?.faction || "civilian";
+    const targetFaction = target?.campaignFaction || target?.faction || "civilian";
+    const sets = typeof getConflictOutcomes === "function" ? getConflictOutcomes()?.prosecutionDialogue : null;
+    if (!Array.isArray(sets)) return null;
+    return sets.find((entry) => entry?.aggressorFaction === attackerFaction && entry?.targetFaction === targetFaction) || null;
+  }
+
+  function pickProsecutionLine(attacker, target, chatterKey = "speakers") {
+    const set = prosecutionDialogueSet(attacker, target);
+    const groups = set?.[chatterKey];
+    if (!groups || typeof groups !== "object") return null;
+    const candidates = prosecutionSpeakerKeyCandidates(attacker);
+    const matchingKey = Object.keys(groups).find((key) => candidates.some((candidate) => key.toLowerCase() === candidate.toLowerCase()));
+    const lines = matchingKey ? groups[matchingKey] : groups[randomPick(Object.keys(groups))];
+    return randomPick(Array.isArray(lines) ? lines : []);
+  }
+
   function campaignAttackLine(attacker, target, nodeId, label = "Fire") {
     const location = titleCase(nodeLabel(nodeId));
+    const prosecutionLine = pickProsecutionLine(attacker, target, "speakers");
+    if (prosecutionLine) return `[${label}] to ${target.callsign} @ ${location}: ${prosecutionLine}`;
     const attackerFaction = attacker?.faction || "civilian";
     const aggressorPool = attackerFaction === "civilian" ? CONFLICT_AGGRESSOR_LINES.civilian : CONFLICT_AGGRESSOR_LINES.armed;
     const barkPool = aggressorPool.fire || aggressorPool.verbal || aggressorPool.notice;
