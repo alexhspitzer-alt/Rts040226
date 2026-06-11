@@ -42,6 +42,48 @@ const OPERATING_COST_INTERVAL_SECONDS = 15;
 const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
+const FACTION_HEAT_CAMPAIGN_DURATION_SECONDS = 180;
+const FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS = 10;
+const FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD = 100;
+const FACTION_HEAT_CAMPAIGN_ROLL_FLOOR = 25;
+const FACTION_HEAT_MAX = 120;
+const FACTION_HEAT_STAGE_AMOUNT = { verbal: 4, intercept: 7 };
+const FACTION_HEAT_FIRE_AMOUNT = 10;
+const FACTION_HEAT_COLLATERAL_AMOUNT = 4;
+const HEAT_FACTIONS = ["ufp", "arcworks", "blister"];
+const FACTION_DISPLAY_NAMES = {
+  ufp: "UFP",
+  arcworks: "Arcworks",
+  blister: "Blister",
+};
+const CAMPAIGN_LOCATION_NODE_ID = "barons_market";
+const CAMPAIGN_DEFENDER_RESPONSE_LINES = [
+  "Piss off and try someone easier.",
+  "I'd like to see them try.",
+  "They've bitten off more than they can chew.",
+  "Tell them to bring more ships.",
+  "They want a campaign? We will give them a graveyard.",
+  "They can have this route when we are done using it to break them.",
+  "We are still here. That is their first problem.",
+  "Let them come closer. We have answers loaded.",
+  "They picked the wrong target and the wrong day.",
+  "We are not moving. They are welcome to learn why.",
+  "Their threats are louder than their guns.",
+  "They should have counted our batteries before starting this.",
+  "We will be waiting at the marker with engines hot.",
+  "They can explain this mistake to their survivors.",
+  "If they want the lane, they can bleed for every kilometer.",
+  "They are overextended and about to notice.",
+  "This attack ends when they run out of nerve or hulls.",
+  "They came looking for weakness and found a hard lock.",
+  "We have seen worse threats from worse captains.",
+  "Let them commit. Retreat is harder after the first burn.",
+  "They are not taking our ground by headline.",
+  "We will make this expensive enough to remember.",
+  "They are welcome to test the perimeter.",
+  "They opened the door. Now they can eat the room.",
+  "Stand firm. They have already made the fatal mistake."
+];
 const SCENARIO_PATH = "./scenarioDat.json";
 const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
 const LEGACY_NODE_ALIASES = {
@@ -309,6 +351,11 @@ const state = {
   inbox: [],
   unreadInboxCount: 0,
   inboxOpenIndexes: [],
+  news: [],
+  factionHeatEnabled: false,
+  factionHeat: { ufp: 0, arcworks: 0, blister: 0 },
+  activeFactionCampaigns: [],
+  nextFactionCampaignRollTick: 0,
   operatingExpenseAccrued: 0,
   operatingExpenseWindowStartTick: 0,
   trafficLocks: {},
@@ -335,6 +382,7 @@ const ui = {
   almanacRoot: document.getElementById("almanac-root"),
   inboxList: document.getElementById("inbox-list"),
   inboxUnread: document.getElementById("inbox-unread"),
+  newsList: document.getElementById("news-list"),
   tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
   tabPanels: Array.from(document.querySelectorAll(".tab-panel")),
 };
@@ -984,13 +1032,17 @@ const NpcController = createNpcController({
   playerShipCallsign,
   playerShipDisplayId,
   playerShipCaptainById: (shipId) => SHIP_CAPTAINS[shipId] || null,
-  onConflictStage: ({ stage, nodeId }) => {
+  onConflictStage: ({ stage, nodeId, aggressorFaction, responderFaction }) => {
+    applyConflictHeatStage(stage, aggressorFaction, responderFaction);
     if (stage === "fire") {
       scheduleMessage(4, () => {
         applyTrafficControlLock(nodeId, 300, "hazard clearance following weapons discharge");
         return null;
       }, "sys");
     }
+  },
+  onConflictFire: ({ result, collateral }) => {
+    applyConflictFireHeat(result, collateral);
   },
 });
 
@@ -1236,12 +1288,213 @@ function render() {
     ui.fleet.appendChild(li);
   });
   if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
+  renderNews();
   const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
   if (inboxActive) renderInbox();
 }
 
 function inboxMessageClass(messageType) {
   return `inbox-message-${String(messageType || "sys").toLowerCase().replace(/[^a-z0-9-]+/g, "-")}`;
+}
+
+function normalizeHeatFaction(faction) {
+  const text = String(faction || "").toLowerCase();
+  if (text === "ufp" || text.includes("union of free planets")) return "ufp";
+  if (text === "arcworks") return "arcworks";
+  if (text === "blister") return "blister";
+  return null;
+}
+
+function factionDisplayName(faction) {
+  const normalized = normalizeHeatFaction(faction);
+  return FACTION_DISPLAY_NAMES[normalized] || String(faction || "Unknown faction");
+}
+
+function factionHeatActive() {
+  return state.factionHeatEnabled && state.currentScenario >= 3;
+}
+
+function addFactionHeat(faction, amount, options = {}) {
+  const normalized = normalizeHeatFaction(faction);
+  if (!normalized || (!options.force && !factionHeatActive())) return 0;
+  const current = Number(state.factionHeat?.[normalized] || 0);
+  const next = Math.min(FACTION_HEAT_MAX, Math.max(0, current + amount));
+  state.factionHeat[normalized] = next;
+  return next;
+}
+
+function factionHeatDebugLines() {
+  const enabledLabel = factionHeatActive() ? "enabled" : "disabled";
+  const lines = [`dbHeat: faction heat is ${enabledLabel} (scenario ${state.currentScenario}).`];
+  HEAT_FACTIONS.forEach((faction) => {
+    const heat = Number(state.factionHeat?.[faction] || 0);
+    const probability = campaignTriggerProbability(heat);
+    const campaign = activeCampaignAgainst(faction)
+      ? state.activeFactionCampaigns.find((entry) => entry.defenderFaction === faction && entry.endsAt > state.tick)
+      : null;
+    const campaignLabel = campaign
+      ? ` | active campaign: ${factionDisplayName(campaign.aggressorFaction)} attacking until ${fmtTime(campaign.endsAt)}`
+      : "";
+    lines.push(`${factionDisplayName(faction)}: heat ${heat}/${FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD} | campaign chance ${(probability * 100).toFixed(0)}%${campaignLabel}`);
+  });
+  lines.push('Debug: type "dbwarm [faction] [amount]" to add heat against UFP, Arcworks, or Blister.');
+  return lines;
+}
+
+function debugWarmFactionHeat(faction, amount = 25) {
+  const normalized = normalizeHeatFaction(faction);
+  if (!normalized) return [`dbWarm: unknown heat faction "${faction}". Use UFP, Arcworks, or Blister.`];
+  const safeAmount = Number.isFinite(amount) ? amount : 25;
+  const before = Number(state.factionHeat?.[normalized] || 0);
+  const after = addFactionHeat(normalized, safeAmount, { force: true });
+  if (factionHeatActive()) {
+    state.nextFactionCampaignRollTick = Math.min(state.nextFactionCampaignRollTick || state.tick, state.tick);
+    evaluateFactionCampaignTriggers();
+  }
+  return [
+    `dbWarm: ${factionDisplayName(normalized)} heat ${before} -> ${after} (+${safeAmount}).`,
+    ...factionHeatDebugLines(),
+  ];
+}
+
+function heatCampaignKey(aggressorFaction, defenderFaction) {
+  return `${normalizeHeatFaction(aggressorFaction)}->${normalizeHeatFaction(defenderFaction)}`;
+}
+
+function activeCampaignAgainst(defenderFaction) {
+  const defender = normalizeHeatFaction(defenderFaction);
+  return state.activeFactionCampaigns.some((campaign) => campaign.defenderFaction === defender && campaign.endsAt > state.tick);
+}
+
+function chooseCampaignAggressor(defenderFaction) {
+  const defender = normalizeHeatFaction(defenderFaction);
+  const candidates = HEAT_FACTIONS.filter((faction) => faction !== defender);
+  if (!candidates.length) return null;
+  const weighted = [];
+  candidates.forEach((faction) => {
+    const heat = Number(state.factionHeat?.[faction] || 0);
+    const weight = Math.max(1, Math.round(1 + heat / 20));
+    for (let i = 0; i < weight; i += 1) weighted.push(faction);
+  });
+  return weighted[Math.floor(Math.random() * weighted.length)] || candidates[0];
+}
+
+function postCampaignNewsCard(campaign) {
+  const location = nodeLabel(CAMPAIGN_LOCATION_NODE_ID) || "Baron's Market";
+  const aggressorName = factionDisplayName(campaign.aggressorFaction);
+  const defenderName = factionDisplayName(campaign.defenderFaction);
+  const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
+  const item = {
+    id: campaign.id,
+    headline: `${aggressorName} attacks ${defenderName} at ${location}`,
+    body: `${fmtTime(state.tick)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${FACTION_HEAT_CAMPAIGN_DURATION_SECONDS}s.`,
+    tick: state.tick,
+    timestamp: fmtTime(state.tick),
+    aggressorFaction: campaign.aggressorFaction,
+    defenderFaction: campaign.defenderFaction,
+    location,
+  };
+  state.news.push(item);
+  renderNews();
+  logLine(`News update: ${item.headline}.`, "sys");
+}
+
+function startFactionCampaign(defenderFaction) {
+  if (!factionHeatActive()) return null;
+  const defender = normalizeHeatFaction(defenderFaction);
+  if (!defender || activeCampaignAgainst(defender)) return null;
+  const aggressor = chooseCampaignAggressor(defender);
+  if (!aggressor) return null;
+  const campaign = {
+    id: `campaign-${state.tick}-${aggressor}-${defender}`,
+    key: heatCampaignKey(aggressor, defender),
+    aggressorFaction: aggressor,
+    defenderFaction: defender,
+    locationNodeId: CAMPAIGN_LOCATION_NODE_ID,
+    startedAt: state.tick,
+    endsAt: state.tick + FACTION_HEAT_CAMPAIGN_DURATION_SECONDS,
+  };
+  state.activeFactionCampaigns.push(campaign);
+  postCampaignNewsCard(campaign);
+  return campaign;
+}
+
+function campaignTriggerProbability(heat) {
+  if (heat >= FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD) return 1;
+  if (heat < FACTION_HEAT_CAMPAIGN_ROLL_FLOOR) return 0;
+  return Math.min(0.75, Math.max(0.02, (heat - FACTION_HEAT_CAMPAIGN_ROLL_FLOOR) / (FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD - FACTION_HEAT_CAMPAIGN_ROLL_FLOOR)));
+}
+
+function evaluateFactionCampaignTriggers() {
+  if (!factionHeatActive() || state.tick < state.nextFactionCampaignRollTick) return;
+  state.nextFactionCampaignRollTick = state.tick + FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS;
+  HEAT_FACTIONS.forEach((faction) => {
+    if (activeCampaignAgainst(faction)) return;
+    const heat = Number(state.factionHeat?.[faction] || 0);
+    const probability = campaignTriggerProbability(heat);
+    if (probability > 0 && Math.random() < probability) startFactionCampaign(faction);
+  });
+}
+
+function updateFactionCampaigns() {
+  if (!factionHeatActive()) return;
+  (state.activeFactionCampaigns || []).forEach((campaign) => {
+    if (campaign.endsAt <= state.tick && !campaign.resolved) {
+      campaign.resolved = true;
+      if (campaign.defenderFaction) state.factionHeat[campaign.defenderFaction] = 0;
+      const location = nodeLabel(campaign.locationNodeId || CAMPAIGN_LOCATION_NODE_ID) || "Baron's Market";
+      state.news.push({
+        id: `${campaign.id}-resolved`,
+        headline: `${factionDisplayName(campaign.aggressorFaction)} campaign at ${location} winds down`,
+        body: `${fmtTime(state.tick)} — The ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} at ${location} has ended. Heat on ${factionDisplayName(campaign.defenderFaction)} has reset.`,
+        tick: state.tick,
+        timestamp: fmtTime(state.tick),
+        aggressorFaction: campaign.aggressorFaction,
+        defenderFaction: campaign.defenderFaction,
+        location,
+      });
+      renderNews();
+      logLine(`News update: ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} has ended.`, "sys");
+    }
+  });
+  state.activeFactionCampaigns = (state.activeFactionCampaigns || []).filter((campaign) => !campaign.resolved);
+}
+
+function applyConflictHeatStage(stage, aggressorFaction, responderFaction) {
+  if (stage !== "verbal" && stage !== "intercept") return;
+  const amount = FACTION_HEAT_STAGE_AMOUNT[stage] || 0;
+  addFactionHeat(aggressorFaction, amount);
+  addFactionHeat(responderFaction, amount);
+  evaluateFactionCampaignTriggers();
+}
+
+function applyConflictFireHeat(result, collateral = false) {
+  const amount = collateral ? FACTION_HEAT_COLLATERAL_AMOUNT : FACTION_HEAT_FIRE_AMOUNT;
+  addFactionHeat(result?.attackerFaction, amount);
+  evaluateFactionCampaignTriggers();
+}
+
+function renderNews() {
+  if (!ui.newsList) return;
+  ui.newsList.innerHTML = "";
+  const ordered = [...(state.news || [])].reverse();
+  ordered.forEach((item) => {
+    const li = document.createElement("li");
+    li.className = "news-item";
+    const title = document.createElement("strong");
+    title.textContent = `${item.timestamp || fmtTime(item.tick || state.tick)} | ${item.headline || "News update"}`;
+    const body = document.createElement("p");
+    body.textContent = item.body || "";
+    li.appendChild(title);
+    li.appendChild(body);
+    ui.newsList.appendChild(li);
+  });
+  if (!ordered.length) {
+    const li = document.createElement("li");
+    li.className = "news-item news-item-empty";
+    li.textContent = "No current system-wide campaign news.";
+    ui.newsList.appendChild(li);
+  }
 }
 
 function renderInbox() {
@@ -1296,6 +1549,8 @@ function activateTab(tabName) {
   if (tabName === "inbox") {
     state.unreadInboxCount = 0;
     renderInbox();
+  } else if (tabName === "news") {
+    renderNews();
   } else if (ui.inboxUnread) {
     ui.inboxUnread.textContent = String(state.unreadInboxCount);
   }
@@ -1572,6 +1827,9 @@ function checkScenarioCompletion() {
       if (state.scenario2Dialogue?.oneTimeFlags) {
         state.scenario2Dialogue.oneTimeFlags.tutorial_complete_scenario2 = true;
       }
+      state.factionHeatEnabled = true;
+      state.nextFactionCampaignRollTick = state.tick + FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS;
+      logLine("Faction heat enabled: inter-faction campaigns can now escalate from system heat.", "sys");
     }
     if (!state.scenario3Activated) {
       state.scenario3Activated = true;
@@ -2077,6 +2335,8 @@ function updateSimulation() {
     postOperatingExpenseReport();
   }
   NpcController.update();
+  updateFactionCampaigns();
+  evaluateFactionCampaignTriggers();
   state.ships.forEach((ship) => {
     if (ship.utility && ship.status === "docked" && ship.dockedTo) {
       const host = state.ships.find((entry) => entry.id === ship.dockedTo);
@@ -2255,6 +2515,8 @@ commandRuntime = createCommandRuntime({
   tutorialGoal: TUTORIAL_GOAL,
   npcConflictDebugLines: () => NpcController.getConflictDebugLines(),
   bumpNpcConflictStress: (index, amount) => NpcController.bumpConflictStress(index, amount),
+  factionHeatDebugLines,
+  warmFactionHeat: debugWarmFactionHeat,
 });
 NpcController.bootstrap();
 
