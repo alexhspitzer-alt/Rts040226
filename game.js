@@ -47,6 +47,9 @@ const FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS = 540;
 const FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS = 10;
 const FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD = 100;
 const FACTION_HEAT_CAMPAIGN_ROLL_FLOOR = 25;
+const FACTION_HEAT_CAMPAIGN_PROBABILITY_ASYMPTOTE = 0.06;
+const FACTION_HEAT_CAMPAIGN_PROBABILITY_HEAT_SCALE = 55;
+const FACTION_HEAT_CAMPAIGN_CONCURRENT_DECAY = 0.35;
 const FACTION_HEAT_MAX = 120;
 const FACTION_HEAT_STAGE_AMOUNT = { verbal: 4, intercept: 7 };
 const FACTION_HEAT_FIRE_AMOUNT = 10;
@@ -1394,7 +1397,7 @@ function factionHeatDebugLines() {
   const lines = [`dbHeat: faction heat is ${enabledLabel} (scenario ${state.currentScenario}).`];
   HEAT_FACTIONS.forEach((faction) => {
     const heat = Number(state.factionHeat?.[faction] || 0);
-    const probability = campaignTriggerProbability(heat);
+    const probability = campaignTriggerProbability(heat, activeFactionCampaignCount());
     const campaign = activeCampaignAgainst(faction)
       ? state.activeFactionCampaigns.find((entry) => entry.defenderFaction === faction && entry.endsAt > state.tick)
       : null;
@@ -1454,6 +1457,10 @@ function heatCampaignKey(aggressorFaction, defenderFaction) {
 function activeCampaignAgainst(defenderFaction) {
   const defender = normalizeHeatFaction(defenderFaction);
   return state.activeFactionCampaigns.some((campaign) => campaign.defenderFaction === defender && campaign.endsAt > state.tick);
+}
+
+function activeFactionCampaignCount() {
+  return (state.activeFactionCampaigns || []).filter((campaign) => campaign && !campaign.resolved && campaign.endsAt > state.tick).length;
 }
 
 function chooseCampaignAggressor(defenderFaction) {
@@ -1530,10 +1537,12 @@ function startFactionCampaign(defenderFaction, options = {}) {
   return campaign;
 }
 
-function campaignTriggerProbability(heat) {
-  if (heat >= FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD) return 1;
+function campaignTriggerProbability(heat, concurrentCampaignCount = 0) {
   if (heat < FACTION_HEAT_CAMPAIGN_ROLL_FLOOR) return 0;
-  return Math.min(0.75, Math.max(0.02, (heat - FACTION_HEAT_CAMPAIGN_ROLL_FLOOR) / (FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD - FACTION_HEAT_CAMPAIGN_ROLL_FLOOR)));
+  const excessHeat = Math.max(0, heat - FACTION_HEAT_CAMPAIGN_ROLL_FLOOR);
+  const asymptoticHeatFactor = 1 - Math.exp(-excessHeat / FACTION_HEAT_CAMPAIGN_PROBABILITY_HEAT_SCALE);
+  const concurrentDecay = Math.pow(FACTION_HEAT_CAMPAIGN_CONCURRENT_DECAY, Math.max(0, concurrentCampaignCount));
+  return FACTION_HEAT_CAMPAIGN_PROBABILITY_ASYMPTOTE * asymptoticHeatFactor * concurrentDecay;
 }
 
 function evaluateFactionCampaignTriggers() {
@@ -1542,7 +1551,7 @@ function evaluateFactionCampaignTriggers() {
   HEAT_FACTIONS.forEach((faction) => {
     if (activeCampaignAgainst(faction)) return;
     const heat = Number(state.factionHeat?.[faction] || 0);
-    const probability = campaignTriggerProbability(heat);
+    const probability = campaignTriggerProbability(heat, activeFactionCampaignCount());
     if (probability > 0 && Math.random() < probability) startFactionCampaign(faction);
   });
 }
