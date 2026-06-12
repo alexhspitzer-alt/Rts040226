@@ -479,23 +479,41 @@ const CAMPAIGN_ATTACKER_COOLDOWN_SECONDS = 25;
 const CAMPAIGN_ATTACK_TICK_SECONDS = 10;
 const CAMPAIGN_HEAT_HOSTILITY_MAX = 0.16;
 
-const CAMPAIGN_ATTACKER_CLASSES = {
-  capital: [
-    { registryKey: "condor", className: "Condor", speed: 3 },
-    { registryKey: "matador", className: "Matador", speed: 3 },
-    { registryKey: "ml-x", className: "ML-X", speed: 1 },
-  ],
-  support: [
-    { registryKey: "pelican", className: "Pelican", speed: 2 },
-    { registryKey: "mm-ix", className: "MM-IX", speed: 2 },
-    { registryKey: "sledge", className: "Sledge", speed: 2 },
-  ],
-  light: [
-    { registryKey: "kestrel", className: "Kestrel", speed: 6 },
-    { registryKey: "ibis", className: "Ibis", speed: 4 },
-    { registryKey: "mk-iv", className: "MK-IV", speed: 3 },
-    { registryKey: "dragoon", className: "Dragoon", speed: 4 },
-  ],
+const CAMPAIGN_ATTACKER_CLASSES_BY_FACTION = {
+  ufp: {
+    capital: [
+      { registryKey: "condor", className: "Condor", speed: 3 },
+    ],
+    support: [
+      { registryKey: "pelican", className: "Pelican", speed: 2 },
+    ],
+    light: [
+      { registryKey: "kestrel", className: "Kestrel", speed: 6 },
+      { registryKey: "ibis", className: "Ibis", speed: 4 },
+    ],
+  },
+  arcworks: {
+    capital: [
+      { registryKey: "ml-x", className: "ML-X", speed: 1 },
+    ],
+    support: [
+      { registryKey: "mm-ix", className: "MM-IX", speed: 2 },
+    ],
+    light: [
+      { registryKey: "mk-iv", className: "MK-IV", speed: 3 },
+    ],
+  },
+  blister: {
+    capital: [
+      { registryKey: "matador", className: "Matador", speed: 3 },
+    ],
+    support: [
+      { registryKey: "sledge", className: "Sledge", speed: 2 },
+    ],
+    light: [
+      { registryKey: "dragoon", className: "Dragoon", speed: 4 },
+    ],
+  },
 };
 
 const CAMPAIGN_SHIP_COUNT_BY_CLASS = {
@@ -1579,13 +1597,19 @@ export function createNpcController({
     });
   }
 
+  function campaignAttackerClasses(campaign, group) {
+    const faction = campaign?.aggressorFaction || "";
+    return CAMPAIGN_ATTACKER_CLASSES_BY_FACTION[faction]?.[group] || [];
+  }
+
   function spawnCampaignAttackers(campaign) {
     const counts = campaignCountPlan(Number(campaign.durationSeconds || 180));
     const spawnedIds = [];
     let ordinal = 1;
     Object.entries(counts).forEach(([group, count]) => {
+      const classPool = campaignAttackerClasses(campaign, group);
       for (let i = 0; i < count; i += 1) {
-        const template = randomPick(CAMPAIGN_ATTACKER_CLASSES[group]);
+        const template = randomPick(classPool);
         if (!template) continue;
         const npc = makeCampaignAttacker(campaign, template, ordinal);
         ordinal += 1;
