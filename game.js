@@ -42,21 +42,58 @@ const OPERATING_COST_INTERVAL_SECONDS = 15;
 const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
-const FACTION_HEAT_CAMPAIGN_DURATION_SECONDS = 180;
+const FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS = 180;
+const FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS = 540;
 const FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS = 10;
 const FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD = 100;
 const FACTION_HEAT_CAMPAIGN_ROLL_FLOOR = 25;
+const FACTION_HEAT_CAMPAIGN_PROBABILITY_ASYMPTOTE = 0.06;
+const FACTION_HEAT_CAMPAIGN_PROBABILITY_HEAT_SCALE = 55;
+const FACTION_HEAT_CAMPAIGN_CONCURRENT_DECAY = 0.35;
 const FACTION_HEAT_MAX = 120;
 const FACTION_HEAT_STAGE_AMOUNT = { verbal: 4, intercept: 7 };
 const FACTION_HEAT_FIRE_AMOUNT = 10;
 const FACTION_HEAT_COLLATERAL_AMOUNT = 4;
+const FACTION_HEAT_CAMPAIGN_FIRE_AMOUNT = 1;
+const FACTION_HEAT_CAMPAIGN_COLLATERAL_AMOUNT = 0;
 const HEAT_FACTIONS = ["ufp", "arcworks", "blister"];
 const FACTION_DISPLAY_NAMES = {
   ufp: "UFP",
   arcworks: "Arcworks",
   blister: "Blister",
 };
-const CAMPAIGN_LOCATION_NODE_ID = "barons_market";
+const CAMPAIGN_HOME_BASE_NODE_IDS = {
+  ufp: [
+    "ufp_indigo_system_administration",
+    "ufp_outpost_alpha",
+    "ufp_outpost_bravo",
+    "ufp_outpost_delta",
+    "ufp_science_station",
+    "anchor_station",
+    "indigo_station",
+    "barons_market",
+  ],
+  arcworks: [
+    "arcworks_operations_hub",
+    "arcworks_militia_barracks",
+    "arcworks_fuel_depot",
+    "onion_skin",
+    "refinery",
+    "condenser_columns",
+    "barons_market",
+    "indigo_station",
+  ],
+  blister: [
+    "deep_space_transfer_lane",
+    "high_orbit_transfer_lane",
+    "ring_transfer_lane",
+    "low_orbit_transfer_lane",
+    "yard",
+    "refinery",
+    "barons_market",
+  ],
+};
+const CAMPAIGN_FALLBACK_LOCATION_NODE_ID = "barons_market";
 const CAMPAIGN_DEFENDER_RESPONSE_LINES = [
   "Piss off and try someone easier.",
   "I'd like to see them try.",
@@ -86,6 +123,7 @@ const CAMPAIGN_DEFENDER_RESPONSE_LINES = [
 ];
 const SCENARIO_PATH = "./scenarioDat.json";
 const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
+const CONFLICT_OUTCOMES_PATH = "./conflict_outcomes.json";
 const LEGACY_NODE_ALIASES = {
   anchor: "anchor_station",
   cinder_hub: "refinery",
@@ -331,6 +369,7 @@ const state = {
   lastAmbientChatterTick: -Infinity,
   mapData: null,
   shipRegistry: null,
+  conflictOutcomes: null,
   buddeData: null,
   civilianNpcs: [],
   scenarioDialogue: {},
@@ -659,12 +698,13 @@ function characterSpeak(characterName, bucket, fallback, type = "comms", statusO
   logLine(`${characterName} ${context}: ${text}`, lineType);
 }
 
-function scheduleCharacterMessage(delay, characterName, text, statusOverride = null, type = "comms") {
+function scheduleCharacterMessage(delay, characterName, text, statusOverride = null, type = "comms", shouldDeliver = null) {
   const isBluFreightCaptain = Object.values(SHIP_CAPTAINS).includes(characterName);
   const resolvedType = type === "comms"
     ? (isBluFreightCaptain ? "comms-blufreight" : speakerMessageType(characterName))
     : type;
   scheduleMessage(delay, () => {
+    if (typeof shouldDeliver === "function" && !shouldDeliver()) return null;
     if (!isContactPresent(characterName)) return null;
     return `${characterName} ${speakerContext(characterName, statusOverride)}: ${text}`;
   }, resolvedType);
@@ -675,7 +715,7 @@ let PlayerHailFlow;
 async function loadReferenceData() {
   try {
     const noCache = { cache: "no-store" };
-    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse, nameRegistryResponse] = await Promise.all([
+    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse, nameRegistryResponse, conflictOutcomesResponse] = await Promise.all([
       fetch("./bluFreight%20text%20RTS.txt", noCache),
       fetch("./indigo_dialogue_characters.json", noCache),
       fetch("./map.json", noCache),
@@ -684,6 +724,7 @@ async function loadReferenceData() {
       fetch(ALMANAC_PATH, noCache),
       fetch("./ship_registry.json", noCache),
       fetch("./character_name_registry.json", noCache),
+      fetch(CONFLICT_OUTCOMES_PATH, noCache),
     ]);
 
     if (loreResponse.ok) {
@@ -744,6 +785,9 @@ async function loadReferenceData() {
     }
     if (nameRegistryResponse.ok) {
       state.characterNameRegistry = await nameRegistryResponse.json();
+    }
+    if (conflictOutcomesResponse.ok) {
+      state.conflictOutcomes = await conflictOutcomesResponse.json();
     }
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
@@ -1046,7 +1090,9 @@ const NpcController = createNpcController({
   nodeLabel,
   scheduleCharacterMessage,
   getShipRegistry: () => state.shipRegistry,
+  getConflictOutcomes: () => state.conflictOutcomes,
   playerShipCallsign,
+  onPlayerShipDestroyed: destroyPlayerShip,
   playerShipDisplayId,
   playerShipCaptainById: (shipId) => SHIP_CAPTAINS[shipId] || null,
   onConflictStage: ({ stage, nodeId, aggressorFaction, responderFaction }) => {
@@ -1058,8 +1104,8 @@ const NpcController = createNpcController({
       }, "sys");
     }
   },
-  onConflictFire: ({ result, collateral }) => {
-    applyConflictFireHeat(result, collateral);
+  onConflictFire: ({ result, collateral, campaignCombat }) => {
+    applyConflictFireHeat(result, collateral, { campaignCombat });
   },
 });
 
@@ -1200,7 +1246,7 @@ function openContracts() {
 }
 
 function playerControlledShipCount() {
-  return Array.isArray(state.ships) ? state.ships.length : 0;
+  return Array.isArray(state.ships) ? state.ships.filter((ship) => !shipDestroyed(ship)).length : 0;
 }
 
 function visibleContractCount() {
@@ -1220,7 +1266,7 @@ function contractClientClass(contract) {
 }
 
 function shipRecallAvailable(ship) {
-  return ship?.status === "tasked" || ship?.status === "enroute";
+  return shipActionAvailable(ship) && (ship.status === "tasked" || ship.status === "enroute");
 }
 
 function targetOpenContractCount() {
@@ -1244,9 +1290,65 @@ function fillContractBoard({ forceNewTarget = false } = {}) {
   }
 }
 
+function shipDestroyed(ship) {
+  return ship?.status === "destroyed" || ship?.combatStatus === "killed";
+}
+
+function shipActionAvailable(ship) {
+  return ship && !shipDestroyed(ship);
+}
+
 function idleShip(shipId) {
   const ship = state.ships.find((s) => s.id === shipId);
-  return ship && ship.status === "idle";
+  return shipActionAvailable(ship) && ship.status === "idle";
+}
+
+function destroyPlayerShip(shipId, reason = "destroyed") {
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return false;
+  if (shipDestroyed(ship)) return true;
+  if (ship.activeContractId) {
+    const contract = state.contracts.find((c) => c.id === ship.activeContractId && (c.status === "assigned" || c.status === "delivered_pending_report"));
+    if (contract) {
+      contract.status = "open";
+      contract.assignedShipId = null;
+    }
+  }
+  if (ship.dockedTo) {
+    const host = state.ships.find((entry) => entry.id === ship.dockedTo);
+    if (host?.utilityDockedBy === ship.id) host.utilityDockedBy = null;
+  }
+  if (ship.utilityDockedBy) {
+    const utility = state.ships.find((entry) => entry.id === ship.utilityDockedBy);
+    if (utility) {
+      utility.dockedTo = null;
+      utility.status = "idle";
+      utility.at = ship.at;
+      utility.lastKnownAt = utility.at;
+    }
+  }
+  ship.combatStatus = "killed";
+  ship.status = "destroyed";
+  ship.at = "unavailable";
+  ship.lastKnownAt = "unavailable";
+  ship.destination = undefined;
+  ship.activeContractId = undefined;
+  ship.departAt = 0;
+  ship.busyUntil = 0;
+  ship.dockedTo = null;
+  ship.utilityDockedBy = null;
+  ship.travelPlan = null;
+  ship.lastCombatTick = state.tick;
+  logLine(`${formatShipId(ship.id)} destroyed (${reason}). Ship moved to unavailable.`, "alert");
+  return true;
+}
+
+function debugKillPlayerShip(shipId) {
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return [`dbKill: unknown ship ${formatShipId(shipId)}.`];
+  if (shipDestroyed(ship)) return [`dbKill: ${formatShipId(ship.id)} is already destroyed.`];
+  destroyPlayerShip(ship.id, "debug kill");
+  return [`dbKill: ${formatShipId(ship.id)} destroyed.`];
 }
 
 function contractNumber(contractId) {
@@ -1352,17 +1454,41 @@ function factionHeatDebugLines() {
   const lines = [`dbHeat: faction heat is ${enabledLabel} (scenario ${state.currentScenario}).`];
   HEAT_FACTIONS.forEach((faction) => {
     const heat = Number(state.factionHeat?.[faction] || 0);
-    const probability = campaignTriggerProbability(heat);
+    const probability = campaignTriggerProbability(heat, activeFactionCampaignCount());
     const campaign = activeCampaignAgainst(faction)
       ? state.activeFactionCampaigns.find((entry) => entry.defenderFaction === faction && entry.endsAt > state.tick)
       : null;
     const campaignLabel = campaign
-      ? ` | active campaign: ${factionDisplayName(campaign.aggressorFaction)} attacking until ${fmtTime(campaign.endsAt)}`
+      ? ` | active campaign: ${factionDisplayName(campaign.aggressorFaction)} attacking ${nodeLabel(campaign.locationNodeId) || "local assets"} until ${fmtTime(campaign.endsAt)}`
       : "";
     lines.push(`${factionDisplayName(faction)}: heat ${heat}/${FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD} | campaign chance ${(probability * 100).toFixed(0)}%${campaignLabel}`);
   });
-  lines.push('Debug: type "dbwarm [faction] [amount]" to add heat against UFP, Arcworks, or Blister.');
+  lines.push('Debug: type "dbwarm [faction] [amount]" to add heat against UFP, Arcworks, or Blister; type "dbcamp" to launch a campaign against the hottest faction.');
   return lines;
+}
+
+function highestHeatFaction() {
+  return HEAT_FACTIONS.reduce((best, faction) => {
+    const bestHeat = Number(state.factionHeat?.[best] || 0);
+    const heat = Number(state.factionHeat?.[faction] || 0);
+    return heat > bestHeat ? faction : best;
+  }, HEAT_FACTIONS[0]);
+}
+
+function debugLaunchFactionCampaign() {
+  const defender = highestHeatFaction();
+  const heat = Number(state.factionHeat?.[defender] || 0);
+  const campaign = startFactionCampaign(defender, { force: true });
+  if (!campaign) {
+    return [
+      `dbCamp: unable to launch campaign against ${factionDisplayName(defender)} (heat ${heat}). A campaign may already be active.`,
+      ...factionHeatDebugLines(),
+    ];
+  }
+  return [
+    `dbCamp: launched ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} at ${nodeLabel(campaign.locationNodeId) || campaign.locationNodeId} for ${campaign.durationSeconds}s (selected heat ${heat}).`,
+    ...factionHeatDebugLines(),
+  ];
 }
 
 function debugWarmFactionHeat(faction, amount = 25) {
@@ -1390,6 +1516,10 @@ function activeCampaignAgainst(defenderFaction) {
   return state.activeFactionCampaigns.some((campaign) => campaign.defenderFaction === defender && campaign.endsAt > state.tick);
 }
 
+function activeFactionCampaignCount() {
+  return (state.activeFactionCampaigns || []).filter((campaign) => campaign && !campaign.resolved && campaign.endsAt > state.tick).length;
+}
+
 function chooseCampaignAggressor(defenderFaction) {
   const defender = normalizeHeatFaction(defenderFaction);
   const candidates = HEAT_FACTIONS.filter((faction) => faction !== defender);
@@ -1403,15 +1533,33 @@ function chooseCampaignAggressor(defenderFaction) {
   return weighted[Math.floor(Math.random() * weighted.length)] || candidates[0];
 }
 
+function pickCampaignDurationSeconds() {
+  return FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS
+    + Math.floor(Math.random() * (FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS - FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS + 1));
+}
+
+function campaignHomeBaseCandidates(defenderFaction) {
+  const defender = normalizeHeatFaction(defenderFaction);
+  const explicit = CAMPAIGN_HOME_BASE_NODE_IDS[defender] || [];
+  return explicit.filter((nodeId) => Boolean(nodes[nodeId]));
+}
+
+function chooseCampaignLocation(defenderFaction) {
+  const candidates = campaignHomeBaseCandidates(defenderFaction);
+  if (candidates.length) return candidates[Math.floor(Math.random() * candidates.length)];
+  if (nodes[CAMPAIGN_FALLBACK_LOCATION_NODE_ID]) return CAMPAIGN_FALLBACK_LOCATION_NODE_ID;
+  return Object.keys(nodes)[0] || CAMPAIGN_FALLBACK_LOCATION_NODE_ID;
+}
+
 function postCampaignNewsCard(campaign) {
-  const location = nodeLabel(CAMPAIGN_LOCATION_NODE_ID) || "Baron's Market";
+  const location = nodeLabel(campaign.locationNodeId) || "Baron's Market";
   const aggressorName = factionDisplayName(campaign.aggressorFaction);
   const defenderName = factionDisplayName(campaign.defenderFaction);
   const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
   const item = {
     id: campaign.id,
     headline: `${aggressorName} attacks ${defenderName} at ${location}`,
-    body: `${fmtTime(state.tick)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${FACTION_HEAT_CAMPAIGN_DURATION_SECONDS}s.`,
+    body: `${fmtTime(state.tick)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${campaign.durationSeconds}s.`,
     tick: state.tick,
     timestamp: fmtTime(state.tick),
     aggressorFaction: campaign.aggressorFaction,
@@ -1423,30 +1571,35 @@ function postCampaignNewsCard(campaign) {
   logLine(`News update: ${item.headline}.`, "sys");
 }
 
-function startFactionCampaign(defenderFaction) {
-  if (!factionHeatActive()) return null;
+function startFactionCampaign(defenderFaction, options = {}) {
+  if (!options.force && !factionHeatActive()) return null;
   const defender = normalizeHeatFaction(defenderFaction);
   if (!defender || activeCampaignAgainst(defender)) return null;
   const aggressor = chooseCampaignAggressor(defender);
   if (!aggressor) return null;
+  const durationSeconds = pickCampaignDurationSeconds();
   const campaign = {
     id: `campaign-${state.tick}-${aggressor}-${defender}`,
     key: heatCampaignKey(aggressor, defender),
     aggressorFaction: aggressor,
     defenderFaction: defender,
-    locationNodeId: CAMPAIGN_LOCATION_NODE_ID,
+    locationNodeId: chooseCampaignLocation(defender),
     startedAt: state.tick,
-    endsAt: state.tick + FACTION_HEAT_CAMPAIGN_DURATION_SECONDS,
+    durationSeconds,
+    endsAt: state.tick + durationSeconds,
   };
   state.activeFactionCampaigns.push(campaign);
+  if (NpcController?.startCampaign) NpcController.startCampaign(campaign);
   postCampaignNewsCard(campaign);
   return campaign;
 }
 
-function campaignTriggerProbability(heat) {
-  if (heat >= FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD) return 1;
+function campaignTriggerProbability(heat, concurrentCampaignCount = 0) {
   if (heat < FACTION_HEAT_CAMPAIGN_ROLL_FLOOR) return 0;
-  return Math.min(0.75, Math.max(0.02, (heat - FACTION_HEAT_CAMPAIGN_ROLL_FLOOR) / (FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD - FACTION_HEAT_CAMPAIGN_ROLL_FLOOR)));
+  const excessHeat = Math.max(0, heat - FACTION_HEAT_CAMPAIGN_ROLL_FLOOR);
+  const asymptoticHeatFactor = 1 - Math.exp(-excessHeat / FACTION_HEAT_CAMPAIGN_PROBABILITY_HEAT_SCALE);
+  const concurrentDecay = Math.pow(FACTION_HEAT_CAMPAIGN_CONCURRENT_DECAY, Math.max(0, concurrentCampaignCount));
+  return FACTION_HEAT_CAMPAIGN_PROBABILITY_ASYMPTOTE * asymptoticHeatFactor * concurrentDecay;
 }
 
 function evaluateFactionCampaignTriggers() {
@@ -1455,7 +1608,7 @@ function evaluateFactionCampaignTriggers() {
   HEAT_FACTIONS.forEach((faction) => {
     if (activeCampaignAgainst(faction)) return;
     const heat = Number(state.factionHeat?.[faction] || 0);
-    const probability = campaignTriggerProbability(heat);
+    const probability = campaignTriggerProbability(heat, activeFactionCampaignCount());
     if (probability > 0 && Math.random() < probability) startFactionCampaign(faction);
   });
 }
@@ -1466,7 +1619,7 @@ function updateFactionCampaigns() {
     if (campaign.endsAt <= state.tick && !campaign.resolved) {
       campaign.resolved = true;
       if (campaign.defenderFaction) state.factionHeat[campaign.defenderFaction] = 0;
-      const location = nodeLabel(campaign.locationNodeId || CAMPAIGN_LOCATION_NODE_ID) || "Baron's Market";
+      const location = nodeLabel(campaign.locationNodeId || CAMPAIGN_FALLBACK_LOCATION_NODE_ID) || "Baron's Market";
       state.news.push({
         id: `${campaign.id}-resolved`,
         headline: `${factionDisplayName(campaign.aggressorFaction)} campaign at ${location} winds down`,
@@ -1477,6 +1630,7 @@ function updateFactionCampaigns() {
         defenderFaction: campaign.defenderFaction,
         location,
       });
+      if (NpcController?.endCampaign) NpcController.endCampaign(campaign);
       renderNews();
       logLine(`News update: ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} has ended.`, "sys");
     }
@@ -1492,8 +1646,12 @@ function applyConflictHeatStage(stage, aggressorFaction, responderFaction) {
   evaluateFactionCampaignTriggers();
 }
 
-function applyConflictFireHeat(result, collateral = false) {
-  const amount = collateral ? FACTION_HEAT_COLLATERAL_AMOUNT : FACTION_HEAT_FIRE_AMOUNT;
+function applyConflictFireHeat(result, collateral = false, options = {}) {
+  const campaignCombat = Boolean(options.campaignCombat);
+  const amount = campaignCombat
+    ? (collateral ? FACTION_HEAT_CAMPAIGN_COLLATERAL_AMOUNT : FACTION_HEAT_CAMPAIGN_FIRE_AMOUNT)
+    : (collateral ? FACTION_HEAT_COLLATERAL_AMOUNT : FACTION_HEAT_FIRE_AMOUNT);
+  if (amount <= 0) return;
   addFactionHeat(result?.attackerFaction, amount);
   evaluateFactionCampaignTriggers();
 }
@@ -1724,9 +1882,10 @@ function showShipsList() {
 
 function dockableShipsForUtility(utilityShipId) {
   const utility = state.ships.find((ship) => ship.id === utilityShipId);
-  if (!utility) return [];
+  if (!utility || shipDestroyed(utility)) return [];
   return state.ships.filter((ship) => (
-    ship.id !== utilityShipId
+    shipActionAvailable(ship)
+    && ship.id !== utilityShipId
     && !ship.utility
     && ship.at === utility.at
     && !ship.utilityDockedBy
@@ -1736,8 +1895,8 @@ function dockableShipsForUtility(utilityShipId) {
 function dockUtilityShip(utilityShipId, targetShipId) {
   const utility = state.ships.find((ship) => ship.id === utilityShipId);
   const target = state.ships.find((ship) => ship.id === targetShipId);
-  if (!utility || !utility.utility) return logLine("Selected ship cannot dock.", "error");
-  if (!target || target.utility) return logLine("Invalid dock target.", "error");
+  if (!utility || !utility.utility || shipDestroyed(utility)) return logLine("Selected ship cannot dock.", "error");
+  if (!target || target.utility || shipDestroyed(target)) return logLine("Invalid dock target.", "error");
   if (utility.at !== target.at) return logLine("Dock target must be at the same location.", "error");
   if (utility.status !== "idle") return logLine(`${formatShipId(utility.id)} is not ready to dock.`, "error");
   if (utility.dockedTo || target.utilityDockedBy) return logLine("Docking unavailable: one of the ships is already docked.", "error");
@@ -1784,6 +1943,12 @@ function showShipMenu(shipId) {
   state.selection.dockableShipIds = [];
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return;
+  if (shipDestroyed(ship)) {
+    logLine(`${formatShipId(ship.id)} is destroyed and unavailable.`, "error");
+    state.selection.selectedShipId = null;
+    state.selection.pending = "await_ship";
+    return;
+  }
   if (shipId === TUG_ID && !state.tugIntroPlayed) {
     state.tugIntroPlayed = true;
     const captain = SHIP_CAPTAINS[TUG_ID];
@@ -1873,7 +2038,6 @@ function checkScenarioCompletion() {
       }
       state.factionHeatEnabled = true;
       state.nextFactionCampaignRollTick = state.tick + FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS;
-      logLine("Faction heat enabled: inter-faction campaigns can now escalate from system heat.", "sys");
     }
     if (!state.scenario3Activated) {
       state.scenario3Activated = true;
@@ -2037,6 +2201,7 @@ function sendShip(shipId, destination) {
   const ship = state.ships.find((s) => s.id === shipId);
   const normalizedDestination = normalizeNodeInput(destination);
   if (!ship) return logLine(`Unknown ship: ${formatShipId(shipId)}.`, "error");
+  if (shipDestroyed(ship)) return logLine(`${formatShipId(ship.id)} is destroyed and unavailable.`, "error");
   if (!normalizedDestination) return logLine(`Unknown destination: ${destination}.`, "error");
   if (ship.utility && ship.status === "docked") return logLine(`${formatShipId(ship.id)} is docked. Undock before moving independently.`, "error");
   if (ship.status !== "idle") return logLine(`${formatShipId(ship.id)} is busy.`, "error");
@@ -2110,6 +2275,7 @@ function assignContract(contractId, shipId) {
   const contract = state.contracts.find((c) => c.id.toLowerCase() === contractId.toLowerCase() && c.status === "open");
   if (!contract) return logLine(`Contract ${contractId} not found/open.`, "error");
   const requestedShip = state.ships.find((s) => s.id === shipId);
+  if (shipDestroyed(requestedShip)) return logLine(`${formatShipId(shipId)} is destroyed and unavailable.`, "error");
   if (requestedShip?.utility) return logLine(`${formatShipId(shipId)} cannot be assigned to contracts. Use send/dock instead.`, "error");
   if (!idleShip(shipId)) return logLine(`${formatShipId(shipId)} is not idle.`, "error");
   const ship = state.ships.find((s) => s.id === shipId);
@@ -2451,6 +2617,7 @@ function updateSimulation() {
       ship.status = "arrived_pending_report";
       ship.departAt = 0;
       scheduleMessage(returnSignal, () => {
+        if (shipDestroyed(ship)) return null;
         ship.destination = undefined;
         ship.activeContractId = undefined;
         ship.status = "idle";
@@ -2580,6 +2747,9 @@ commandRuntime = createCommandRuntime({
   bumpNpcConflictStress: (index, amount) => NpcController.bumpConflictStress(index, amount),
   factionHeatDebugLines,
   warmFactionHeat: debugWarmFactionHeat,
+  launchFactionCampaign: debugLaunchFactionCampaign,
+  debugKillPlayerShip,
+  debugKillNpc: (npcId) => NpcController.debugKillNpc(npcId),
 });
 NpcController.bootstrap();
 
