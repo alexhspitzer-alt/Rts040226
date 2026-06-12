@@ -2168,6 +2168,19 @@ export function createNpcController({
     ];
   }
 
+  function debugKillNpc(npcId) {
+    const npc = (state.civilianNpcs || []).find((entry) => entry.id === npcId);
+    if (!npc) return [`dbKill: unknown NPC ship ${npcId}.`];
+    if (npc.combatStatus === "killed") return [`dbKill: ${npc.callsign || npc.id} is already killed.`];
+    npc.combatStatus = "killed";
+    npc.status = "disabled";
+    npc.departAt = Infinity;
+    npc.arrivalTick = 0;
+    npc.destination = null;
+    npc.cleanupAfterTick = state.tick + KILLED_NPC_CLEANUP_DELAY_SECONDS;
+    return [`dbKill: ${npc.callsign || npc.id} killed. Wreck cleanup pending.`];
+  }
+
   return {
     bootstrap() {
       if (Array.isArray(state.civilianNpcs) && state.civilianNpcs.length) return;
@@ -2306,6 +2319,9 @@ export function createNpcController({
     },
     endCampaign(campaign) {
       removeCampaignAttackers(campaign);
+    },
+    debugKillNpc(npcId) {
+      return debugKillNpc(npcId);
     },
     getConflictDebugLines() {
       const entries = sortedConflictDebugEntries();

@@ -2749,6 +2749,7 @@ commandRuntime = createCommandRuntime({
   warmFactionHeat: debugWarmFactionHeat,
   launchFactionCampaign: debugLaunchFactionCampaign,
   debugKillPlayerShip,
+  debugKillNpc: (npcId) => NpcController.debugKillNpc(npcId),
 });
 NpcController.bootstrap();
 

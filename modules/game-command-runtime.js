@@ -47,6 +47,7 @@ export function createCommandRuntime({
   warmFactionHeat,
   launchFactionCampaign,
   debugKillPlayerShip,
+  debugKillNpc,
 }) {
 
   function titleCaseWords(value) {
@@ -133,6 +134,52 @@ export function createCommandRuntime({
       shipId: ship.id,
       interpretation: raw.toLowerCase() !== ship.id ? `Interpreting "${raw}" as "${visibleShipId(ship) || ship.id}".` : null,
     };
+  }
+
+  function npcKillLabel(npc) {
+    if (!npc) return "unknown NPC";
+    const location = npc.at ? ` @ ${nodeLabel(npc.at)}` : "";
+    return `${npc.callsign || npc.id} (${npc.id})${location}`;
+  }
+
+  function resolveNpcToken(token) {
+    const raw = String(token || "").trim();
+    if (!raw) return null;
+    const lowered = raw.toLowerCase();
+    const compact = lowered.replace(/[-\s]/g, "");
+    const numeric = Number(raw);
+    if (Number.isInteger(numeric) && numeric > 0) {
+      const byIndex = (state.civilianNpcs || [])[numeric - 1];
+      if (byIndex) return { npcId: byIndex.id, label: npcKillLabel(byIndex), alreadyKilled: byIndex.combatStatus === "killed" };
+    }
+    const npc = (state.civilianNpcs || []).find((entry) => {
+      const id = String(entry.id || "").toLowerCase();
+      const callsign = String(entry.callsign || "").toLowerCase();
+      const captain = String(entry.captainName || "").toLowerCase();
+      return id === lowered
+        || id.replace(/[-\s]/g, "") === compact
+        || callsign === lowered
+        || callsign.replace(/[-\s]/g, "") === compact
+        || captain === lowered;
+    });
+    if (!npc) return null;
+    return { npcId: npc.id, label: npcKillLabel(npc), alreadyKilled: npc.combatStatus === "killed" };
+  }
+
+  function resolveKillTarget(token) {
+    const playerShip = resolveShipToken(token, { includeDestroyed: true });
+    if (playerShip) {
+      const ship = state.ships.find((entry) => entry.id === playerShip.shipId);
+      return {
+        type: "player",
+        id: playerShip.shipId,
+        label: visibleShipIdById(playerShip.shipId),
+        alreadyKilled: shipDestroyed(ship),
+      };
+    }
+    const npc = resolveNpcToken(token);
+    if (npc) return { type: "npc", id: npc.npcId, label: npc.label, alreadyKilled: npc.alreadyKilled };
+    return null;
   }
 
   function resolveContractToken(token) {
@@ -665,23 +712,22 @@ export function createCommandRuntime({
     }
 
     if (command === "dbkill") {
-      if (typeof debugKillPlayerShip !== "function") {
+      if (typeof debugKillPlayerShip !== "function" && typeof debugKillNpc !== "function") {
         logLine("dbKill: debug ship killer unavailable.", "error");
         return true;
       }
-      const resolvedShip = resolveShipToken(parts[1], { includeDestroyed: true });
-      if (!resolvedShip) {
-        logLine('Usage: dbKill [ship ID]', "error");
+      const target = resolveKillTarget(parts.slice(1).join(" "));
+      if (!target) {
+        logLine('Usage: dbKill [ship ID or NPC ID]', "error");
         return true;
       }
-      const ship = state.ships.find((entry) => entry.id === resolvedShip.shipId);
-      if (!ship || shipDestroyed(ship)) {
-        logLine(`dbKill: ${visibleShipIdById(resolvedShip.shipId)} is already destroyed or unavailable.`, "sys");
+      if (target.alreadyKilled) {
+        logLine(`dbKill: ${target.label} is already destroyed/killed or unavailable.`, "sys");
         return true;
       }
       state.selection.pending = "confirm_dbkill";
-      state.selection.debugKillShipId = resolvedShip.shipId;
-      logLine(`dbKill: kill ${visibleShipIdById(resolvedShip.shipId)}? Type y to confirm or n to cancel.`, "alert");
+      state.selection.debugKillTarget = target;
+      logLine(`dbKill: kill ${target.label}? Type y to confirm or n to cancel.`, "alert");
       return true;
     }
 
@@ -747,16 +793,19 @@ export function createCommandRuntime({
 
     if (state.selection.pending === "confirm_dbkill") {
       if (lower === "y" || lower === "yes") {
-        const shipId = state.selection.debugKillShipId;
+        const target = state.selection.debugKillTarget;
         state.selection.pending = "await_ship";
-        state.selection.debugKillShipId = null;
-        debugKillPlayerShip(shipId).forEach((line) => logLine(line, "sys"));
+        state.selection.debugKillTarget = null;
+        const lines = target?.type === "npc"
+          ? (typeof debugKillNpc === "function" ? debugKillNpc(target.id) : ["dbKill: NPC debug killer unavailable."])
+          : (typeof debugKillPlayerShip === "function" ? debugKillPlayerShip(target?.id) : ["dbKill: player ship debug killer unavailable."]);
+        lines.forEach((line) => logLine(line, "sys"));
         state.respondingToCommand = false;
         return;
       }
       if (lower === "n" || lower === "no") {
         state.selection.pending = "await_ship";
-        state.selection.debugKillShipId = null;
+        state.selection.debugKillTarget = null;
         logLine("dbKill cancelled.", "sys");
         state.respondingToCommand = false;
         return;
