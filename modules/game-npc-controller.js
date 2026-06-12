@@ -66,21 +66,6 @@ const OBSERVATION_TAGS = {
       "The scope dislikes it.",
     ],
   },
-  weather: {
-    objects: [
-      "that storm front",
-      "that pressure curl",
-      "the dust plume",
-      "the thermal bloom",
-      "the cold spot",
-    ],
-    comments: [
-      "Seems like bad luck.",
-      "That is either weather or a lawsuit forming.",
-      "No hazard yet. Strong audition, though.",
-      "I would prefer it did that somewhere else.",
-    ],
-  },
   debris: {
     objects: [
       "that debris cluster",
