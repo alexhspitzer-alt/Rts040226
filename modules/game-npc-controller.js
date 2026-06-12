@@ -1626,6 +1626,16 @@ export function createNpcController({
     return spawnedIds;
   }
 
+  function holdCampaignDefenderAtLocation(campaign, defender) {
+    if (!defender) return null;
+    defender.at = campaign.locationNodeId;
+    defender.destination = null;
+    defender.status = "idle";
+    defender.departAt = Math.max(defender.departAt || 0, campaign.endsAt || Infinity);
+    defender.arrivalTick = 0;
+    return defender;
+  }
+
   function ensureCampaignDefendersAtLocation(campaign) {
     const defenders = (state.civilianNpcs || []).filter((npc) => (
       npc?.faction === campaign.defenderFaction
@@ -1633,14 +1643,10 @@ export function createNpcController({
       && combatCapable(npc)
     ));
     const alreadyLocal = defenders.filter((npc) => npc.at === campaign.locationNodeId);
-    if (alreadyLocal.length || !defenders.length) return alreadyLocal;
+    if (alreadyLocal.length) return alreadyLocal.map((defender) => holdCampaignDefenderAtLocation(campaign, defender));
+    if (!defenders.length) return [];
     const defender = randomPick(defenders);
-    defender.at = campaign.locationNodeId;
-    defender.destination = null;
-    defender.status = "idle";
-    defender.departAt = campaign.endsAt || Infinity;
-    defender.arrivalTick = 0;
-    return [defender];
+    return [holdCampaignDefenderAtLocation(campaign, defender)].filter(Boolean);
   }
 
   function campaignCanFire(campaign, attacker) {
@@ -1678,7 +1684,7 @@ export function createNpcController({
       if (state.tick < (campaign.nextAttackTick || 0)) return;
       campaign.nextAttackTick = state.tick + CAMPAIGN_ATTACK_TICK_SECONDS;
       const attackers = activeCampaignNpcs(campaign, "attacker").filter((npc) => campaignCanFire(campaign, npc));
-      const defenders = activeCampaignNpcs(campaign, "defender");
+      const defenders = ensureCampaignDefendersAtLocation(campaign);
       const attacker = randomPick(attackers);
       const target = randomPick(defenders);
       if (!attacker || !target) return;
