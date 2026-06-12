@@ -1974,7 +1974,6 @@ function checkScenarioCompletion() {
       }
       state.factionHeatEnabled = true;
       state.nextFactionCampaignRollTick = state.tick + FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS;
-      logLine("Faction heat enabled: inter-faction campaigns can now escalate from system heat.", "sys");
     }
     if (!state.scenario3Activated) {
       state.scenario3Activated = true;
