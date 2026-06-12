@@ -474,9 +474,10 @@ const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
 const COLLATERAL_REPRISAL_CHANCE_NO_EFFECT = 0.03;
 const COLLATERAL_REPRISAL_CHANCE_MINOR_DAMAGE = 0.35;
 const CAMPAIGN_ATTACK_WINDOW_SECONDS = 60;
-const CAMPAIGN_ATTACKS_PER_WINDOW = 6;
-const CAMPAIGN_ATTACKER_COOLDOWN_SECONDS = 25;
-const CAMPAIGN_ATTACK_TICK_SECONDS = 10;
+const CAMPAIGN_ATTACKS_PER_WINDOW = 3;
+const CAMPAIGN_ATTACKER_COOLDOWN_SECONDS = 40;
+const CAMPAIGN_ATTACK_TICK_SECONDS = 15;
+const KILLED_NPC_CLEANUP_DELAY_SECONDS = 30;
 const CAMPAIGN_HEAT_HOSTILITY_MAX = 0.16;
 
 const CAMPAIGN_ATTACKER_CLASSES_BY_FACTION = {
@@ -811,6 +812,7 @@ export function createNpcController({
   getShipRegistry,
   getConflictOutcomes,
   playerShipCallsign,
+  onPlayerShipDestroyed,
   playerShipCaptainById,
   onConflictStage,
   onConflictFire,
@@ -1239,11 +1241,35 @@ export function createNpcController({
     return 0;
   }
 
+  function destroyPlayerShip(ship) {
+    if (!ship) return;
+    if (typeof onPlayerShipDestroyed === "function") {
+      onPlayerShipDestroyed(ship.id, "combat kill");
+      return;
+    }
+    ship.combatStatus = "killed";
+    ship.status = "destroyed";
+    ship.at = "unavailable";
+    ship.lastKnownAt = "unavailable";
+    ship.destination = undefined;
+    ship.activeContractId = undefined;
+    ship.departAt = 0;
+    ship.busyUntil = 0;
+    ship.utilityDockedBy = null;
+    ship.dockedTo = null;
+    ship.travelPlan = null;
+    ship.lastCombatTick = state.tick;
+  }
+
   function applyPlayerCollateralOutcome(shipLike, outcome) {
     const ship = shipLike?.sourceShip || shipLike;
     if (!ship || outcome === "no_effect") return;
-    const normalizedOutcome = outcome === "kill" ? "major_damage" : outcome;
+    const normalizedOutcome = outcome === "kill" ? "killed" : outcome;
     if (combatStatusRank(normalizedOutcome) <= combatStatusRank(ship.combatStatus)) return;
+    if (normalizedOutcome === "killed") {
+      destroyPlayerShip(ship);
+      return;
+    }
     ship.combatStatus = normalizedOutcome;
     ship.lastCombatTick = state.tick;
     if (normalizedOutcome === "major_damage") {
@@ -1271,6 +1297,7 @@ export function createNpcController({
       npc.status = "disabled";
       npc.departAt = Infinity;
       npc.arrivalTick = 0;
+      npc.cleanupAfterTick = state.tick + KILLED_NPC_CLEANUP_DELAY_SECONDS;
       return;
     }
     if (normalizedOutcome === "major_damage") {
@@ -1281,7 +1308,7 @@ export function createNpcController({
   }
 
   function combatCapable(npc) {
-    return npc && npc.combatStatus !== "killed" && npc.combatStatus !== "major_damage";
+    return npc && npc.status !== "destroyed" && npc.combatStatus !== "killed" && npc.combatStatus !== "major_damage";
   }
 
   function resolveDirectCombat(attacker, defender) {
@@ -1674,24 +1701,45 @@ export function createNpcController({
       const exchange = resolveCombatExchange(defender, target, campaign.locationNodeId);
       notifyCombatExchangeHeat(exchange, campaign.locationNodeId, campaign.id);
       if (playerLocalToNode(campaign.locationNodeId)) scheduleCombatExchangeMessages(exchange, campaign.locationNodeId, 2 + idx, "Defender fire");
+      endCampaignCombatIfSpent(campaign);
     });
+  }
+
+  function campaignCombatCanContinue(campaign) {
+    const attackers = activeCampaignNpcs(campaign, "attacker");
+    const defenders = ensureCampaignDefendersAtLocation(campaign);
+    return attackers.length > 0 && defenders.length > 0;
+  }
+
+  function endCampaignCombatIfSpent(campaign) {
+    if (!campaignCombatCanContinue(campaign)) {
+      campaign.combatEnded = true;
+      campaign.endsAt = Math.min(campaign.endsAt || state.tick, state.tick);
+      return true;
+    }
+    return false;
   }
 
   function updateCampaignCombat() {
     (state.activeFactionCampaigns || []).forEach((campaign) => {
       if (!campaign || campaign.resolved || campaign.endsAt <= state.tick) return;
       if (!campaign.attackerShipIds?.length) spawnCampaignAttackers(campaign);
+      if (endCampaignCombatIfSpent(campaign)) return;
       if (state.tick < (campaign.nextAttackTick || 0)) return;
       campaign.nextAttackTick = state.tick + CAMPAIGN_ATTACK_TICK_SECONDS;
       const attackers = activeCampaignNpcs(campaign, "attacker").filter((npc) => campaignCanFire(campaign, npc));
       const defenders = ensureCampaignDefendersAtLocation(campaign);
       const attacker = randomPick(attackers);
       const target = randomPick(defenders);
-      if (!attacker || !target) return;
+      if (!attacker || !target) {
+        endCampaignCombatIfSpent(campaign);
+        return;
+      }
       recordCampaignFire(campaign, attacker);
       const exchange = resolveCombatExchange(attacker, target, campaign.locationNodeId);
       notifyCombatExchangeHeat(exchange, campaign.locationNodeId, campaign.id);
       if (playerLocalToNode(campaign.locationNodeId)) scheduleCombatExchangeMessages(exchange, campaign.locationNodeId, 1, "Campaign fire");
+      endCampaignCombatIfSpent(campaign);
     });
   }
 
@@ -1700,6 +1748,14 @@ export function createNpcController({
     if (!ids.size) return;
     state.civilianNpcs = (state.civilianNpcs || []).filter((npc) => {
       if (!ids.has(npc.id)) return true;
+      delete shipSpeedById[npc.id];
+      return false;
+    });
+  }
+
+  function cleanupKilledNpcs() {
+    state.civilianNpcs = (state.civilianNpcs || []).filter((npc) => {
+      if (npc?.combatStatus !== "killed" || state.tick < (npc.cleanupAfterTick || Infinity)) return true;
       delete shipSpeedById[npc.id];
       return false;
     });
@@ -2202,6 +2258,7 @@ export function createNpcController({
       updateAmbientLocationDialogue();
       updateAmbientLocationRemovals();
       updateCampaignCombat();
+      cleanupKilledNpcs();
       const npcs = state.civilianNpcs || [];
       updateConflictEncounters(npcs.filter((npc) => !npc.ambientLocationSpawn && !npc.campaignId && mutedNpcActiveForConflict(npc)));
       npcs.forEach((npc) => {

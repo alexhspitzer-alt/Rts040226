@@ -1092,6 +1092,7 @@ const NpcController = createNpcController({
   getShipRegistry: () => state.shipRegistry,
   getConflictOutcomes: () => state.conflictOutcomes,
   playerShipCallsign,
+  onPlayerShipDestroyed: destroyPlayerShip,
   playerShipDisplayId,
   playerShipCaptainById: (shipId) => SHIP_CAPTAINS[shipId] || null,
   onConflictStage: ({ stage, nodeId, aggressorFaction, responderFaction }) => {
@@ -1245,7 +1246,7 @@ function openContracts() {
 }
 
 function playerControlledShipCount() {
-  return Array.isArray(state.ships) ? state.ships.length : 0;
+  return Array.isArray(state.ships) ? state.ships.filter((ship) => !shipDestroyed(ship)).length : 0;
 }
 
 function visibleContractCount() {
@@ -1265,7 +1266,7 @@ function contractClientClass(contract) {
 }
 
 function shipRecallAvailable(ship) {
-  return ship?.status === "tasked" || ship?.status === "enroute";
+  return shipActionAvailable(ship) && (ship.status === "tasked" || ship.status === "enroute");
 }
 
 function targetOpenContractCount() {
@@ -1289,9 +1290,65 @@ function fillContractBoard({ forceNewTarget = false } = {}) {
   }
 }
 
+function shipDestroyed(ship) {
+  return ship?.status === "destroyed" || ship?.combatStatus === "killed";
+}
+
+function shipActionAvailable(ship) {
+  return ship && !shipDestroyed(ship);
+}
+
 function idleShip(shipId) {
   const ship = state.ships.find((s) => s.id === shipId);
-  return ship && ship.status === "idle";
+  return shipActionAvailable(ship) && ship.status === "idle";
+}
+
+function destroyPlayerShip(shipId, reason = "destroyed") {
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return false;
+  if (shipDestroyed(ship)) return true;
+  if (ship.activeContractId) {
+    const contract = state.contracts.find((c) => c.id === ship.activeContractId && (c.status === "assigned" || c.status === "delivered_pending_report"));
+    if (contract) {
+      contract.status = "open";
+      contract.assignedShipId = null;
+    }
+  }
+  if (ship.dockedTo) {
+    const host = state.ships.find((entry) => entry.id === ship.dockedTo);
+    if (host?.utilityDockedBy === ship.id) host.utilityDockedBy = null;
+  }
+  if (ship.utilityDockedBy) {
+    const utility = state.ships.find((entry) => entry.id === ship.utilityDockedBy);
+    if (utility) {
+      utility.dockedTo = null;
+      utility.status = "idle";
+      utility.at = ship.at;
+      utility.lastKnownAt = utility.at;
+    }
+  }
+  ship.combatStatus = "killed";
+  ship.status = "destroyed";
+  ship.at = "unavailable";
+  ship.lastKnownAt = "unavailable";
+  ship.destination = undefined;
+  ship.activeContractId = undefined;
+  ship.departAt = 0;
+  ship.busyUntil = 0;
+  ship.dockedTo = null;
+  ship.utilityDockedBy = null;
+  ship.travelPlan = null;
+  ship.lastCombatTick = state.tick;
+  logLine(`${formatShipId(ship.id)} destroyed (${reason}). Ship moved to unavailable.`, "alert");
+  return true;
+}
+
+function debugKillPlayerShip(shipId) {
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return [`dbKill: unknown ship ${formatShipId(shipId)}.`];
+  if (shipDestroyed(ship)) return [`dbKill: ${formatShipId(ship.id)} is already destroyed.`];
+  destroyPlayerShip(ship.id, "debug kill");
+  return [`dbKill: ${formatShipId(ship.id)} destroyed.`];
 }
 
 function contractNumber(contractId) {
@@ -1825,9 +1882,10 @@ function showShipsList() {
 
 function dockableShipsForUtility(utilityShipId) {
   const utility = state.ships.find((ship) => ship.id === utilityShipId);
-  if (!utility) return [];
+  if (!utility || shipDestroyed(utility)) return [];
   return state.ships.filter((ship) => (
-    ship.id !== utilityShipId
+    shipActionAvailable(ship)
+    && ship.id !== utilityShipId
     && !ship.utility
     && ship.at === utility.at
     && !ship.utilityDockedBy
@@ -1837,8 +1895,8 @@ function dockableShipsForUtility(utilityShipId) {
 function dockUtilityShip(utilityShipId, targetShipId) {
   const utility = state.ships.find((ship) => ship.id === utilityShipId);
   const target = state.ships.find((ship) => ship.id === targetShipId);
-  if (!utility || !utility.utility) return logLine("Selected ship cannot dock.", "error");
-  if (!target || target.utility) return logLine("Invalid dock target.", "error");
+  if (!utility || !utility.utility || shipDestroyed(utility)) return logLine("Selected ship cannot dock.", "error");
+  if (!target || target.utility || shipDestroyed(target)) return logLine("Invalid dock target.", "error");
   if (utility.at !== target.at) return logLine("Dock target must be at the same location.", "error");
   if (utility.status !== "idle") return logLine(`${formatShipId(utility.id)} is not ready to dock.`, "error");
   if (utility.dockedTo || target.utilityDockedBy) return logLine("Docking unavailable: one of the ships is already docked.", "error");
@@ -1885,6 +1943,12 @@ function showShipMenu(shipId) {
   state.selection.dockableShipIds = [];
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return;
+  if (shipDestroyed(ship)) {
+    logLine(`${formatShipId(ship.id)} is destroyed and unavailable.`, "error");
+    state.selection.selectedShipId = null;
+    state.selection.pending = "await_ship";
+    return;
+  }
   if (shipId === TUG_ID && !state.tugIntroPlayed) {
     state.tugIntroPlayed = true;
     const captain = SHIP_CAPTAINS[TUG_ID];
@@ -2137,6 +2201,7 @@ function sendShip(shipId, destination) {
   const ship = state.ships.find((s) => s.id === shipId);
   const normalizedDestination = normalizeNodeInput(destination);
   if (!ship) return logLine(`Unknown ship: ${formatShipId(shipId)}.`, "error");
+  if (shipDestroyed(ship)) return logLine(`${formatShipId(ship.id)} is destroyed and unavailable.`, "error");
   if (!normalizedDestination) return logLine(`Unknown destination: ${destination}.`, "error");
   if (ship.utility && ship.status === "docked") return logLine(`${formatShipId(ship.id)} is docked. Undock before moving independently.`, "error");
   if (ship.status !== "idle") return logLine(`${formatShipId(ship.id)} is busy.`, "error");
@@ -2210,6 +2275,7 @@ function assignContract(contractId, shipId) {
   const contract = state.contracts.find((c) => c.id.toLowerCase() === contractId.toLowerCase() && c.status === "open");
   if (!contract) return logLine(`Contract ${contractId} not found/open.`, "error");
   const requestedShip = state.ships.find((s) => s.id === shipId);
+  if (shipDestroyed(requestedShip)) return logLine(`${formatShipId(shipId)} is destroyed and unavailable.`, "error");
   if (requestedShip?.utility) return logLine(`${formatShipId(shipId)} cannot be assigned to contracts. Use send/dock instead.`, "error");
   if (!idleShip(shipId)) return logLine(`${formatShipId(shipId)} is not idle.`, "error");
   const ship = state.ships.find((s) => s.id === shipId);
@@ -2551,6 +2617,7 @@ function updateSimulation() {
       ship.status = "arrived_pending_report";
       ship.departAt = 0;
       scheduleMessage(returnSignal, () => {
+        if (shipDestroyed(ship)) return null;
         ship.destination = undefined;
         ship.activeContractId = undefined;
         ship.status = "idle";
@@ -2681,6 +2748,7 @@ commandRuntime = createCommandRuntime({
   factionHeatDebugLines,
   warmFactionHeat: debugWarmFactionHeat,
   launchFactionCampaign: debugLaunchFactionCampaign,
+  debugKillPlayerShip,
 });
 NpcController.bootstrap();
 

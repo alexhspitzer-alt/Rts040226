@@ -46,6 +46,7 @@ export function createCommandRuntime({
   factionHeatDebugLines,
   warmFactionHeat,
   launchFactionCampaign,
+  debugKillPlayerShip,
 }) {
 
   function titleCaseWords(value) {
@@ -82,14 +83,19 @@ export function createCommandRuntime({
     return `B-${Number(match[1])}`;
   }
 
-  function resolveShipToken(token) {
+  function shipDestroyed(ship) {
+    return ship?.status === "destroyed" || ship?.combatStatus === "killed";
+  }
+
+  function resolveShipToken(token, options = {}) {
+    const includeDestroyed = Boolean(options.includeDestroyed);
     const raw = String(token || "").trim();
     if (!raw) return null;
 
     const numeric = Number(raw);
     if (Number.isInteger(numeric) && numeric > 0) {
       const byIndex = state.ships[numeric - 1];
-      if (!byIndex) return null;
+      if (!byIndex || (!includeDestroyed && shipDestroyed(byIndex))) return null;
       const displayId = visibleShipId(byIndex) || byIndex.id;
       return {
         shipId: byIndex.id,
@@ -100,7 +106,7 @@ export function createCommandRuntime({
     const fleetId = normalizeFleetIdToken(raw);
     if (fleetId) {
       const byFleetId = state.ships[Number(fleetId.slice(2)) - 1];
-      if (!byFleetId) return null;
+      if (!byFleetId || (!includeDestroyed && shipDestroyed(byFleetId))) return null;
       return {
         shipId: byFleetId.id,
         interpretation: raw.toUpperCase() !== fleetId ? `Interpreting "${raw}" as "${fleetId}".` : null,
@@ -122,7 +128,7 @@ export function createCommandRuntime({
         || shortCallsign === normalizedCallsign
         || shortCallsign.replace(/[-\s]/g, "") === compactCallsign;
     });
-    if (!ship) return null;
+    if (!ship || (!includeDestroyed && shipDestroyed(ship))) return null;
     return {
       shipId: ship.id,
       interpretation: raw.toLowerCase() !== ship.id ? `Interpreting "${raw}" as "${visibleShipId(ship) || ship.id}".` : null,
@@ -333,7 +339,7 @@ export function createCommandRuntime({
 
     if (state.selection.pending === "await_ship") {
       const ship = state.ships[n - 1];
-      if (!ship) return logLine("Invalid ship number.", "error");
+      if (!ship || shipDestroyed(ship)) return logLine("Invalid ship number.", "error");
       state.selection.selectedShipId = ship.id;
       state.selection.pending = "ship_menu";
       return showShipMenu(ship.id);
@@ -403,6 +409,12 @@ export function createCommandRuntime({
     if (!shipId) return false;
     const ship = state.ships.find((s) => s.id === shipId);
     if (!ship) return false;
+    if (shipDestroyed(ship)) {
+      logLine(`${visibleShipIdById(shipId)} is destroyed and unavailable.`, "error");
+      state.selection.selectedShipId = null;
+      state.selection.pending = "await_ship";
+      return true;
+    }
 
     if (letter === "a") {
       if (ship.utility) {
@@ -652,6 +664,27 @@ export function createCommandRuntime({
       return true;
     }
 
+    if (command === "dbkill") {
+      if (typeof debugKillPlayerShip !== "function") {
+        logLine("dbKill: debug ship killer unavailable.", "error");
+        return true;
+      }
+      const resolvedShip = resolveShipToken(parts[1], { includeDestroyed: true });
+      if (!resolvedShip) {
+        logLine('Usage: dbKill [ship ID]', "error");
+        return true;
+      }
+      const ship = state.ships.find((entry) => entry.id === resolvedShip.shipId);
+      if (!ship || shipDestroyed(ship)) {
+        logLine(`dbKill: ${visibleShipIdById(resolvedShip.shipId)} is already destroyed or unavailable.`, "sys");
+        return true;
+      }
+      state.selection.pending = "confirm_dbkill";
+      state.selection.debugKillShipId = resolvedShip.shipId;
+      logLine(`dbKill: kill ${visibleShipIdById(resolvedShip.shipId)}? Type y to confirm or n to cancel.`, "alert");
+      return true;
+    }
+
     if (command === "dbcamp") {
       if (typeof launchFactionCampaign !== "function") {
         logLine("dbCamp: campaign debug launcher unavailable.", "error");
@@ -711,6 +744,27 @@ export function createCommandRuntime({
     const lower = input.toLowerCase();
     const parts = lower.split(/\s+/);
     state.respondingToCommand = true;
+
+    if (state.selection.pending === "confirm_dbkill") {
+      if (lower === "y" || lower === "yes") {
+        const shipId = state.selection.debugKillShipId;
+        state.selection.pending = "await_ship";
+        state.selection.debugKillShipId = null;
+        debugKillPlayerShip(shipId).forEach((line) => logLine(line, "sys"));
+        state.respondingToCommand = false;
+        return;
+      }
+      if (lower === "n" || lower === "no") {
+        state.selection.pending = "await_ship";
+        state.selection.debugKillShipId = null;
+        logLine("dbKill cancelled.", "sys");
+        state.respondingToCommand = false;
+        return;
+      }
+      logLine("dbKill: type y to confirm or n to cancel.", "error");
+      state.respondingToCommand = false;
+      return;
+    }
 
     if (tryFlexibleCommandSequence(parts)) {
       state.respondingToCommand = false;
