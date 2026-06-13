@@ -32,6 +32,18 @@ const TUG_ID = "tug-1";
 const ARCWORKS_EXEC_NAME = "Arcworks Chief Executive Lewin";
 const THORNE_NAME = "Cmdr. Elias Thorne";
 const VENN_NAME = "Capt. Hadrik Venn";
+const PORT_AUTHORITY_BY_MOON = {
+  "Cat's Eye": "Port Marshal Celia Wren",
+  Corkscrew: THORNE_NAME,
+  Peltier: "Harbor Prefect Octavia Brindle",
+  Oxblood: "Dock Adjudicator Terek Halden",
+  Patch: "Pier Controller Zofia Krail",
+  "Onion Skin": "Port Factor Sable Orwick",
+  Shooter: "Berth Warden Kez Rourke",
+  Sulphide: "Dock Registrar Lysette Vorn",
+  Clambroth: "Harbor Officer Bram Caldus",
+  "End-of-Day": "Quay Auditor Odel Quince",
+};
 const PLAYER_NODE = "anchor_station";
 const CONSOLE_MESSAGE_GAP_MS = 750;
 const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
@@ -338,9 +350,17 @@ const DEFAULT_SPEAKER_STATUS = "on-station";
 const SPEAKER_PROFILES = {
   BASIL: { location: "Dispatch Core", status: "active" },
   BUDDE: { location: "Navigation Layer", status: "active" },
-  [THORNE_NAME]: { location: "UFP Patrol Group", status: DEFAULT_SPEAKER_STATUS },
   [VENN_NAME]: { location: "Blister Trade Lane", status: DEFAULT_SPEAKER_STATUS },
-  "Port Marshal Celia Wren": { location: "Anchor Station Docks", status: DEFAULT_SPEAKER_STATUS },
+  "Port Marshal Celia Wren": { location: "Port Authority (Cat's Eye)", status: DEFAULT_SPEAKER_STATUS },
+  [THORNE_NAME]: { location: "Port Authority (Corkscrew)", status: DEFAULT_SPEAKER_STATUS },
+  "Harbor Prefect Octavia Brindle": { location: "Port Authority (Peltier)", status: DEFAULT_SPEAKER_STATUS },
+  "Dock Adjudicator Terek Halden": { location: "Port Authority (Oxblood)", status: DEFAULT_SPEAKER_STATUS },
+  "Pier Controller Zofia Krail": { location: "Port Authority (Patch)", status: DEFAULT_SPEAKER_STATUS },
+  "Port Factor Sable Orwick": { location: "Port Authority (Onion Skin)", status: DEFAULT_SPEAKER_STATUS },
+  "Berth Warden Kez Rourke": { location: "Port Authority (Shooter)", status: DEFAULT_SPEAKER_STATUS },
+  "Dock Registrar Lysette Vorn": { location: "Port Authority (Sulphide)", status: DEFAULT_SPEAKER_STATUS },
+  "Harbor Officer Bram Caldus": { location: "Port Authority (Clambroth)", status: DEFAULT_SPEAKER_STATUS },
+  "Quay Auditor Odel Quince": { location: "Port Authority (End-of-Day)", status: DEFAULT_SPEAKER_STATUS },
   [ARCWORKS_EXEC_NAME]: { location: "Arcworks Transit Authority", status: DEFAULT_SPEAKER_STATUS },
 };
 const NPC_CAPTAIN_FACTIONS = {
@@ -498,6 +518,15 @@ function recordDockDeparture(nodeId) {
   return adjustDockCondition(nodeId, -DOCK_CONDITION_DEPARTURE_DECREMENT);
 }
 
+function portAuthorityMoonForName(name) {
+  return Object.entries(PORT_AUTHORITY_BY_MOON).find(([, authorityName]) => authorityName === name)?.[0] || null;
+}
+
+function portAuthorityForNode(nodeId) {
+  const moonName = nodes[nodeId]?.moonName || moonForNode(nodeId)?.name;
+  return moonName ? PORT_AUTHORITY_BY_MOON[moonName] || null : null;
+}
+
 function dockHazardRollProfile(dockValue) {
   return DOCK_HAZARD_ROLLS.find((profile) => dockValue >= profile.minDock) || DOCK_HAZARD_ROLLS[DOCK_HAZARD_ROLLS.length - 1];
 }
@@ -527,7 +556,13 @@ function recordPlayerDockHazard(ship, nodeId, phase) {
   ship.travelPlan = ship.travelPlan || {};
   ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
   ship.travelPlan.hazards.push(text);
-  logLine(`${formatShipId(ship.id)} ${text}`, hazard.severity >= 3 ? "alert" : "sys");
+  const authorityName = portAuthorityForNode(nodeId);
+  const lineType = hazard.severity >= 3 ? "alert" : authorityName ? speakerMessageType(authorityName) : "sys";
+  if (authorityName) {
+    logLine(`${authorityName} ${speakerContext(authorityName)}: ${formatShipId(ship.id)}, ${text}`, lineType);
+  } else {
+    logLine(`${formatShipId(ship.id)} ${text}`, lineType);
+  }
   return hazard;
 }
 
@@ -746,6 +781,9 @@ function speakerContext(name, statusOverride) {
 
   const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.captainName === name);
   if (ambientNpc) return formatNpcShipContext(ambientNpc, statusOverride);
+
+  const portAuthorityMoon = portAuthorityMoonForName(name);
+  if (portAuthorityMoon) return `[Port Authority (${portAuthorityMoon})]`;
 
   const contactProfile = CONTACT_PROFILES[name];
   if (contactProfile?.nodeId && nodes[contactProfile.nodeId]) {

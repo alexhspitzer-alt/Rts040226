@@ -41,7 +41,15 @@
     { "name": "Port Marshal Celia Wren", "category": "civilian_contact" },
     { "name": "Capt. Edda Marr", "category": "npc_arcworks" },
     { "name": "Capt. Tal Ren", "category": "npc_arcworks" },
-    { "name": "Traffic Officer Juno Pell", "category": "ufp_contact" }
+    { "name": "Traffic Officer Juno Pell", "category": "ufp_contact" },
+    { "name": "Harbor Prefect Octavia Brindle", "category": "port_authority" },
+    { "name": "Dock Adjudicator Terek Halden", "category": "port_authority" },
+    { "name": "Pier Controller Zofia Krail", "category": "port_authority" },
+    { "name": "Port Factor Sable Orwick", "category": "port_authority" },
+    { "name": "Berth Warden Kez Rourke", "category": "port_authority" },
+    { "name": "Dock Registrar Lysette Vorn", "category": "port_authority" },
+    { "name": "Harbor Officer Bram Caldus", "category": "port_authority" },
+    { "name": "Quay Auditor Odel Quince", "category": "port_authority" }
   ],
   "randomAssignmentPool": [
     "Adair Flint",
