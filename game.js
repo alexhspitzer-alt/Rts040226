@@ -548,8 +548,47 @@ function randomDockHazard(nodeId, phase) {
   return (likely.length ? likely : candidates)[Math.floor(Math.random() * (likely.length ? likely.length : candidates.length))];
 }
 
-function recordPlayerDockHazard(ship, nodeId, phase) {
-  const hazard = randomDockHazard(nodeId, phase);
+function dockHazardDelaySeconds(hazard) {
+  if (!hazard) return 0;
+  return { 1: 0, 2: 60, 3: 90, 4: 180 }[hazard.severity] || 0;
+}
+
+function portAuthorityShipCallsign(ship) {
+  return playerShipCallsign(ship).replace(/^\S+\s+/, "");
+}
+
+function dockHazardReason(hazard, phase) {
+  const label = String(hazard?.label || "local dock hazard").toLowerCase();
+  if (label.includes("poor parking")) return "There's another ship badly parked in front of your assigned berth";
+  if (label.includes("debris")) return phase === "departure" ? "debris removal is active on your launch vector" : "debris removal is active in the final approach corridor";
+  if (label.includes("bay doors")) return "bay doors are failing to open on your assigned berth";
+  if (label.includes("dock clamp")) return "your dock clamp is failing to open on the launch checklist";
+  if (label.includes("freighter")) return "traffic is stalled around a disabled freighter";
+  if (label.includes("pylons")) return "construction crews are still on the pier pylons";
+  if (label.includes("labor")) return "a dock labor dispute is blocking the crew board";
+  if (label.includes("autocrane")) return "the assigned autocrane is out of service";
+  if (label.includes("gauss")) return "the Gauss launch array is not available";
+  if (label.includes("telemetry")) return "local telemetry is not synchronized";
+  if (label.includes("wake dampers")) return "wake dampers are not engaging on schedule";
+  if (label.includes("visibility")) return "visibility is reduced by dust and debris";
+  return `local control reports ${hazard?.label || "a docking hazard"}`;
+}
+
+function portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, delaySeconds = dockHazardDelaySeconds(hazard)) {
+  const severityLabel = DOCK_HAZARD_SEVERITY_LABELS[hazard.severity] || `severity ${hazard.severity}`;
+  const call = portAuthorityShipCallsign(ship);
+  const reason = dockHazardReason(hazard, phase);
+  if (delaySeconds > 0) {
+    if (phase === "departure") {
+      return `Negative, ${call}. Hold for ${delaySeconds}s. ${reason}. Stand by for launch clearance.`;
+    }
+    return `Negative, ${call}. Hold pattern for ${delaySeconds}s. ${reason}. Stand by for docking clearance.`;
+  }
+  return `${call}, advisory: ${reason}. Dock hazard ${severityLabel}; continue with caution.`;
+}
+
+function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null) {
+  const hazard = hazardOverride || randomDockHazard(nodeId, phase);
   if (!hazard) return null;
   const severityLabel = DOCK_HAZARD_SEVERITY_LABELS[hazard.severity] || `severity ${hazard.severity}`;
   const text = `Dock hazard (${phase}, ${severityLabel}): ${hazard.label} at ${nodeLabel(nodeId)}.`;
@@ -558,8 +597,9 @@ function recordPlayerDockHazard(ship, nodeId, phase) {
   ship.travelPlan.hazards.push(text);
   const authorityName = portAuthorityForNode(nodeId);
   const lineType = hazard.severity >= 3 ? "alert" : authorityName ? speakerMessageType(authorityName) : "sys";
+  const announcement = portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard);
   if (authorityName) {
-    logLine(`${authorityName} ${speakerContext(authorityName)}: ${formatShipId(ship.id)}, ${text}`, lineType);
+    logLine(`${authorityName} ${speakerContext(authorityName)}: ${announcement}`, lineType);
   } else {
     logLine(`${formatShipId(ship.id)} ${text}`, lineType);
   }
@@ -568,13 +608,17 @@ function recordPlayerDockHazard(ship, nodeId, phase) {
 
 function recordPlayerDockArrival(ship, nodeId) {
   const value = recordDockArrival(nodeId);
-  recordPlayerDockHazard(ship, nodeId, "arrival");
+  if (!ship.travelPlan?.arrivalHazardRolled) recordPlayerDockHazard(ship, nodeId, "arrival");
   return value;
 }
 
-function recordPlayerDockDeparture(ship, nodeId) {
+function recordPlayerDockDeparture(ship, nodeId, hazardOverride = null) {
   const value = recordDockDeparture(nodeId);
-  recordPlayerDockHazard(ship, nodeId, "departure");
+  if (hazardOverride) recordPlayerDockHazard(ship, nodeId, "departure", hazardOverride);
+  else if (!ship.travelPlan?.departureHazardRolled) {
+    if (ship.travelPlan) ship.travelPlan.departureHazardRolled = true;
+    recordPlayerDockHazard(ship, nodeId, "departure");
+  }
   return value;
 }
 
@@ -2332,13 +2376,30 @@ function scheduleFinalApproachDockingCall(ship, {
   const sameMoonOutbound = uplink + departureOffset + Math.min(sameMoonCallDelay, Math.max(0, transitTime - 1));
   const crossMoonOutbound = uplink + departureOffset + Math.max(0, transitTime - preArrivalLead);
   const shipCallAt = sameMoonTransit ? sameMoonOutbound : crossMoonOutbound;
+  const approachMessageDelay = shipCallAt + oneWaySignalToNode(destinationNodeId);
   scheduleCharacterMessage(
-    shipCallAt + oneWaySignalToNode(destinationNodeId),
+    approachMessageDelay,
     captain,
     pickBluFreightApproachLine(captain, nodeLabel(destinationNodeId)),
     "arriving",
     "comms"
   );
+  const authorityName = portAuthorityForNode(destinationNodeId);
+  if (authorityName) {
+    scheduleMessage(approachMessageDelay + 1, () => {
+      const liveShip = state.ships.find((entry) => entry.id === ship.id);
+      if (!liveShip || shipDestroyed(liveShip) || liveShip.destination !== destinationNodeId || liveShip.status !== "enroute") return null;
+      liveShip.travelPlan = liveShip.travelPlan || {};
+      if (liveShip.travelPlan.arrivalHazardRolled) return null;
+      liveShip.travelPlan.arrivalHazardRolled = true;
+      const hazard = randomDockHazard(destinationNodeId, "arrival");
+      if (!hazard) return null;
+      recordPlayerDockHazard(liveShip, destinationNodeId, "arrival", hazard);
+      const delaySeconds = dockHazardDelaySeconds(hazard);
+      if (delaySeconds > 0) liveShip.busyUntil += delaySeconds;
+      return null;
+    }, speakerMessageType(authorityName));
+  }
 }
 
 
@@ -2352,7 +2413,12 @@ function applyTrafficControlLock(nodeId, seconds, reason) {
   const until = state.tick + seconds;
   const current = state.trafficLocks[nodeId] || 0;
   state.trafficLocks[nodeId] = Math.max(current, until);
-  logLine(`Traffic control at ${nodeLabel(nodeId)}: ${reason} (${seconds}s hold).`, "alert");
+  const authorityName = portAuthorityForNode(nodeId);
+  if (authorityName) {
+    logLine(`${authorityName} ${speakerContext(authorityName)}: Traffic hold active at ${nodeLabel(nodeId)} for ${seconds}s: ${reason}.`, "alert");
+  } else {
+    logLine(`Traffic control at ${nodeLabel(nodeId)}: ${reason} (${seconds}s hold).`, "alert");
+  }
 }
 
 function trafficLockRemaining(nodeId) {
@@ -2745,7 +2811,33 @@ function updateSimulation() {
       }
     }
     if (ship.status === "tasked" && state.tick >= ship.departAt) {
-      recordPlayerDockDeparture(ship, ship.at);
+      const departureHold = trafficLockRemaining(ship.at);
+      if (departureHold > 0) {
+        if (!ship.departureTrafficHoldNotified) {
+          const authorityName = portAuthorityForNode(ship.at);
+          const holdSeconds = Math.max(1, departureHold);
+          if (authorityName) {
+            scheduleMessage(oneWaySignalToNode(ship.at), `${authorityName} ${speakerContext(authorityName)}: Negative, ${portAuthorityShipCallsign(ship)}. Hold for ${holdSeconds}s. Debris removal is active on your launch vector. Stand by for clearance.`, "alert");
+          } else {
+            scheduleMessage(oneWaySignalToNode(ship.at), `Port Control [${nodeLabel(ship.at)}]: ${formatShipId(ship.id)}, hold for ${holdSeconds}s while the launch vector is cleared.`, "alert");
+          }
+          ship.departureTrafficHoldNotified = true;
+        }
+        return;
+      }
+      ship.departureTrafficHoldNotified = false;
+      let departureHazard = null;
+      if (!ship.travelPlan?.departureHazardRolled) {
+        if (ship.travelPlan) ship.travelPlan.departureHazardRolled = true;
+        departureHazard = randomDockHazard(ship.at, "departure");
+        const hazardDelay = dockHazardDelaySeconds(departureHazard);
+        if (hazardDelay > 0) {
+          recordPlayerDockHazard(ship, ship.at, "departure", departureHazard);
+          ship.departAt += hazardDelay;
+          return;
+        }
+      }
+      recordPlayerDockDeparture(ship, ship.at, departureHazard);
       ship.status = "enroute";
     }
     if (ship.status === "enroute" && ship.travelPlan?.mode === "contract" && !ship.travelPlan.firstLegDockRecorded) {
@@ -2766,7 +2858,11 @@ function updateSimulation() {
       if (arrivalLock > 0) {
         if (isStationNode(arrivalNodeId) && ship.faction === "blufreight" && !ship.trafficHoldNotified) {
           const holdSeconds = Math.max(1, arrivalLock);
-          scheduleMessage(returnSignal, `Port Control [${nodeLabel(arrivalNodeId)}]: ${formatShipId(ship.id)}, hold short of final docking corridor. Delay in effect for approximately ${holdSeconds}s while traffic hazards are cleared.`, "comms");
+          const authorityName = portAuthorityForNode(arrivalNodeId);
+          const message = authorityName
+            ? `${authorityName} ${speakerContext(authorityName)}: Negative, ${portAuthorityShipCallsign(ship)}. Hold pattern for ${holdSeconds}s. Debris removal is active in the final docking corridor. Stand by for clearance.`
+            : `Port Control [${nodeLabel(arrivalNodeId)}]: ${formatShipId(ship.id)}, hold short of final docking corridor. Delay in effect for approximately ${holdSeconds}s while traffic hazards are cleared.`;
+          scheduleMessage(returnSignal, message, authorityName ? "alert" : "comms");
           ship.trafficHoldNotified = true;
         }
         ship.busyUntil += 1;
