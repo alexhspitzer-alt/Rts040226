@@ -45,6 +45,32 @@ const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
 const DOCK_CONDITION_INITIAL_VALUE = 1000;
 const DOCK_CONDITION_ARRIVAL_DECREMENT = 2;
 const DOCK_CONDITION_DEPARTURE_DECREMENT = 1;
+const DOCK_HAZARD_SEVERITY_LABELS = {
+  1: "minor",
+  2: "moderate",
+  3: "serious",
+  4: "severe",
+};
+const DOCK_HAZARD_ROLLS = [
+  { minDock: 950, chance: 0.02, maxSeverity: 1 },
+  { minDock: 900, chance: 0.08, maxSeverity: 1 },
+  { minDock: 850, chance: 0.16, maxSeverity: 2 },
+  { minDock: 775, chance: 0.27, maxSeverity: 3 },
+  { minDock: -Infinity, chance: 0.42, maxSeverity: 4 },
+];
+const DOCK_HAZARDS = [
+  { label: "telemetry unsynchronized", severity: 1, phases: ["arrival", "departure"] },
+  { label: "assigned bay blocked by poor parking job", severity: 1, phases: ["arrival"] },
+  { label: "visibility reduced by dust and debris", severity: 1, phases: ["arrival", "departure"] },
+  { label: "construction on pier pylons", severity: 2, phases: ["arrival", "departure"] },
+  { label: "labor dispute at dock", severity: 2, phases: ["arrival", "departure"] },
+  { label: "autocrane out of service", severity: 2, phases: ["arrival"] },
+  { label: "contact with debris", severity: 3, phases: ["arrival", "departure"] },
+  { label: "wake dampers fail to engage", severity: 3, phases: ["arrival", "departure"] },
+  { label: "Gauss array not available for launch", severity: 3, phases: ["departure"] },
+  { label: "bay doors fail to open", severity: 3, phases: ["arrival", "departure"] },
+  { label: "traffic stalled for disabled freighter", severity: 4, phases: ["arrival", "departure"] },
+];
 const FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS = 180;
 const FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS = 540;
 const FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS = 10;
@@ -468,6 +494,52 @@ function recordDockDeparture(nodeId) {
   return adjustDockCondition(nodeId, -DOCK_CONDITION_DEPARTURE_DECREMENT);
 }
 
+function dockHazardRollProfile(dockValue) {
+  return DOCK_HAZARD_ROLLS.find((profile) => dockValue >= profile.minDock) || DOCK_HAZARD_ROLLS[DOCK_HAZARD_ROLLS.length - 1];
+}
+
+function dockHazardRiskLabel(dockValue) {
+  const profile = dockHazardRollProfile(dockValue);
+  return `${Math.round(profile.chance * 100)}% up to severity ${profile.maxSeverity}`;
+}
+
+function randomDockHazard(nodeId, phase) {
+  const dockValue = ensureDockCondition(nodeId);
+  if (!Number.isFinite(dockValue)) return null;
+  const profile = dockHazardRollProfile(dockValue);
+  if (Math.random() >= profile.chance) return null;
+  const candidates = DOCK_HAZARDS.filter((hazard) => (hazard.phases || []).includes(phase) && hazard.severity <= profile.maxSeverity);
+  if (!candidates.length) return null;
+  const severityFloor = Math.max(1, profile.maxSeverity - 1);
+  const likely = candidates.filter((hazard) => hazard.severity >= severityFloor);
+  return (likely.length ? likely : candidates)[Math.floor(Math.random() * (likely.length ? likely.length : candidates.length))];
+}
+
+function recordPlayerDockHazard(ship, nodeId, phase) {
+  const hazard = randomDockHazard(nodeId, phase);
+  if (!hazard) return null;
+  const severityLabel = DOCK_HAZARD_SEVERITY_LABELS[hazard.severity] || `severity ${hazard.severity}`;
+  const text = `Dock hazard (${phase}, ${severityLabel}): ${hazard.label} at ${nodeLabel(nodeId)}.`;
+  ship.travelPlan = ship.travelPlan || {};
+  ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
+  ship.travelPlan.hazards.push(text);
+  logLine(`${formatShipId(ship.id)} ${text}`, hazard.severity >= 3 ? "alert" : "sys");
+  return hazard;
+}
+
+function recordPlayerDockArrival(ship, nodeId) {
+  const value = recordDockArrival(nodeId);
+  recordPlayerDockHazard(ship, nodeId, "arrival");
+  return value;
+}
+
+function recordPlayerDockDeparture(ship, nodeId) {
+  const value = recordDockDeparture(nodeId);
+  recordPlayerDockHazard(ship, nodeId, "departure");
+  return value;
+}
+
+
 function dockDebugLines() {
   syncDockConditionsToActiveLocations();
   const entries = Object.keys(nodes || {})
@@ -476,7 +548,9 @@ function dockDebugLines() {
   if (!entries.length) return ["dbDock: no locations available."];
   return [
     "dbDock: local dock condition by location",
-    ...entries.map((entry) => `${nodeLabel(entry.nodeId)} (${entry.nodeId}): dock=${entry.value}`),
+    ...entries.map((entry) => `${nodeLabel(entry.nodeId)} (${entry.nodeId}): dock=${entry.value} | hazard risk ${dockHazardRiskLabel(entry.value)}`),
+    "dbDock hazard severity ranking: 1 minor, 2 moderate, 3 serious, 4 severe.",
+    `dbDock hazards: ${DOCK_HAZARDS.map((hazard) => `${hazard.severity}=${hazard.label}`).join(" | ")}`,
   ];
 }
 
@@ -2541,7 +2615,7 @@ function recallShip(shipId) {
     damage: "None reported",
     netProceeds: fuelBillingActive() ? -recallFuel : 0,
   });
-  if (ship.status === "enroute") recordDockArrival(recallNodeId);
+  if (ship.status === "enroute") recordPlayerDockArrival(ship, recallNodeId);
   ship.status = "idle";
   ship.at = recallNodeId;
   ship.destination = undefined;
@@ -2629,15 +2703,15 @@ function updateSimulation() {
       }
     }
     if (ship.status === "tasked" && state.tick >= ship.departAt) {
-      recordDockDeparture(ship.at);
+      recordPlayerDockDeparture(ship, ship.at);
       ship.status = "enroute";
     }
     if (ship.status === "enroute" && ship.travelPlan?.mode === "contract" && !ship.travelPlan.firstLegDockRecorded) {
       const firstLegTransit = Number.isFinite(ship.travelPlan.firstLegTransit) ? ship.travelPlan.firstLegTransit : 0;
       const firstLegArrivalTick = (ship.departAt || state.tick) + firstLegTransit;
       if (ship.travelPlan.firstLegTo && ship.travelPlan.firstLegFrom !== ship.travelPlan.firstLegTo && state.tick >= firstLegArrivalTick && firstLegArrivalTick < ship.busyUntil) {
-        recordDockArrival(ship.travelPlan.firstLegTo);
-        if ((ship.travelPlan.secondLegTransit || 0) > 0) recordDockDeparture(ship.travelPlan.firstLegTo);
+        recordPlayerDockArrival(ship, ship.travelPlan.firstLegTo);
+        if ((ship.travelPlan.secondLegTransit || 0) > 0) recordPlayerDockDeparture(ship, ship.travelPlan.firstLegTo);
         ship.travelPlan.firstLegDockRecorded = true;
       } else if (state.tick >= firstLegArrivalTick) {
         ship.travelPlan.firstLegDockRecorded = true;
@@ -2672,7 +2746,7 @@ function updateSimulation() {
           }, "sys");
         }
       }
-      recordDockArrival(arrivalNodeId);
+      recordPlayerDockArrival(ship, arrivalNodeId);
       ship.at = arrivalNodeId;
       ship.status = "arrived_pending_report";
       ship.departAt = 0;
