@@ -55,8 +55,8 @@ const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
 const DOCK_CONDITION_INITIAL_VALUE = 1000;
-const DOCK_CONDITION_ARRIVAL_DECREMENT = 2;
-const DOCK_CONDITION_DEPARTURE_DECREMENT = 1;
+const DOCK_CONDITION_ARRIVAL_DECREMENT = 3;
+const DOCK_CONDITION_DEPARTURE_DECREMENT = 2;
 const DOCK_MAINTENANCE_TRIGGER_VALUE = 700;
 const DOCK_OPERATIONAL_VALUE = 940;
 const DOCK_MAINTENANCE_CLEAR_VALUE = 1000;
@@ -580,9 +580,15 @@ function randomDockHazard(nodeId, phase) {
   return (likely.length ? likely : candidates)[Math.floor(Math.random() * (likely.length ? likely.length : candidates.length))];
 }
 
-function dockHazardDelaySeconds(hazard) {
-  if (!hazard) return 0;
-  return { 1: 0, 2: 60, 3: 90, 4: 180 }[hazard.severity] || 0;
+function rollDockHazardEffect(hazard) {
+  if (!hazard) return { delaySeconds: 0, damage: "none", cargoLost: false, disablesShip: false };
+  const roll = Math.random();
+  if (hazard.severity === 1) return { delaySeconds: roll < 0.5 ? 60 : 0, damage: "none", cargoLost: false, disablesShip: false };
+  if (hazard.severity === 2) return { delaySeconds: roll < 0.5 ? 120 : 60, damage: "none", cargoLost: false, disablesShip: false };
+  if (hazard.severity === 3) return { delaySeconds: 180, damage: roll < 0.5 ? "none" : "minor", cargoLost: false, disablesShip: false };
+  if (hazard.severity === 4 && roll < 0.5) return { delaySeconds: 210, damage: "minor", cargoLost: false, disablesShip: false };
+  if (hazard.severity === 4) return { delaySeconds: 0, damage: "major", cargoLost: true, disablesShip: true };
+  return { delaySeconds: 0, damage: "none", cargoLost: false, disablesShip: false };
 }
 
 function portAuthorityShipCallsign(ship) {
@@ -621,52 +627,84 @@ function announcePortAuthorityMaintenanceHold(ship, nodeId, phase, holdSeconds) 
   else logLine(`${formatShipId(ship.id)} ${message}`, "alert");
 }
 
-function portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, delaySeconds = dockHazardDelaySeconds(hazard)) {
+function portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, effect) {
   const severityLabel = DOCK_HAZARD_SEVERITY_LABELS[hazard.severity] || `severity ${hazard.severity}`;
   const call = portAuthorityShipCallsign(ship);
   const reason = dockHazardReason(hazard, phase);
-  if (delaySeconds > 0) {
+  const damageNote = effect.damage === "minor" ? " Minor damage reported." : effect.damage === "major" ? " Major damage reported; cargo is lost." : "";
+  if (effect.disablesShip) return `Negative, ${call}. ${reason}. Major damage reported; cargo is lost. Disable and await recovery crew.`;
+  if (effect.delaySeconds > 0) {
     if (phase === "departure") {
-      return `Negative, ${call}. Hold for ${delaySeconds}s. ${reason}. Stand by for launch clearance.`;
+      return `Negative, ${call}. Hold for ${effect.delaySeconds}s. ${reason}.${damageNote} Stand by for launch clearance.`;
     }
-    return `Negative, ${call}. Hold pattern for ${delaySeconds}s. ${reason}. Stand by for docking clearance.`;
+    return `Negative, ${call}. Hold pattern for ${effect.delaySeconds}s. ${reason}.${damageNote} Stand by for docking clearance.`;
   }
-  return `${call}, advisory: ${reason}. Dock hazard ${severityLabel}; continue with caution.`;
+  return `${call}, advisory: ${reason}. Dock hazard ${severityLabel}; continue with caution.${damageNote}`;
 }
 
-function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null) {
+function applyDockHazardEffect(ship, nodeId, effect) {
+  if (!effect || effect.damage === "none") return;
+  if (effect.damage === "minor") {
+    ship.combatStatus = ship.combatStatus || "minor_damage";
+    if (ship.status === "idle") ship.status = "damaged";
+    return;
+  }
+  if (effect.disablesShip) {
+    if (ship.activeContractId) {
+      const contract = state.contracts.find((c) => c.id === ship.activeContractId && (c.status === "assigned" || c.status === "delivered_pending_report"));
+      if (contract) {
+        contract.status = "failed";
+        contract.cargoLost = true;
+      }
+    }
+    ship.combatStatus = "major_damage";
+    ship.status = "disabled";
+    ship.at = nodeId;
+    ship.lastKnownAt = nodeId;
+    ship.destination = undefined;
+    ship.activeContractId = undefined;
+    ship.departAt = 0;
+    ship.busyUntil = 0;
+  }
+}
+
+function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effectOverride = null) {
   const hazard = hazardOverride || randomDockHazard(nodeId, phase);
   if (!hazard) return null;
+  const effect = effectOverride || rollDockHazardEffect(hazard);
   const severityLabel = DOCK_HAZARD_SEVERITY_LABELS[hazard.severity] || `severity ${hazard.severity}`;
-  const text = `Dock hazard (${phase}, ${severityLabel}): ${hazard.label} at ${nodeLabel(nodeId)}.`;
+  const damageText = effect.damage !== "none" ? `, ${effect.damage} damage` : "";
+  const cargoText = effect.cargoLost ? ", cargo lost" : "";
+  const text = `Dock hazard (${phase}, ${severityLabel}): ${hazard.label} at ${nodeLabel(nodeId)} (${effect.delaySeconds}s delay${damageText}${cargoText}).`;
   ship.travelPlan = ship.travelPlan || {};
   ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
   ship.travelPlan.hazards.push(text);
   const authorityName = portAuthorityForNode(nodeId);
   const lineType = hazard.severity >= 3 ? "alert" : authorityName ? speakerMessageType(authorityName) : "sys";
-  const announcement = portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard);
+  const announcement = portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, effect);
   if (authorityName) {
     logLine(`${authorityName} ${speakerContext(authorityName)}: ${announcement}`, lineType);
   } else {
     logLine(`${formatShipId(ship.id)} ${text}`, lineType);
   }
-  return hazard;
+  applyDockHazardEffect(ship, nodeId, effect);
+  return effect;
 }
 
 function recordPlayerDockArrival(ship, nodeId) {
   const value = recordDockArrival(nodeId);
-  if (!ship.travelPlan?.arrivalHazardRolled) recordPlayerDockHazard(ship, nodeId, "arrival");
-  return value;
+  if (!ship.travelPlan?.arrivalHazardRolled) return recordPlayerDockHazard(ship, nodeId, "arrival");
+  return null;
 }
 
-function recordPlayerDockDeparture(ship, nodeId, hazardOverride = null) {
+function recordPlayerDockDeparture(ship, nodeId, hazardOverride = null, effectOverride = null) {
   const value = recordDockDeparture(nodeId);
-  if (hazardOverride) recordPlayerDockHazard(ship, nodeId, "departure", hazardOverride);
-  else if (!ship.travelPlan?.departureHazardRolled) {
+  if (hazardOverride) return recordPlayerDockHazard(ship, nodeId, "departure", hazardOverride, effectOverride);
+  if (!ship.travelPlan?.departureHazardRolled) {
     if (ship.travelPlan) ship.travelPlan.departureHazardRolled = true;
-    recordPlayerDockHazard(ship, nodeId, "departure");
+    return recordPlayerDockHazard(ship, nodeId, "departure");
   }
-  return value;
+  return null;
 }
 
 
@@ -2455,9 +2493,9 @@ function scheduleFinalApproachDockingCall(ship, {
       liveShip.travelPlan.arrivalHazardRolled = true;
       const hazard = randomDockHazard(destinationNodeId, "arrival");
       if (!hazard) return null;
-      recordPlayerDockHazard(liveShip, destinationNodeId, "arrival", hazard);
-      const delaySeconds = dockHazardDelaySeconds(hazard);
-      if (delaySeconds > 0) liveShip.busyUntil += delaySeconds;
+      const effect = recordPlayerDockHazard(liveShip, destinationNodeId, "arrival", hazard);
+      if (effect?.disablesShip) return null;
+      if (effect?.delaySeconds > 0) liveShip.busyUntil += effect.delaySeconds;
       return null;
     }, speakerMessageType(authorityName));
   }
@@ -2895,25 +2933,30 @@ function updateSimulation() {
       }
       ship.departureTrafficHoldNotified = false;
       let departureHazard = null;
+      let departureHazardEffect = null;
       if (!ship.travelPlan?.departureHazardRolled) {
         if (ship.travelPlan) ship.travelPlan.departureHazardRolled = true;
         departureHazard = randomDockHazard(ship.at, "departure");
-        const hazardDelay = dockHazardDelaySeconds(departureHazard);
-        if (hazardDelay > 0) {
-          recordPlayerDockHazard(ship, ship.at, "departure", departureHazard);
-          ship.departAt += hazardDelay;
+        departureHazardEffect = rollDockHazardEffect(departureHazard);
+        if (departureHazardEffect.delaySeconds > 0 || departureHazardEffect.disablesShip) {
+          recordPlayerDockHazard(ship, ship.at, "departure", departureHazard, departureHazardEffect);
+          if (departureHazardEffect.disablesShip) return;
+          ship.departAt += departureHazardEffect.delaySeconds;
           return;
         }
       }
-      recordPlayerDockDeparture(ship, ship.at, departureHazard);
+      const departureEffect = recordPlayerDockDeparture(ship, ship.at, departureHazard, departureHazardEffect);
+      if (departureEffect?.disablesShip) return;
       ship.status = "enroute";
     }
     if (ship.status === "enroute" && ship.travelPlan?.mode === "contract" && !ship.travelPlan.firstLegDockRecorded) {
       const firstLegTransit = Number.isFinite(ship.travelPlan.firstLegTransit) ? ship.travelPlan.firstLegTransit : 0;
       const firstLegArrivalTick = (ship.departAt || state.tick) + firstLegTransit;
       if (ship.travelPlan.firstLegTo && ship.travelPlan.firstLegFrom !== ship.travelPlan.firstLegTo && state.tick >= firstLegArrivalTick && firstLegArrivalTick < ship.busyUntil) {
-        recordPlayerDockArrival(ship, ship.travelPlan.firstLegTo);
-        if ((ship.travelPlan.secondLegTransit || 0) > 0) recordPlayerDockDeparture(ship, ship.travelPlan.firstLegTo);
+        const midLegArrivalEffect = recordPlayerDockArrival(ship, ship.travelPlan.firstLegTo);
+        if (midLegArrivalEffect?.disablesShip) return;
+        const midLegDepartureEffect = (ship.travelPlan.secondLegTransit || 0) > 0 ? recordPlayerDockDeparture(ship, ship.travelPlan.firstLegTo) : null;
+        if (midLegDepartureEffect?.disablesShip) return;
         ship.travelPlan.firstLegDockRecorded = true;
       } else if (state.tick >= firstLegArrivalTick) {
         ship.travelPlan.firstLegDockRecorded = true;
@@ -2965,7 +3008,8 @@ function updateSimulation() {
           }, "sys");
         }
       }
-      recordPlayerDockArrival(ship, arrivalNodeId);
+      const finalArrivalEffect = recordPlayerDockArrival(ship, arrivalNodeId);
+      if (finalArrivalEffect?.disablesShip) return;
       ship.at = arrivalNodeId;
       ship.status = "arrived_pending_report";
       ship.departAt = 0;
