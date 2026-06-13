@@ -44,6 +44,7 @@ export function createCommandRuntime({
   npcConflictDebugLines,
   bumpNpcConflictStress,
   factionHeatDebugLines,
+  dockDebugLines,
   warmFactionHeat,
   launchFactionCampaign,
   debugKillPlayerShip,
@@ -698,6 +699,16 @@ export function createCommandRuntime({
       }
       lines.forEach((line) => logLine(line, "sys"));
       logLine('Debug: type "dbStress [number]" to add +0.40 stress to a listed pair.', "sys");
+      return true;
+    }
+
+    if (command === "dbdock") {
+      const lines = typeof dockDebugLines === "function" ? dockDebugLines() : [];
+      if (!lines?.length) {
+        logLine("dbDock: dock debug feed unavailable.", "sys");
+        return true;
+      }
+      lines.forEach((line) => logLine(line, "sys"));
       return true;
     }
 

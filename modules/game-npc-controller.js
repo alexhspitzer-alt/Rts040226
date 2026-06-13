@@ -801,6 +801,8 @@ export function createNpcController({
   playerShipCaptainById,
   onConflictStage,
   onConflictFire,
+  onShipArrivedAtLocation,
+  onShipDepartedFromLocation,
 }) {
   const recentNpcLineHistory = [];
   const conflictEncounters = new Map();
@@ -1024,6 +1026,7 @@ export function createNpcController({
     };
     if (!Array.isArray(state.civilianNpcs)) state.civilianNpcs = [];
     state.civilianNpcs.push(npc);
+    if (typeof onShipArrivedAtLocation === "function") onShipArrivedAtLocation(nodeId);
     const registry = typeof getShipRegistry === "function" ? getShipRegistry() : null;
     shipSpeedById[id] = registry?.[ship.registryKey]?.speed || ship.speed || 3;
     const cooldownMax = isAmbientHomeBaseNode(nodeId) ? 55 : 100;
@@ -1072,6 +1075,7 @@ export function createNpcController({
     });
     const npc = randomPick(removable);
     if (!npc) return;
+    if (typeof onShipDepartedFromLocation === "function") onShipDepartedFromLocation(npc.at);
     state.civilianNpcs = (state.civilianNpcs || []).filter((entry) => entry.id !== npc.id);
     delete shipSpeedById[npc.id];
   }
@@ -1987,6 +1991,7 @@ export function createNpcController({
   }
 
   function idleNpcAtNode(npc, nodeId) {
+    if (typeof onShipArrivedAtLocation === "function") onShipArrivedAtLocation(nodeId);
     npc.at = nodeId;
     npc.destination = null;
     npc.status = "idle";
@@ -2104,6 +2109,7 @@ export function createNpcController({
   function startTransit(npc) {
     const destinationNodeId = pickDestination(npc.at, npc.allowedNodeIds);
     if (!destinationNodeId) return;
+    if (typeof onShipDepartedFromLocation === "function") onShipDepartedFromLocation(npc.at);
     const routeSpan = safeRouteDistance(npc.at, destinationNodeId);
     const transitTime = travelTimeForRoute(npc.id, routeSpan);
     const uplink = oneWaySignalToNode(npc.at);

@@ -42,6 +42,9 @@ const OPERATING_COST_INTERVAL_SECONDS = 15;
 const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
+const DOCK_CONDITION_INITIAL_VALUE = 1000;
+const DOCK_CONDITION_ARRIVAL_DECREMENT = 2;
+const DOCK_CONDITION_DEPARTURE_DECREMENT = 1;
 const FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS = 180;
 const FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS = 540;
 const FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS = 10;
@@ -398,6 +401,7 @@ const state = {
   operatingExpenseAccrued: 0,
   operatingExpenseWindowStartTick: 0,
   trafficLocks: {},
+  dockConditions: {},
 };
 
 function isPlayerBankrupt() {
@@ -433,7 +437,47 @@ function applyMapModel(mapModel) {
   nodes = mapModel.nodes;
   edges = mapModel.edges;
   adjacency = mapModel.adjacency;
+  syncDockConditionsToActiveLocations();
   return true;
+}
+
+function ensureDockCondition(nodeId) {
+  if (!nodeId || !nodes[nodeId]) return null;
+  if (!Number.isFinite(state.dockConditions[nodeId])) {
+    state.dockConditions[nodeId] = DOCK_CONDITION_INITIAL_VALUE;
+  }
+  return state.dockConditions[nodeId];
+}
+
+function syncDockConditionsToActiveLocations() {
+  Object.keys(nodes || {}).forEach((nodeId) => ensureDockCondition(nodeId));
+}
+
+function adjustDockCondition(nodeId, amount) {
+  const current = ensureDockCondition(nodeId);
+  if (!Number.isFinite(current)) return null;
+  state.dockConditions[nodeId] = current + amount;
+  return state.dockConditions[nodeId];
+}
+
+function recordDockArrival(nodeId) {
+  return adjustDockCondition(nodeId, -DOCK_CONDITION_ARRIVAL_DECREMENT);
+}
+
+function recordDockDeparture(nodeId) {
+  return adjustDockCondition(nodeId, -DOCK_CONDITION_DEPARTURE_DECREMENT);
+}
+
+function dockDebugLines() {
+  syncDockConditionsToActiveLocations();
+  const entries = Object.keys(nodes || {})
+    .map((nodeId) => ({ nodeId, value: ensureDockCondition(nodeId) }))
+    .sort((a, b) => nodeLabel(a.nodeId).localeCompare(nodeLabel(b.nodeId)));
+  if (!entries.length) return ["dbDock: no locations available."];
+  return [
+    "dbDock: local dock condition by location",
+    ...entries.map((entry) => `${nodeLabel(entry.nodeId)} (${entry.nodeId}): dock=${entry.value}`),
+  ];
 }
 
 function buildCanonicalTutorialMap(mapData) {
@@ -1107,6 +1151,8 @@ const NpcController = createNpcController({
   onConflictFire: ({ result, collateral, campaignCombat }) => {
     applyConflictFireHeat(result, collateral, { campaignCombat });
   },
+  onShipArrivedAtLocation: recordDockArrival,
+  onShipDepartedFromLocation: recordDockDeparture,
 });
 
 function moonForNode(nodeId) {
@@ -2495,6 +2541,7 @@ function recallShip(shipId) {
     damage: "None reported",
     netProceeds: fuelBillingActive() ? -recallFuel : 0,
   });
+  if (ship.status === "enroute") recordDockArrival(recallNodeId);
   ship.status = "idle";
   ship.at = recallNodeId;
   ship.destination = undefined;
@@ -2582,7 +2629,19 @@ function updateSimulation() {
       }
     }
     if (ship.status === "tasked" && state.tick >= ship.departAt) {
+      recordDockDeparture(ship.at);
       ship.status = "enroute";
+    }
+    if (ship.status === "enroute" && ship.travelPlan?.mode === "contract" && !ship.travelPlan.firstLegDockRecorded) {
+      const firstLegTransit = Number.isFinite(ship.travelPlan.firstLegTransit) ? ship.travelPlan.firstLegTransit : 0;
+      const firstLegArrivalTick = (ship.departAt || state.tick) + firstLegTransit;
+      if (ship.travelPlan.firstLegTo && ship.travelPlan.firstLegFrom !== ship.travelPlan.firstLegTo && state.tick >= firstLegArrivalTick && firstLegArrivalTick < ship.busyUntil) {
+        recordDockArrival(ship.travelPlan.firstLegTo);
+        if ((ship.travelPlan.secondLegTransit || 0) > 0) recordDockDeparture(ship.travelPlan.firstLegTo);
+        ship.travelPlan.firstLegDockRecorded = true;
+      } else if (state.tick >= firstLegArrivalTick) {
+        ship.travelPlan.firstLegDockRecorded = true;
+      }
     }
     if (ship.status === "enroute" && state.tick >= ship.busyUntil) {
       const arrivalNodeId = ship.destination;
@@ -2613,6 +2672,7 @@ function updateSimulation() {
           }, "sys");
         }
       }
+      recordDockArrival(arrivalNodeId);
       ship.at = arrivalNodeId;
       ship.status = "arrived_pending_report";
       ship.departAt = 0;
@@ -2746,6 +2806,7 @@ commandRuntime = createCommandRuntime({
   npcConflictDebugLines: () => NpcController.getConflictDebugLines(),
   bumpNpcConflictStress: (index, amount) => NpcController.bumpConflictStress(index, amount),
   factionHeatDebugLines,
+  dockDebugLines,
   warmFactionHeat: debugWarmFactionHeat,
   launchFactionCampaign: debugLaunchFactionCampaign,
   debugKillPlayerShip,
@@ -2787,7 +2848,9 @@ async function init() {
     };
     edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
     adjacency = buildGraph(nodes, edges);
+    syncDockConditionsToActiveLocations();
   }
+  syncDockConditionsToActiveLocations();
   fillContractBoard({ forceNewTarget: true });
   state.selection.pending = "await_ship";
   basilInform("Dispatch online. I've sent operating instructions to your inbox because management has asked me to stop spamming the console with monologues.", "basil");
