@@ -669,24 +669,6 @@ function recordPlayerDockDeparture(ship, nodeId, hazardOverride = null) {
   return value;
 }
 
-function reportMidTripDockHazard(ship, nodeId, hazard) {
-  if (!hazard) return 0;
-  const delaySeconds = dockHazardDelaySeconds(hazard);
-  const destinationLabel = nodeLabel(ship.travelPlan?.secondLegTo || ship.destination);
-  const text = `Dock hazard (mid-trip): ${hazard.label} at ${nodeLabel(nodeId)}.`;
-  ship.travelPlan = ship.travelPlan || {};
-  ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
-  ship.travelPlan.hazards.push(text);
-  const captain = SHIP_CAPTAINS[ship.id];
-  if (captain) {
-    const message = delaySeconds > 0
-      ? `Encountering ${hazard.label} hazard at ${nodeLabel(nodeId)}. ${delaySeconds}s delay effect logged, then continuing to ${destinationLabel}.`
-      : `Reports of ${hazard.label} hazard at ${nodeLabel(nodeId)}, but we cleared it without delay and are continuing to ${destinationLabel}.`;
-    scheduleCharacterMessage(oneWaySignalToNode(nodeId), captain, message, "departing", "comms");
-  }
-  return delaySeconds;
-}
-
 
 function dockDebugLines() {
   syncDockConditionsToActiveLocations();
@@ -2930,11 +2912,8 @@ function updateSimulation() {
       const firstLegTransit = Number.isFinite(ship.travelPlan.firstLegTransit) ? ship.travelPlan.firstLegTransit : 0;
       const firstLegArrivalTick = (ship.departAt || state.tick) + firstLegTransit;
       if (ship.travelPlan.firstLegTo && ship.travelPlan.firstLegFrom !== ship.travelPlan.firstLegTo && state.tick >= firstLegArrivalTick && firstLegArrivalTick < ship.busyUntil) {
-        recordDockArrival(ship.travelPlan.firstLegTo);
-        const midTripHazard = randomDockHazard(ship.travelPlan.firstLegTo, "arrival");
-        const midTripDelay = reportMidTripDockHazard(ship, ship.travelPlan.firstLegTo, midTripHazard);
-        if (midTripDelay > 0) ship.busyUntil += midTripDelay;
-        if ((ship.travelPlan.secondLegTransit || 0) > 0) recordDockDeparture(ship.travelPlan.firstLegTo);
+        recordPlayerDockArrival(ship, ship.travelPlan.firstLegTo);
+        if ((ship.travelPlan.secondLegTransit || 0) > 0) recordPlayerDockDeparture(ship, ship.travelPlan.firstLegTo);
         ship.travelPlan.firstLegDockRecorded = true;
       } else if (state.tick >= firstLegArrivalTick) {
         ship.travelPlan.firstLegDockRecorded = true;
