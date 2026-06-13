@@ -57,6 +57,10 @@ const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
 const DOCK_CONDITION_INITIAL_VALUE = 1000;
 const DOCK_CONDITION_ARRIVAL_DECREMENT = 2;
 const DOCK_CONDITION_DEPARTURE_DECREMENT = 1;
+const DOCK_MAINTENANCE_TRIGGER_VALUE = 700;
+const DOCK_OPERATIONAL_VALUE = 940;
+const DOCK_MAINTENANCE_CLEAR_VALUE = 1000;
+const DOCK_MAINTENANCE_RECOVERY_PER_SECOND = 1;
 const DOCK_HAZARD_SEVERITY_LABELS = {
   1: "minor",
   2: "moderate",
@@ -452,6 +456,7 @@ const state = {
   operatingExpenseWindowStartTick: 0,
   trafficLocks: {},
   dockConditions: {},
+  dockMaintenance: {},
 };
 
 function isPlayerBankrupt() {
@@ -503,11 +508,38 @@ function syncDockConditionsToActiveLocations() {
   Object.keys(nodes || {}).forEach((nodeId) => ensureDockCondition(nodeId));
 }
 
+function updateDockMaintenanceStatus(nodeId) {
+  const value = ensureDockCondition(nodeId);
+  if (!Number.isFinite(value)) return false;
+  if (value < DOCK_MAINTENANCE_TRIGGER_VALUE) state.dockMaintenance[nodeId] = true;
+  if (state.dockMaintenance[nodeId] && value >= DOCK_MAINTENANCE_CLEAR_VALUE) delete state.dockMaintenance[nodeId];
+  return Boolean(state.dockMaintenance[nodeId]);
+}
+
 function adjustDockCondition(nodeId, amount) {
   const current = ensureDockCondition(nodeId);
   if (!Number.isFinite(current)) return null;
   state.dockConditions[nodeId] = current + amount;
+  updateDockMaintenanceStatus(nodeId);
   return state.dockConditions[nodeId];
+}
+
+function updateDockMaintenanceRecovery() {
+  Object.keys(state.dockMaintenance || {}).forEach((nodeId) => {
+    const current = ensureDockCondition(nodeId);
+    if (!Number.isFinite(current)) return;
+    state.dockConditions[nodeId] = Math.min(
+      DOCK_MAINTENANCE_CLEAR_VALUE,
+      current + DOCK_MAINTENANCE_RECOVERY_PER_SECOND
+    );
+    updateDockMaintenanceStatus(nodeId);
+  });
+}
+
+function dockMaintenanceHoldSeconds(nodeId) {
+  updateDockMaintenanceStatus(nodeId);
+  if (!state.dockMaintenance[nodeId]) return 0;
+  return Math.max(0, DOCK_OPERATIONAL_VALUE - ensureDockCondition(nodeId));
 }
 
 function recordDockArrival(nodeId) {
@@ -574,6 +606,21 @@ function dockHazardReason(hazard, phase) {
   return `local control reports ${hazard?.label || "a docking hazard"}`;
 }
 
+function portAuthorityMaintenanceAnnouncement(ship, nodeId, phase, holdSeconds) {
+  const call = portAuthorityShipCallsign(ship);
+  if (phase === "departure") {
+    return `Negative, ${call}. Hold for ${holdSeconds}s. ${nodeLabel(nodeId)} is under maintenance on the launch side. Launch clearance resumes when dock condition reaches ${DOCK_OPERATIONAL_VALUE}.`;
+  }
+  return `Negative, ${call}. Hold pattern for ${holdSeconds}s. ${nodeLabel(nodeId)} is under maintenance. Docking clearance resumes when dock condition reaches ${DOCK_OPERATIONAL_VALUE}.`;
+}
+
+function announcePortAuthorityMaintenanceHold(ship, nodeId, phase, holdSeconds) {
+  const authorityName = portAuthorityForNode(nodeId);
+  const message = portAuthorityMaintenanceAnnouncement(ship, nodeId, phase, holdSeconds);
+  if (authorityName) logLine(`${authorityName} ${speakerContext(authorityName)}: ${message}`, "alert");
+  else logLine(`${formatShipId(ship.id)} ${message}`, "alert");
+}
+
 function portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, delaySeconds = dockHazardDelaySeconds(hazard)) {
   const severityLabel = DOCK_HAZARD_SEVERITY_LABELS[hazard.severity] || `severity ${hazard.severity}`;
   const call = portAuthorityShipCallsign(ship);
@@ -631,7 +678,12 @@ function dockDebugLines() {
   if (!entries.length) return ["dbDock: no locations available."];
   return [
     "dbDock: local dock condition by location",
-    ...entries.map((entry) => `${nodeLabel(entry.nodeId)} (${entry.nodeId}): dock=${entry.value} | hazard risk ${dockHazardRiskLabel(entry.value)}`),
+    ...entries.map((entry) => {
+      const maintenance = state.dockMaintenance[entry.nodeId]
+        ? ` | maintenance=${entry.value < DOCK_OPERATIONAL_VALUE ? `holding until ${DOCK_OPERATIONAL_VALUE}` : `recovering until ${DOCK_MAINTENANCE_CLEAR_VALUE}`}`
+        : "";
+      return `${nodeLabel(entry.nodeId)} (${entry.nodeId}): dock=${entry.value}${maintenance} | hazard risk ${dockHazardRiskLabel(entry.value)}`;
+    }),
     "dbDock hazard severity ranking: 1 minor, 2 moderate, 3 serious, 4 catastrophic.",
     `dbDock hazards: ${DOCK_HAZARDS.map((hazard) => `${hazard.severity}=${hazard.label} [${(hazard.phases || []).join("/")}]`).join(" | ")}`,
   ];
@@ -2390,6 +2442,15 @@ function scheduleFinalApproachDockingCall(ship, {
       const liveShip = state.ships.find((entry) => entry.id === ship.id);
       if (!liveShip || shipDestroyed(liveShip) || liveShip.destination !== destinationNodeId || liveShip.status !== "enroute") return null;
       liveShip.travelPlan = liveShip.travelPlan || {};
+      const maintenanceHold = dockMaintenanceHoldSeconds(destinationNodeId);
+      if (maintenanceHold > 0) {
+        if (!liveShip.travelPlan.arrivalMaintenanceHoldNotified) {
+          liveShip.travelPlan.arrivalMaintenanceHoldNotified = true;
+          announcePortAuthorityMaintenanceHold(liveShip, destinationNodeId, "arrival", maintenanceHold);
+        }
+        liveShip.busyUntil += maintenanceHold;
+        return null;
+      }
       if (liveShip.travelPlan.arrivalHazardRolled) return null;
       liveShip.travelPlan.arrivalHazardRolled = true;
       const hazard = randomDockHazard(destinationNodeId, "arrival");
@@ -2413,12 +2474,6 @@ function applyTrafficControlLock(nodeId, seconds, reason) {
   const until = state.tick + seconds;
   const current = state.trafficLocks[nodeId] || 0;
   state.trafficLocks[nodeId] = Math.max(current, until);
-  const authorityName = portAuthorityForNode(nodeId);
-  if (authorityName) {
-    logLine(`${authorityName} ${speakerContext(authorityName)}: Traffic hold active at ${nodeLabel(nodeId)} for ${seconds}s: ${reason}.`, "alert");
-  } else {
-    logLine(`Traffic control at ${nodeLabel(nodeId)}: ${reason} (${seconds}s hold).`, "alert");
-  }
 }
 
 function trafficLockRemaining(nodeId) {
@@ -2782,6 +2837,7 @@ function finalizeContractDelivery(contractId) {
 }
 
 function updateSimulation() {
+  updateDockMaintenanceRecovery();
   if (state.tick > 0 && state.tick % OPERATING_COST_INTERVAL_SECONDS === 0) {
     const operatingCost = Math.round((state.ships.length || 0) * OPERATING_COST_PER_SHIP_PER_INTERVAL);
     if (operatingCost > 0) {
@@ -2811,6 +2867,18 @@ function updateSimulation() {
       }
     }
     if (ship.status === "tasked" && state.tick >= ship.departAt) {
+      const maintenanceHold = dockMaintenanceHoldSeconds(ship.at);
+      if (maintenanceHold > 0) {
+        if (!ship.departureMaintenanceHoldNotified) {
+          scheduleMessage(oneWaySignalToNode(ship.at), () => {
+            announcePortAuthorityMaintenanceHold(ship, ship.at, "departure", maintenanceHold);
+            return null;
+          }, "alert");
+          ship.departureMaintenanceHoldNotified = true;
+        }
+        return;
+      }
+      ship.departureMaintenanceHoldNotified = false;
       const departureHold = trafficLockRemaining(ship.at);
       if (departureHold > 0) {
         if (!ship.departureTrafficHoldNotified) {
@@ -2854,6 +2922,19 @@ function updateSimulation() {
     if (ship.status === "enroute" && state.tick >= ship.busyUntil) {
       const arrivalNodeId = ship.destination;
       const returnSignal = oneWaySignalToNode(arrivalNodeId);
+      const maintenanceHold = dockMaintenanceHoldSeconds(arrivalNodeId);
+      if (maintenanceHold > 0) {
+        if (!ship.arrivalMaintenanceHoldNotified) {
+          scheduleMessage(returnSignal, () => {
+            announcePortAuthorityMaintenanceHold(ship, arrivalNodeId, "arrival", maintenanceHold);
+            return null;
+          }, "alert");
+          ship.arrivalMaintenanceHoldNotified = true;
+        }
+        ship.busyUntil += 1;
+        return;
+      }
+      ship.arrivalMaintenanceHoldNotified = false;
       const arrivalLock = trafficLockRemaining(arrivalNodeId);
       if (arrivalLock > 0) {
         if (isStationNode(arrivalNodeId) && ship.faction === "blufreight" && !ship.trafficHoldNotified) {
