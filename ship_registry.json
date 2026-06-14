@@ -4,7 +4,7 @@
     "faction": "civilian",
     "role": "general cargo freighter",
     "speed": 2,
-    "cargoSpace": 8,
+    "cargoSpace": 10,
     "armor": 2,
     "guns": 0,
     "utility": "no"

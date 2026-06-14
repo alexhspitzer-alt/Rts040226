@@ -187,7 +187,7 @@
     "ships_and_classes": [
       {
         "name": "Hauler",
-        "description": "Hauler-class ships are standard civilian freight vessels built for bulk cargo movement. They are used for routine cargo contracts where capacity matters more than speed. Registry stats: faction civilian; role general cargo freighter; speed 2; cargo space 8; armor 2; guns 0; utility no."
+        "description": "Hauler-class ships are standard civilian freight vessels built for bulk cargo movement. They are used for routine cargo contracts where capacity matters more than speed. Registry stats: faction civilian; role general cargo freighter; speed 2; cargo space 10; armor 2; guns 0; utility no."
       },
       {
         "name": "Courier",
@@ -195,11 +195,11 @@
       },
       {
         "name": "Tug",
-        "description": "Tug-class vessels are civilian utility craft built for tow work and difficult orbital maneuvers. They assist heavier ships with climbs, repositioning, and high-burn route segments. Registry stats: faction civilian; role tow and utility ship; speed 4; cargo space 0; armor 2; guns 0; utility yes."
+        "description": "Tug-class vessels are civilian utility craft built for tow work and difficult orbital maneuvers. They assist heavier ships with climbs, repositioning, and high-burn route segments. For fuel planning, a tug uses the utility climb profile: uphill moves cost less than making a loaded freighter climb under its own drive, though the tug carries no cargo itself. Registry stats: faction civilian; role tow and utility ship; speed 4; cargo space 0; armor 2; guns 0; utility yes."
       },
       {
         "name": "Shuttle",
-        "description": "Shuttle-class craft are civilian short-range transports used for local transfers, personnel movement, station errands, and small cargo hops. Registry stats: faction civilian; role passenger and light cargo transport; speed 3; cargo space 2; armor 1; guns 0; utility no."
+        "description": "Shuttle-class craft are civilian short-range transports used for local transfers, personnel movement, station errands, and small cargo hops. Shuttles discount close approach work by trimming local approach distance and applying a small fuel reduction, but they are costly for uphill orbital climbs compared with ordinary freighters and especially tugs. Registry stats: faction civilian; role passenger and light cargo transport; speed 3; cargo space 2; armor 1; guns 0; utility no."
       },
       {
         "name": "Probe",

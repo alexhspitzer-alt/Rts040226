@@ -259,6 +259,19 @@ const SHIP_CAPACITY_BY_ID = {
   [TUG_ID]: 1,
   "tug-2": 1,
 };
+
+function originalShipCargoCapacity(ship) {
+  if (!ship) return 0;
+  const registeredCapacity = SHIP_CAPACITY_BY_ID[ship.id];
+  if (Number.isFinite(registeredCapacity)) return registeredCapacity;
+  if (Number.isFinite(ship.originalCargoCapacity)) return ship.originalCargoCapacity;
+  return Number.isFinite(ship.cargoCapacity) ? ship.cargoCapacity : 0;
+}
+
+function currentShipCargoCapacity(ship) {
+  if (!ship) return 0;
+  return Number.isFinite(ship.cargoCapacity) ? ship.cargoCapacity : originalShipCargoCapacity(ship);
+}
 const CARGO_GENERATION_RULES = {
   locationSets: {
     stations: [
@@ -632,6 +645,10 @@ function portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, effect) {
   const call = portAuthorityShipCallsign(ship);
   const reason = dockHazardReason(hazard, phase);
   const damageNote = effect.damage === "minor" ? " Minor damage reported." : effect.damage === "major" ? " Major damage reported; cargo is lost." : "";
+  if (effect.disablesShip && effect.damage === "minor") {
+    const cargoNote = effect.cargoLost ? " Cargo capacity no longer meets contract requirement; cargo is lost." : "";
+    return `Negative, ${call}. ${reason}. Minor damage reported; ship is below safe cargo capacity.${cargoNote} Disable and await recovery crew.`;
+  }
   if (effect.disablesShip) return `Negative, ${call}. ${reason}. Major damage reported; cargo is lost. Disable and await recovery crew.`;
   if (effect.delaySeconds > 0) {
     if (phase === "departure") {
@@ -642,29 +659,52 @@ function portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, effect) {
   return `${call}, advisory: ${reason}. Dock hazard ${severityLabel}; continue with caution.${damageNote}`;
 }
 
+function failActiveShipContract(ship) {
+  if (!ship?.activeContractId) return null;
+  const contract = state.contracts.find((c) => c.id === ship.activeContractId && (c.status === "assigned" || c.status === "delivered_pending_report"));
+  if (!contract) return null;
+  contract.status = "failed";
+  contract.cargoLost = true;
+  contract.assignedShipId = null;
+  ship.activeContractId = undefined;
+  return contract;
+}
+
+function disableShipAtDock(ship, nodeId) {
+  ship.combatStatus = "major_damage";
+  ship.status = "disabled";
+  ship.at = nodeId;
+  ship.lastKnownAt = nodeId;
+  ship.destination = undefined;
+  ship.activeContractId = undefined;
+  ship.departAt = 0;
+  ship.busyUntil = 0;
+}
+
 function applyDockHazardEffect(ship, nodeId, effect) {
   if (!effect || effect.damage === "none") return;
   if (effect.damage === "minor") {
+    const originalCapacity = originalShipCargoCapacity(ship);
+    const damagedCapacity = Math.max(0, currentShipCargoCapacity(ship) - 1);
+    ship.cargoCapacity = damagedCapacity;
     ship.combatStatus = ship.combatStatus || "minor_damage";
     if (ship.status === "idle") ship.status = "damaged";
+    const activeContract = ship.activeContractId
+      ? state.contracts.find((c) => c.id === ship.activeContractId && (c.status === "assigned" || c.status === "delivered_pending_report"))
+      : null;
+    if (activeContract && Number.isInteger(activeContract.cargoRequirement) && damagedCapacity < activeContract.cargoRequirement) {
+      failActiveShipContract(ship);
+      effect.cargoLost = true;
+    }
+    if (originalCapacity > 0 && damagedCapacity < originalCapacity / 2) {
+      effect.disablesShip = true;
+      disableShipAtDock(ship, nodeId);
+    }
     return;
   }
   if (effect.disablesShip) {
-    if (ship.activeContractId) {
-      const contract = state.contracts.find((c) => c.id === ship.activeContractId && (c.status === "assigned" || c.status === "delivered_pending_report"));
-      if (contract) {
-        contract.status = "failed";
-        contract.cargoLost = true;
-      }
-    }
-    ship.combatStatus = "major_damage";
-    ship.status = "disabled";
-    ship.at = nodeId;
-    ship.lastKnownAt = nodeId;
-    ship.destination = undefined;
-    ship.activeContractId = undefined;
-    ship.departAt = 0;
-    ship.busyUntil = 0;
+    failActiveShipContract(ship);
+    disableShipAtDock(ship, nodeId);
   }
 }
 
@@ -672,10 +712,12 @@ function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effe
   const hazard = hazardOverride || randomDockHazard(nodeId, phase);
   if (!hazard) return null;
   const effect = effectOverride || rollDockHazardEffect(hazard);
+  applyDockHazardEffect(ship, nodeId, effect);
   const severityLabel = DOCK_HAZARD_SEVERITY_LABELS[hazard.severity] || `severity ${hazard.severity}`;
   const damageText = effect.damage !== "none" ? `, ${effect.damage} damage` : "";
   const cargoText = effect.cargoLost ? ", cargo lost" : "";
-  const text = `Dock hazard (${phase}, ${severityLabel}): ${hazard.label} at ${nodeLabel(nodeId)} (${effect.delaySeconds}s delay${damageText}${cargoText}).`;
+  const disabledText = effect.disablesShip ? ", disabled" : "";
+  const text = `Dock hazard (${phase}, ${severityLabel}): ${hazard.label} at ${nodeLabel(nodeId)} (${effect.delaySeconds}s delay${damageText}${cargoText}${disabledText}).`;
   ship.travelPlan = ship.travelPlan || {};
   ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
   ship.travelPlan.hazards.push(text);
@@ -687,7 +729,6 @@ function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effe
   } else {
     logLine(`${formatShipId(ship.id)} ${text}`, lineType);
   }
-  applyDockHazardEffect(ship, nodeId, effect);
   return effect;
 }
 
@@ -1696,7 +1737,7 @@ function render() {
   state.ships.forEach((s, idx) => {
     const li = document.createElement("li");
     const capacityLabel = state.currentScenario >= 3 && !s.utility
-      ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
+      ? ` | ${currentShipCargoCapacity(s)}T cap`
       : "";
     const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
     li.textContent = `${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${playerShipDisplayId(s) || s.id}${capacityLabel}`;
@@ -2169,7 +2210,7 @@ function showShipsList() {
     const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
     const dockedSuffix = s.dockedTo ? ` | docked to ${formatShipId(s.dockedTo)}` : s.utilityDockedBy ? ` | utility ${formatShipId(s.utilityDockedBy)}` : "";
     const capacityLabel = state.currentScenario >= 3 && !s.utility
-      ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
+      ? ` | ${currentShipCargoCapacity(s)}T cap`
       : "";
     logLine(`${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${playerShipDisplayId(s) || s.id}${dockedSuffix}${capacityLabel}`, "sys");
   });
@@ -2602,7 +2643,7 @@ function assignContract(contractId, shipId) {
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return logLine(`Unknown ship: ${formatShipId(shipId)}.`, "error");
   if (state.currentScenario >= 3 && Number.isInteger(contract.cargoRequirement)) {
-    const shipCapacity = ship.cargoCapacity || SHIP_CAPACITY_BY_ID[ship.id] || 0;
+    const shipCapacity = currentShipCargoCapacity(ship);
     if (shipCapacity < contract.cargoRequirement) {
       return logLine(
         `${formatShipId(ship.id)} capacity ${shipCapacity} is below required cargo ${contract.cargoRequirement} for ${contract.id}.`,
