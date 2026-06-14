@@ -54,7 +54,8 @@ const OPERATING_COST_INTERVAL_SECONDS = 15;
 const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
-const DOCK_CONDITION_INITIAL_VALUE = 1000;
+const DOCK_CONDITION_INITIAL_MIN_VALUE = 955;
+const DOCK_CONDITION_INITIAL_MAX_VALUE = 1000;
 const DOCK_CONDITION_ARRIVAL_DECREMENT = 3;
 const DOCK_CONDITION_DEPARTURE_DECREMENT = 2;
 const DOCK_MAINTENANCE_TRIGGER_VALUE = 700;
@@ -509,10 +510,38 @@ function applyMapModel(mapModel) {
   return true;
 }
 
+
+function randomInitialDockCondition() {
+  return DOCK_CONDITION_INITIAL_MIN_VALUE
+    + Math.floor(Math.random() * (DOCK_CONDITION_INITIAL_MAX_VALUE - DOCK_CONDITION_INITIAL_MIN_VALUE + 1));
+}
+
+function activeCampaignAtNode(nodeId) {
+  return (state.activeFactionCampaigns || []).some((campaign) => (
+    campaign
+    && !campaign.resolved
+    && campaign.endsAt > state.tick
+    && campaign.locationNodeId === nodeId
+  ));
+}
+
+function dockStatusLabel(nodeId) {
+  if (!nodeId || !nodes[nodeId]) return "unknown";
+  if (activeCampaignAtNode(nodeId)) return "hostile";
+  const value = ensureDockCondition(nodeId);
+  if (!Number.isFinite(value)) return "unknown";
+  updateDockMaintenanceStatus(nodeId);
+  if (value >= 990) return "normal";
+  if (value >= DOCK_OPERATIONAL_VALUE) return "operational";
+  if (state.dockMaintenance[nodeId] || value < DOCK_MAINTENANCE_TRIGGER_VALUE) return "needs maintenance";
+  if (value >= 850) return "hazardous";
+  return "very hazardous";
+}
+
 function ensureDockCondition(nodeId) {
   if (!nodeId || !nodes[nodeId]) return null;
   if (!Number.isFinite(state.dockConditions[nodeId])) {
-    state.dockConditions[nodeId] = DOCK_CONDITION_INITIAL_VALUE;
+    state.dockConditions[nodeId] = randomInitialDockCondition();
   }
   return state.dockConditions[nodeId];
 }
@@ -2452,7 +2481,10 @@ function shipReport(shipId) {
   const locationOrDestination = ship.status === "enroute"
     ? `destination=${ship.destination || ship.at}`
     : `location=${ship.at}`;
-  scheduleMessage(rtt, `Report ${formatShipId(ship.id)}: status=${reportStatus}, ${locationOrDestination}, eta=${eta}s (RTT ${rtt}s).`, "report");
+  const dockStatusText = ship.status === "idle" && ship.at
+    ? `, dock=${dockStatusLabel(ship.at)}`
+    : "";
+  scheduleMessage(rtt, `Report ${formatShipId(ship.id)}: status=${reportStatus}, ${locationOrDestination}${dockStatusText}, eta=${eta}s (RTT ${rtt}s).`, "report");
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
     scheduleCharacterMessage(

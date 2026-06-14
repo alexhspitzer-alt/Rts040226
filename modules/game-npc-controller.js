@@ -61,24 +61,8 @@ const OBSERVATION_TAGS = {
     ],
     comments: [
       "Looks like a mullet.",
-      "That is not moving like debris should move.",
       "It has no transponder and too much personality.",
       "The scope dislikes it.",
-    ],
-  },
-  debris: {
-    objects: [
-      "that debris cluster",
-      "the loose cargo signature",
-      "the tumbling object",
-      "that glitter cloud",
-      "the suspiciously organized debris",
-    ],
-    comments: [
-      "Somebody lost something with opinions.",
-      "If that is cargo, it has become philosophical.",
-      "Probably harmless, which is what harmful things want us to think.",
-      "I have seen better behavior from spilled bolts.",
     ],
   },
 };
@@ -303,7 +287,6 @@ const QUESTION_MIX_INS = {
     "Food recommendations nearby also welcome because this may take a while.",
     "A repair shop with a forgiving back room would also solve part of this.",
     "Will trade coolant hose, dumplings, or rare foils.",
-    "If this is about the dockside incident, different incident.",
   ],
 };
 
@@ -1100,8 +1083,13 @@ export function createNpcController({
     return clamp(0, CAMPAIGN_HEAT_HOSTILITY_MAX, (heat / 120) * CAMPAIGN_HEAT_HOSTILITY_MAX);
   }
 
+  function playerHeatExposureFaction(target) {
+    return target?.playerShip ? "ufp" : target?.faction;
+  }
+
   function localHostilityScore(source, target) {
-    return factionHostility(source?.faction, target?.faction) + heatHostilityToward(target?.faction, source?.faction);
+    const targetFaction = playerHeatExposureFaction(target);
+    return factionHostility(source?.faction, target?.faction) + heatHostilityToward(targetFaction, source?.faction);
   }
 
   function chooseAggressor(a, b) {
@@ -1358,16 +1346,26 @@ export function createNpcController({
         && mutedNpcActiveForConflict(npc)
         && npc.combatStatus !== "killed"
       ));
-    const playerTargets = (state.ships || [])
+    const playerTargets = playerCombatTargetsAtNode(nodeId)
+      .filter((ship) => !idsToSkip.has(ship.id));
+    return [...npcTargets, ...playerTargets]
+      .map((target) => resolveCollateralCombat(attacker, target));
+  }
+
+  function playerCombatTargetsAtNode(nodeId) {
+    return (state.ships || [])
       .filter((ship) => (
         ship?.at === nodeId
-        && !idsToSkip.has(ship.id)
         && playerShipAvailableForCollateral(ship)
       ))
       .map(playerCollateralCandidate)
       .filter(Boolean);
-    return [...npcTargets, ...playerTargets]
-      .map((target) => resolveCollateralCombat(attacker, target));
+  }
+
+  function campaignDefenderTargets(campaign) {
+    const defenders = ensureCampaignDefendersAtLocation(campaign);
+    if (campaign?.defenderFaction !== "ufp") return defenders;
+    return [...defenders, ...playerCombatTargetsAtNode(campaign.locationNodeId)];
   }
 
   function resolveCollateralReprisals(triggerResults, target, nodeId, reprisalShipIds = new Set()) {
@@ -1696,7 +1694,7 @@ export function createNpcController({
 
   function campaignCombatCanContinue(campaign) {
     const attackers = activeCampaignNpcs(campaign, "attacker");
-    const defenders = ensureCampaignDefendersAtLocation(campaign);
+    const defenders = campaignDefenderTargets(campaign);
     return attackers.length > 0 && defenders.length > 0;
   }
 
@@ -1717,7 +1715,7 @@ export function createNpcController({
       if (state.tick < (campaign.nextAttackTick || 0)) return;
       campaign.nextAttackTick = state.tick + CAMPAIGN_ATTACK_TICK_SECONDS;
       const attackers = activeCampaignNpcs(campaign, "attacker").filter((npc) => campaignCanFire(campaign, npc));
-      const defenders = ensureCampaignDefendersAtLocation(campaign);
+      const defenders = campaignDefenderTargets(campaign);
       const attacker = randomPick(attackers);
       const target = randomPick(defenders);
       if (!attacker || !target) {
@@ -1885,9 +1883,15 @@ export function createNpcController({
   function updateConflictEncounters(npcs) {
     if (state.tick - lastConflictHeartbeatTick < CONFLICT_HEARTBEAT_SECONDS) return;
     lastConflictHeartbeatTick = state.tick;
-    const npcById = new Map(npcs.map((npc) => [npc.id, npc]));
+    const conflictActors = [
+      ...npcs,
+      ...(Number(state.factionHeat?.ufp || 0) > 0
+        ? occupiedPlayerNodeIds().flatMap((nodeId) => playerCombatTargetsAtNode(nodeId))
+        : []),
+    ];
+    const npcById = new Map(conflictActors.map((npc) => [npc.id, npc]));
     const byNode = new Map();
-    npcs.forEach((npc) => {
+    conflictActors.forEach((npc) => {
       if (!npc?.at || !combatCapable(npc)) return;
       if (!byNode.has(npc.at)) byNode.set(npc.at, []);
       byNode.get(npc.at).push(npc);
