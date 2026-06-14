@@ -737,7 +737,7 @@ function applyDockHazardEffect(ship, nodeId, effect) {
   }
 }
 
-function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effectOverride = null) {
+function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effectOverride = null, options = {}) {
   const hazard = hazardOverride || randomDockHazard(nodeId, phase);
   if (!hazard) return null;
   const effect = effectOverride || rollDockHazardEffect(hazard);
@@ -753,26 +753,27 @@ function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effe
   const authorityName = portAuthorityForNode(nodeId);
   const lineType = hazard.severity >= 3 ? "alert" : authorityName ? speakerMessageType(authorityName) : "sys";
   const announcement = portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, effect);
-  if (authorityName) {
-    logLine(`${authorityName} ${speakerContext(authorityName)}: ${announcement}`, lineType);
-  } else {
-    logLine(`${formatShipId(ship.id)} ${text}`, lineType);
-  }
+  const message = authorityName
+    ? `${authorityName} ${speakerContext(authorityName)}: ${announcement}`
+    : `${formatShipId(ship.id)} ${text}`;
+  const announceDelay = Math.max(0, Number(options.announceDelay || 0));
+  if (announceDelay > 0) scheduleMessage(announceDelay, message, lineType);
+  else logLine(message, lineType);
   return effect;
 }
 
-function recordPlayerDockArrival(ship, nodeId) {
+function recordPlayerDockArrival(ship, nodeId, options = {}) {
   const value = recordDockArrival(nodeId);
-  if (!ship.travelPlan?.arrivalHazardRolled) return recordPlayerDockHazard(ship, nodeId, "arrival");
+  if (!ship.travelPlan?.arrivalHazardRolled) return recordPlayerDockHazard(ship, nodeId, "arrival", null, null, options);
   return null;
 }
 
-function recordPlayerDockDeparture(ship, nodeId, hazardOverride = null, effectOverride = null) {
+function recordPlayerDockDeparture(ship, nodeId, hazardOverride = null, effectOverride = null, options = {}) {
   const value = recordDockDeparture(nodeId);
-  if (hazardOverride) return recordPlayerDockHazard(ship, nodeId, "departure", hazardOverride, effectOverride);
+  if (hazardOverride) return recordPlayerDockHazard(ship, nodeId, "departure", hazardOverride, effectOverride, options);
   if (!ship.travelPlan?.departureHazardRolled) {
     if (ship.travelPlan) ship.travelPlan.departureHazardRolled = true;
-    return recordPlayerDockHazard(ship, nodeId, "departure");
+    return recordPlayerDockHazard(ship, nodeId, "departure", null, null, options);
   }
   return null;
 }
@@ -1673,6 +1674,7 @@ function destroyPlayerShip(shipId, reason = "destroyed") {
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return false;
   if (shipDestroyed(ship)) return true;
+  const reportNodeId = ship.at;
   if (ship.activeContractId) {
     const contract = state.contracts.find((c) => c.id === ship.activeContractId && (c.status === "assigned" || c.status === "delivered_pending_report"));
     if (contract) {
@@ -1705,7 +1707,9 @@ function destroyPlayerShip(shipId, reason = "destroyed") {
   ship.utilityDockedBy = null;
   ship.travelPlan = null;
   ship.lastCombatTick = state.tick;
-  logLine(`${formatShipId(ship.id)} destroyed (${reason}). Ship moved to unavailable.`, "alert");
+  const destructionLine = `${formatShipId(ship.id)} destroyed (${reason}). Ship moved to unavailable.`;
+  if (String(reason || "").includes("debug")) logLine(destructionLine, "alert");
+  else scheduleMessage(oneWaySignalToNode(reportNodeId), destructionLine, "alert");
   return true;
 }
 
@@ -1918,23 +1922,27 @@ function chooseCampaignLocation(defenderFaction) {
 }
 
 function postCampaignNewsCard(campaign) {
-  const location = nodeLabel(campaign.locationNodeId) || "Baron's Market";
-  const aggressorName = factionDisplayName(campaign.aggressorFaction);
-  const defenderName = factionDisplayName(campaign.defenderFaction);
-  const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
-  const item = {
-    id: campaign.id,
-    headline: `${aggressorName} attacks ${defenderName} at ${location}`,
-    body: `${fmtTime(state.tick)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${campaign.durationSeconds}s.`,
-    tick: state.tick,
-    timestamp: fmtTime(state.tick),
-    aggressorFaction: campaign.aggressorFaction,
-    defenderFaction: campaign.defenderFaction,
-    location,
-  };
-  state.news.push(item);
-  renderNews();
-  logLine(`News update: ${item.headline}.`, "sys");
+  const reportDelay = oneWaySignalToNode(campaign.locationNodeId || CAMPAIGN_FALLBACK_LOCATION_NODE_ID);
+  scheduleMessage(reportDelay, () => {
+    const location = nodeLabel(campaign.locationNodeId) || "Baron's Market";
+    const aggressorName = factionDisplayName(campaign.aggressorFaction);
+    const defenderName = factionDisplayName(campaign.defenderFaction);
+    const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
+    const item = {
+      id: campaign.id,
+      headline: `${aggressorName} attacks ${defenderName} at ${location}`,
+      body: `${fmtTime(campaign.startedAt)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${campaign.durationSeconds}s.`,
+      tick: state.tick,
+      eventTick: campaign.startedAt,
+      timestamp: fmtTime(state.tick),
+      aggressorFaction: campaign.aggressorFaction,
+      defenderFaction: campaign.defenderFaction,
+      location,
+    };
+    state.news.push(item);
+    renderNews();
+    return `News update: ${item.headline}.`;
+  }, "sys");
 }
 
 function startFactionCampaign(defenderFaction, options = {}) {
@@ -1985,20 +1993,26 @@ function updateFactionCampaigns() {
     if (campaign.endsAt <= state.tick && !campaign.resolved) {
       campaign.resolved = true;
       if (campaign.defenderFaction) state.factionHeat[campaign.defenderFaction] = 0;
-      const location = nodeLabel(campaign.locationNodeId || CAMPAIGN_FALLBACK_LOCATION_NODE_ID) || "Baron's Market";
-      state.news.push({
-        id: `${campaign.id}-resolved`,
-        headline: `${factionDisplayName(campaign.aggressorFaction)} campaign at ${location} winds down`,
-        body: `${fmtTime(state.tick)} — The ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} at ${location} has ended. Heat on ${factionDisplayName(campaign.defenderFaction)} has reset.`,
-        tick: state.tick,
-        timestamp: fmtTime(state.tick),
-        aggressorFaction: campaign.aggressorFaction,
-        defenderFaction: campaign.defenderFaction,
-        location,
-      });
+      const endedAt = state.tick;
+      const reportDelay = oneWaySignalToNode(campaign.locationNodeId || CAMPAIGN_FALLBACK_LOCATION_NODE_ID);
+      scheduleMessage(reportDelay, () => {
+        const location = nodeLabel(campaign.locationNodeId || CAMPAIGN_FALLBACK_LOCATION_NODE_ID) || "Baron's Market";
+        const item = {
+          id: `${campaign.id}-resolved`,
+          headline: `${factionDisplayName(campaign.aggressorFaction)} campaign at ${location} winds down`,
+          body: `${fmtTime(endedAt)} — The ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} at ${location} has ended. Heat on ${factionDisplayName(campaign.defenderFaction)} has reset.`,
+          tick: state.tick,
+          eventTick: endedAt,
+          timestamp: fmtTime(state.tick),
+          aggressorFaction: campaign.aggressorFaction,
+          defenderFaction: campaign.defenderFaction,
+          location,
+        };
+        state.news.push(item);
+        renderNews();
+        return `News update: ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} has ended.`;
+      }, "sys");
       if (NpcController?.endCampaign) NpcController.endCampaign(campaign);
-      renderNews();
-      logLine(`News update: ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} has ended.`, "sys");
     }
   });
   state.activeFactionCampaigns = (state.activeFactionCampaigns || []).filter((campaign) => !campaign.resolved);
@@ -2830,6 +2844,7 @@ function recallShip(shipId) {
     return true;
   }
   const driveShipId = effectiveDriveShipId(ship.id);
+  const recallReportDelay = oneWaySignalToShip(ship) * 2;
   const plan = ship.travelPlan || {};
   const elapsed = Math.max(0, state.tick - (ship.departAt || state.tick));
   let legElapsed = elapsed;
@@ -2872,24 +2887,28 @@ function recallShip(shipId) {
   const returnDistance = Math.round(Math.max(0, safeRouteDistance(currentLegTo, currentLegFrom) * legProgress));
   const recallRouteDistance = partialOutboundDistance + returnDistance;
   if (fuelBillingActive()) state.cash -= recallFuel;
+  const recallContractLabel = ship.activeContractId || "Cancelled active contract";
   if (ship.activeContractId) {
     const contract = state.contracts.find((c) => c.id === ship.activeContractId && c.status === "assigned");
     if (contract) contract.status = "open";
   }
-  postTripReportToInbox(ship, {
-    outcome: "Recall completed",
-    contractLabel: ship.activeContractId || "Cancelled active contract",
-    distanceText: `Partial current leg (${Math.round(legProgress * 100)}%) + return to ${nodeLabel(recallNodeId)}`,
-    fuelSpent: fuelBillingActive() ? `${recallFuel}` : `${recallFuel} (training waiver)`,
-    fuelSpentValue: recallFuel,
-    elapsedTimeSeconds: elapsed,
-    routeDistance: recallRouteDistance,
-    earnings: 0,
-    hazards: plan.hazards || [],
-    damage: "None reported",
-    netProceeds: fuelBillingActive() ? -recallFuel : 0,
-  });
-  if (ship.status === "enroute") recordPlayerDockArrival(ship, recallNodeId);
+  scheduleMessage(recallReportDelay, () => {
+    postTripReportToInbox(ship, {
+      outcome: "Recall completed",
+      contractLabel: recallContractLabel,
+      distanceText: `Partial current leg (${Math.round(legProgress * 100)}%) + return to ${nodeLabel(recallNodeId)}`,
+      fuelSpent: fuelBillingActive() ? `${recallFuel}` : `${recallFuel} (training waiver)`,
+      fuelSpentValue: recallFuel,
+      elapsedTimeSeconds: elapsed,
+      routeDistance: recallRouteDistance,
+      earnings: 0,
+      hazards: plan.hazards || [],
+      damage: "None reported",
+      netProceeds: fuelBillingActive() ? -recallFuel : 0,
+    });
+    return null;
+  }, "sys");
+  if (ship.status === "enroute") recordPlayerDockArrival(ship, recallNodeId, { announceDelay: oneWaySignalToNode(recallNodeId) });
   ship.status = "idle";
   ship.at = recallNodeId;
   ship.destination = undefined;
@@ -2899,7 +2918,7 @@ function recallShip(shipId) {
   ship.lastKnownAt = recallNodeId;
   ship.lastContactTick = state.tick;
   ship.travelPlan = null;
-  logLine(`${formatShipId(ship.id)} recalled to ${nodeLabel(recallNodeId)}. ${fuelBillingActive() ? `Fuel billed: ${recallFuel}.` : `Fuel estimate: ${recallFuel} (training waiver in effect).`}`, "dispatch");
+  scheduleMessage(recallReportDelay, `${formatShipId(ship.id)} recalled to ${nodeLabel(recallNodeId)}. ${fuelBillingActive() ? `Fuel billed: ${recallFuel}.` : `Fuel estimate: ${recallFuel} (training waiver in effect).`}`, "dispatch");
   return true;
 }
 
@@ -3012,13 +3031,13 @@ function updateSimulation() {
         departureHazard = randomDockHazard(ship.at, "departure");
         departureHazardEffect = rollDockHazardEffect(departureHazard);
         if (departureHazardEffect.delaySeconds > 0 || departureHazardEffect.disablesShip) {
-          recordPlayerDockHazard(ship, ship.at, "departure", departureHazard, departureHazardEffect);
+          recordPlayerDockHazard(ship, ship.at, "departure", departureHazard, departureHazardEffect, { announceDelay: oneWaySignalToNode(ship.at) });
           if (departureHazardEffect.disablesShip) return;
           ship.departAt += departureHazardEffect.delaySeconds;
           return;
         }
       }
-      const departureEffect = recordPlayerDockDeparture(ship, ship.at, departureHazard, departureHazardEffect);
+      const departureEffect = recordPlayerDockDeparture(ship, ship.at, departureHazard, departureHazardEffect, { announceDelay: oneWaySignalToNode(ship.at) });
       if (departureEffect?.disablesShip) return;
       ship.status = "enroute";
     }
@@ -3026,9 +3045,9 @@ function updateSimulation() {
       const firstLegTransit = Number.isFinite(ship.travelPlan.firstLegTransit) ? ship.travelPlan.firstLegTransit : 0;
       const firstLegArrivalTick = (ship.departAt || state.tick) + firstLegTransit;
       if (ship.travelPlan.firstLegTo && ship.travelPlan.firstLegFrom !== ship.travelPlan.firstLegTo && state.tick >= firstLegArrivalTick && firstLegArrivalTick < ship.busyUntil) {
-        const midLegArrivalEffect = recordPlayerDockArrival(ship, ship.travelPlan.firstLegTo);
+        const midLegArrivalEffect = recordPlayerDockArrival(ship, ship.travelPlan.firstLegTo, { announceDelay: oneWaySignalToNode(ship.travelPlan.firstLegTo) });
         if (midLegArrivalEffect?.disablesShip) return;
-        const midLegDepartureEffect = (ship.travelPlan.secondLegTransit || 0) > 0 ? recordPlayerDockDeparture(ship, ship.travelPlan.firstLegTo) : null;
+        const midLegDepartureEffect = (ship.travelPlan.secondLegTransit || 0) > 0 ? recordPlayerDockDeparture(ship, ship.travelPlan.firstLegTo, null, null, { announceDelay: oneWaySignalToNode(ship.travelPlan.firstLegTo) }) : null;
         if (midLegDepartureEffect?.disablesShip) return;
         ship.travelPlan.firstLegDockRecorded = true;
       } else if (state.tick >= firstLegArrivalTick) {
@@ -3081,7 +3100,7 @@ function updateSimulation() {
           }, "sys");
         }
       }
-      const finalArrivalEffect = recordPlayerDockArrival(ship, arrivalNodeId);
+      const finalArrivalEffect = recordPlayerDockArrival(ship, arrivalNodeId, { announceDelay: returnSignal });
       if (finalArrivalEffect?.disablesShip) return;
       ship.at = arrivalNodeId;
       ship.status = "arrived_pending_report";
