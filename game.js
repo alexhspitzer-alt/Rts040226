@@ -1733,6 +1733,7 @@ function commandPromptLabel() {
   if (pending === "await_route_to") return "<Map routes: to>";
   if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
   if (pending === "await_contract") return `<${playerShipLabelById(selectedShipId)} contracts>`;
+  if (pending === "await_queue_contract") return `<${playerShipLabelById(selectedShipId)} queued contracts>`;
   if (pending === "await_destination") return `<${playerShipLabelById(selectedShipId)} destinations>`;
   if (pending === "await_dock_target") return `<${playerShipLabelById(selectedShipId)} dock target>`;
   return `<${playerShipLabelById(selectedShipId)} actions>`;
@@ -2352,8 +2353,13 @@ function showShipMenu(shipId) {
     }
   }
   const recallOption = shipRecallAvailable(ship) ? ", R recall" : "";
+  const queuedOption = ship.queuedContractId ? ` (queued ${ship.queuedContractId})` : "";
   let menuOptions = `A assign, S send, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
-  if (ship.utility && ship.status === "docked") {
+  if (ship.status === "enroute") {
+    menuOptions = ship.utility
+      ? `I information${recallOption}. Global: F fleet, C contracts, M map, H help.`
+      : `Q queue${queuedOption}, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
+  } else if (ship.utility && ship.status === "docked") {
     menuOptions = "U undock. Global: F fleet, C contracts, M map, H help.";
   } else if (ship.utility) {
     menuOptions = `D dock, S send, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
@@ -2377,6 +2383,23 @@ function showContractsForSelectedShip() {
     logLine(`${displayNumber}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)}${scenarioFlavor}${cargoRequirementLabel} (+$${c.payout})`, "sys");
   });
   logLine("Pick number or contract ID.", "sys");
+}
+
+function showQueuedContractsForSelectedShip() {
+  const contracts = visibleOpenContracts();
+  if (!contracts.length) return logLine("No open contracts to queue.", "sys");
+  logLine(`Queue ${formatShipId(state.selection.selectedShipId)} for what contract?`, "sys");
+  contracts.forEach((c, idx) => {
+    const displayNumber = contractNumber(c.id) || (idx + 1);
+    const scenarioFlavor = state.currentScenario >= 2 && c.client && c.cargoType
+      ? ` | ${c.client} | ${c.cargoType}`
+      : "";
+    const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
+      ? ` | cargo ${c.cargoRequirement}T`
+      : "";
+    logLine(`${displayNumber}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)}${scenarioFlavor}${cargoRequirementLabel} (+$${c.payout})`, "sys");
+  });
+  logLine("Pick number or contract ID. BUDDE suggestions are not available for queued work.", "sys");
 }
 
 function checkScenarioCompletion() {
@@ -2679,7 +2702,53 @@ function sendShip(shipId, destination) {
   return true;
 }
 
-function assignContract(contractId, shipId) {
+function queuedContractStartNode(ship) {
+  return ship?.destination || ship?.travelPlan?.secondLegTo || ship?.travelPlan?.currentLegTo || ship?.at || null;
+}
+
+function queueContract(contractId, shipId) {
+  const contract = state.contracts.find((c) => c.id.toLowerCase() === contractId.toLowerCase() && c.status === "open");
+  if (!contract) return logLine(`Contract ${contractId} not found/open.`, "error");
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return logLine(`Unknown ship: ${formatShipId(shipId)}.`, "error");
+  if (shipDestroyed(ship)) return logLine(`${formatShipId(ship.id)} is destroyed and unavailable.`, "error");
+  if (ship.utility) return logLine(`${formatShipId(ship.id)} cannot queue cargo contracts.`, "error");
+  if (ship.status !== "enroute") return logLine(`${formatShipId(ship.id)} can only queue work while enroute.`, "error");
+  if (ship.queuedContractId) return logLine(`${formatShipId(ship.id)} already has queued contract ${ship.queuedContractId}.`, "error");
+  if (state.currentScenario >= 3 && Number.isInteger(contract.cargoRequirement)) {
+    const shipCapacity = currentShipCargoCapacity(ship);
+    if (shipCapacity < contract.cargoRequirement) {
+      return logLine(
+        `${formatShipId(ship.id)} capacity ${shipCapacity} is below required cargo ${contract.cargoRequirement} for ${contract.id}.`,
+        "error"
+      );
+    }
+  }
+  const startNode = queuedContractStartNode(ship);
+  contract.status = "queued";
+  contract.queuedShipId = ship.id;
+  contract.queuedStartNode = startNode;
+  ship.queuedContractId = contract.id;
+  fillContractBoard();
+  logLine(`Queued ${contract.id} for ${formatShipId(ship.id)} after current work completes from ${nodeLabel(startNode)}.`, "dispatch");
+  return true;
+}
+
+function startQueuedContractIfReady(ship) {
+  if (!ship?.queuedContractId || ship.status !== "idle") return false;
+  const contract = state.contracts.find((c) => c.id === ship.queuedContractId && c.status === "queued" && c.queuedShipId === ship.id);
+  const queuedId = ship.queuedContractId;
+  ship.queuedContractId = undefined;
+  if (!contract) return false;
+  contract.status = "open";
+  contract.queuedShipId = undefined;
+  contract.queuedStartNode = undefined;
+  const assigned = assignContract(contract.id, ship.id, { suppressBuddeAdvice: true });
+  if (assigned) logLine(`Queued contract ${queuedId} started for ${formatShipId(ship.id)}.`, "dispatch");
+  return assigned;
+}
+
+function assignContract(contractId, shipId, options = {}) {
   const contract = state.contracts.find((c) => c.id.toLowerCase() === contractId.toLowerCase() && c.status === "open");
   if (!contract) return logLine(`Contract ${contractId} not found/open.`, "error");
   const requestedShip = state.ships.find((s) => s.id === shipId);
@@ -2710,7 +2779,7 @@ function assignContract(contractId, shipId) {
     fuel: fuelCostForRoute(ship.at, c.from, driveShipId) + fuelCostForRoute(c.from, c.to, driveShipId),
   })).sort((a, b) => a.fuel - b.fuel);
   const bestContract = contractOptions[0];
-  if (state.currentScenario >= 2) {
+  if (state.currentScenario >= 2 && !options.suppressBuddeAdvice) {
     if (bestContract && fuelCost > bestContract.fuel) {
       buddeSpeak("objections", "Current assignment is not top efficiency.");
       buddeInform(`My recommendation would have reduced fuel burn by ${Math.max(1, fuelCost - bestContract.fuel)} units. Your selection has been relayed as ordered.`);
@@ -3113,6 +3182,7 @@ function updateSimulation() {
         ship.lastKnownAt = ship.at;
         ship.lastContactTick = state.tick;
         ship.travelPlan = null;
+        startQueuedContractIfReady(ship);
         return null;
       }, "sys");
     }
@@ -3201,6 +3271,7 @@ commandRuntime = createCommandRuntime({
   openContracts: visibleOpenContracts,
   contractNumber,
   assignContract,
+  queueContract,
   sendShip,
   recallShip,
   canRecallShip: (shipId) => shipRecallAvailable(state.ships.find((ship) => ship.id === shipId)),
@@ -3210,6 +3281,7 @@ commandRuntime = createCommandRuntime({
   showShipsList,
   showShipMenu,
   showContractsForSelectedShip,
+  showQueuedContractsForSelectedShip,
   showDestinationsForSelectedShip,
   dockableShipsForUtility,
   isPlayerBankrupt,

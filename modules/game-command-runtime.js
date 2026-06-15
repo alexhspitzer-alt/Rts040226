@@ -10,6 +10,7 @@ export function createCommandRuntime({
   openContracts,
   contractNumber,
   assignContract,
+  queueContract,
   sendShip,
   recallShip,
   canRecallShip,
@@ -19,6 +20,7 @@ export function createCommandRuntime({
   showShipsList,
   showShipMenu,
   showContractsForSelectedShip,
+  showQueuedContractsForSelectedShip,
   showDestinationsForSelectedShip,
   dockableShipsForUtility,
   isPlayerBankrupt,
@@ -303,25 +305,38 @@ export function createCommandRuntime({
     return true;
   }
 
+  function completeQueue(contractId, shipId) {
+    if (typeof queueContract !== "function") return false;
+    const queued = queueContract(contractId, shipId);
+    if (!queued) return false;
+    state.selection.selectedShipId = null;
+    state.selection.pending = "await_ship";
+    logLine("Queue uplinked. Returning to fleet.", "sys");
+    showShipsList();
+    return true;
+  }
+
   function tryFlexibleCommandSequence(parts) {
     if (!Array.isArray(parts) || parts.length < 2) return false;
     const firstCommand = normalizeCommandWord(parts[0]);
 
-    if (firstCommand === "assign") {
+    if (firstCommand === "assign" || firstCommand === "queue") {
+      const action = firstCommand;
+      const complete = action === "queue" ? completeQueue : completeAssignment;
       if (parts.length >= 3) {
         const resolved = resolveAssignArgs(parts[1], parts[2]);
         if (!resolved) return false;
-        logInterpretedCommand(`assign ${displayShipToken(resolved.shipId)} ${displayContractToken(resolved.contractId)}.`);
+        logInterpretedCommand(`${action} ${displayShipToken(resolved.shipId)} ${displayContractToken(resolved.contractId)}.`);
         resolved.interpretations.forEach((msg) => logLine(msg, "sys"));
-        completeAssignment(resolved.contractId, resolved.shipId);
+        complete(resolved.contractId, resolved.shipId);
         return true;
       }
       if (parts.length >= 2 && state.selection.selectedShipId) {
         const resolvedContract = resolveContractToken(parts[1]);
         if (!resolvedContract) return false;
-        logInterpretedCommand(`assign ${displayShipToken(state.selection.selectedShipId)} ${displayContractToken(resolvedContract.contractId)}.`);
+        logInterpretedCommand(`${action} ${displayShipToken(state.selection.selectedShipId)} ${displayContractToken(resolvedContract.contractId)}.`);
         if (resolvedContract.interpretation) logLine(resolvedContract.interpretation, "sys");
-        completeAssignment(resolvedContract.contractId, state.selection.selectedShipId);
+        complete(resolvedContract.contractId, state.selection.selectedShipId);
         return true;
       }
     }
@@ -344,12 +359,13 @@ export function createCommandRuntime({
         return true;
       }
 
-      if (nextCommand === "assign" && parts[nextCommandIndex + 1]) {
+      if ((nextCommand === "assign" || nextCommand === "queue") && parts[nextCommandIndex + 1]) {
         const resolvedContract = resolveContractToken(parts[nextCommandIndex + 1]);
         if (!resolvedContract) return false;
-        logInterpretedCommand(`${firstCommand === "fleet" ? "fleet; " : ""}select ${selectedShip}; assign ${selectedShip} ${displayContractToken(resolvedContract.contractId)}.`);
+        logInterpretedCommand(`${firstCommand === "fleet" ? "fleet; " : ""}select ${selectedShip}; ${nextCommand} ${selectedShip} ${displayContractToken(resolvedContract.contractId)}.`);
         [resolvedShip.interpretation, resolvedContract.interpretation].filter(Boolean).forEach((msg) => logLine(msg, "sys"));
-        completeAssignment(resolvedContract.contractId, shipId);
+        const complete = nextCommand === "queue" ? completeQueue : completeAssignment;
+        complete(resolvedContract.contractId, shipId);
         return true;
       }
 
@@ -393,17 +409,14 @@ export function createCommandRuntime({
       return showShipMenu(ship.id);
     }
 
-    if (state.selection.pending === "await_contract") {
+    if (state.selection.pending === "await_contract" || state.selection.pending === "await_queue_contract") {
       const resolved = resolveContractToken(String(n));
       if (!resolved) return logLine("Invalid contract number. Use a visible number or contract ID like C-2.", "error");
       if (resolved.interpretation) logLine(resolved.interpretation, "sys");
-      const assigned = assignContract(resolved.contractId, state.selection.selectedShipId);
-      if (assigned) {
-        state.selection.selectedShipId = null;
-        state.selection.pending = "await_ship";
-        logLine("Assignment uplinked. Returning to fleet.", "sys");
-        return showShipsList();
-      }
+      const completed = state.selection.pending === "await_queue_contract"
+        ? completeQueue(resolved.contractId, state.selection.selectedShipId)
+        : completeAssignment(resolved.contractId, state.selection.selectedShipId);
+      if (completed) return true;
       return true;
     }
 
@@ -465,6 +478,7 @@ export function createCommandRuntime({
     }
 
     if (letter === "a") {
+      if (ship.status === "enroute") return true;
       if (ship.utility) {
         logLine(`${visibleShipIdById(shipId)} cannot take cargo contracts. Use dock/send operations instead.`, "error");
         return true;
@@ -473,7 +487,14 @@ export function createCommandRuntime({
       showContractsForSelectedShip();
       return true;
     }
+    if (letter === "q") {
+      if (ship.status !== "enroute" || ship.utility) return true;
+      state.selection.pending = "await_queue_contract";
+      showQueuedContractsForSelectedShip();
+      return true;
+    }
     if (letter === "s") {
+      if (ship.status === "enroute") return true;
       if (ship.utility && ship.status === "docked") {
         logLine(`${visibleShipIdById(shipId)} is currently docked. Undock first.`, "error");
         return true;
@@ -541,7 +562,7 @@ export function createCommandRuntime({
     if (parts[0] === "h" && parts.length >= 2) command = "hail";
 
     if (command === "help") {
-      logLine("help | status | comms | hail <name> | map [routes] | fleet | select <ship|number> | assign <contract> <ship> (either order; IDs or numbers) | send <ship> <destination> | pause", "sys");
+      logLine("help | status | comms | hail <name> | map [routes] | fleet | select <ship|number> | assign <contract> <ship> | queue <contract> <ship> | send <ship> <destination> | pause", "sys");
       logLine("Global shortcuts: F fleet, C contracts, M map, H help.", "sys");
       logLine("Flexible chains: a B1 c3 or F 1 a 3. Console prints the interpreted command before executing.", "sys");
       logLine("Aliases: A assign, S send, contract/contracts, sel/select, B1/B-1, C1/C-1, Blue-1. Extra spaces and case are ignored.", "sys");
@@ -643,17 +664,18 @@ export function createCommandRuntime({
       return true;
     }
 
-    if (command === "assign" && parts.length >= 3) {
+    if ((command === "assign" || command === "queue") && parts.length >= 3) {
       const resolved = resolveAssignArgs(parts[1], parts[2]);
       if (!resolved) {
         return logLine(
-          `Could not resolve assign arguments "${parts[1]}" and "${parts[2]}". Use assign <contract> <ship> or assign <ship> <contract>.`,
+          `Could not resolve ${command} arguments "${parts[1]}" and "${parts[2]}". Use ${command} <contract> <ship> or ${command} <ship> <contract>.`,
           "error"
         );
       }
 
       resolved.interpretations.forEach((msg) => logLine(msg, "sys"));
-      completeAssignment(resolved.contractId, resolved.shipId);
+      const complete = command === "queue" ? completeQueue : completeAssignment;
+      complete(resolved.contractId, resolved.shipId);
       return true;
     }
 
@@ -841,21 +863,15 @@ export function createCommandRuntime({
       return;
     }
 
-    if (state.selection.pending === "await_contract") {
+    if (state.selection.pending === "await_contract" || state.selection.pending === "await_queue_contract") {
       const resolved = resolveContractToken(lower);
       if (resolved) {
         if (resolved.interpretation) logLine(resolved.interpretation, "sys");
-        const assigned = assignContract(resolved.contractId, state.selection.selectedShipId);
-        if (assigned) {
-          state.selection.selectedShipId = null;
-          state.selection.pending = "await_ship";
-          logLine("Assignment uplinked. Returning to fleet.", "sys");
-          showShipsList();
-          state.respondingToCommand = false;
-          return;
-        }
+        const completed = state.selection.pending === "await_queue_contract"
+          ? completeQueue(resolved.contractId, state.selection.selectedShipId)
+          : completeAssignment(resolved.contractId, state.selection.selectedShipId);
         state.respondingToCommand = false;
-        return true;
+        return completed || true;
       }
     }
 
