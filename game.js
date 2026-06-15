@@ -2743,8 +2743,12 @@ function startQueuedContractIfReady(ship) {
   contract.status = "open";
   contract.queuedShipId = undefined;
   contract.queuedStartNode = undefined;
-  const assigned = assignContract(contract.id, ship.id, { suppressBuddeAdvice: true });
-  if (assigned) logLine(`Queued contract ${queuedId} started for ${formatShipId(ship.id)}.`, "dispatch");
+  const assigned = assignContract(contract.id, ship.id, { suppressBuddeAdvice: true, skipUplink: true });
+  if (assigned) {
+    logLine(`Queued contract ${queuedId} started for ${formatShipId(ship.id)} without additional uplink delay.`, "dispatch");
+  } else {
+    logLine(`Queued contract ${queuedId} could not start for ${formatShipId(ship.id)}; contract returned to open board.`, "error");
+  }
   return assigned;
 }
 
@@ -2767,8 +2771,8 @@ function assignContract(contractId, shipId, options = {}) {
     }
   }
   const driveShipId = effectiveDriveShipId(ship.id);
-  const uplink = oneWaySignalToShip(ship);
-  basilCommsLatencyLine(ship, "orders");
+  const uplink = options.skipUplink ? 0 : oneWaySignalToShip(ship);
+  if (!options.skipUplink) basilCommsLatencyLine(ship, "orders");
   const toPickupSpan = safeRouteDistance(ship.at, contract.from);
   const toDropSpan = safeRouteDistance(contract.from, contract.to);
   const totalRouteSpan = toPickupSpan + toDropSpan;
@@ -2816,7 +2820,8 @@ function assignContract(contractId, shipId, options = {}) {
   };
 
   const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
-  logLine(`Transmission sent: ${formatShipId(ship.id)} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
+  const assignmentVerb = options.skipUplink ? "Queued order executed" : "Transmission sent";
+  logLine(`${assignmentVerb}: ${formatShipId(ship.id)} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
   maybePromptScenario3AssignedTowSupport(ship, contract, uplink);
   const returnSignal = oneWaySignalToNode(contract.to);
   basilInform(
