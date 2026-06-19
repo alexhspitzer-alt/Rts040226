@@ -1636,6 +1636,10 @@ function shipRecallAvailable(ship) {
   return shipActionAvailable(ship) && (ship.status === "tasked" || ship.status === "enroute");
 }
 
+function shipCanQueueWork(ship) {
+  return shipActionAvailable(ship) && ["tasked", "enroute", "arrived_pending_report"].includes(ship.status);
+}
+
 function targetOpenContractCount() {
   const target = playerControlledShipCount();
   if (state.contractBoardTargetOpen !== target) state.contractBoardTargetOpen = target;
@@ -2355,7 +2359,7 @@ function showShipMenu(shipId) {
   const recallOption = shipRecallAvailable(ship) ? ", R recall" : "";
   const queuedOption = ship.queuedContractId ? ` (queued ${ship.queuedContractId})` : "";
   let menuOptions = `A assign, S send, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
-  if (ship.status === "enroute") {
+  if (shipCanQueueWork(ship)) {
     menuOptions = ship.utility
       ? `I information${recallOption}. Global: F fleet, C contracts, M map, H help.`
       : `Q queue${queuedOption}, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
@@ -2713,7 +2717,7 @@ function queueContract(contractId, shipId) {
   if (!ship) return logLine(`Unknown ship: ${formatShipId(shipId)}.`, "error");
   if (shipDestroyed(ship)) return logLine(`${formatShipId(ship.id)} is destroyed and unavailable.`, "error");
   if (ship.utility) return logLine(`${formatShipId(ship.id)} cannot queue cargo contracts.`, "error");
-  if (ship.status !== "enroute") return logLine(`${formatShipId(ship.id)} can only queue work while enroute.`, "error");
+  if (!shipCanQueueWork(ship)) return logLine(`${formatShipId(ship.id)} can only queue work while current work is in progress.`, "error");
   if (ship.queuedContractId) return logLine(`${formatShipId(ship.id)} already has queued contract ${ship.queuedContractId}.`, "error");
   if (state.currentScenario >= 3 && Number.isInteger(contract.cargoRequirement)) {
     const shipCapacity = currentShipCargoCapacity(ship);

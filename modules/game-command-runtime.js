@@ -465,6 +465,10 @@ export function createCommandRuntime({
     return false;
   }
 
+  function shipCanQueueWork(ship) {
+    return ship && ["tasked", "enroute", "arrived_pending_report"].includes(ship.status);
+  }
+
   function handleShipMenuLetter(letter) {
     const shipId = state.selection.selectedShipId;
     if (!shipId) return false;
@@ -478,7 +482,7 @@ export function createCommandRuntime({
     }
 
     if (letter === "a") {
-      if (ship.status === "enroute") return true;
+      if (shipCanQueueWork(ship)) return true;
       if (ship.utility) {
         logLine(`${visibleShipIdById(shipId)} cannot take cargo contracts. Use dock/send operations instead.`, "error");
         return true;
@@ -488,13 +492,13 @@ export function createCommandRuntime({
       return true;
     }
     if (letter === "q") {
-      if (ship.status !== "enroute" || ship.utility) return true;
+      if (!shipCanQueueWork(ship) || ship.utility) return true;
       state.selection.pending = "await_queue_contract";
       showQueuedContractsForSelectedShip();
       return true;
     }
     if (letter === "s") {
-      if (ship.status === "enroute") return true;
+      if (shipCanQueueWork(ship)) return true;
       if (ship.utility && ship.status === "docked") {
         logLine(`${visibleShipIdById(shipId)} is currently docked. Undock first.`, "error");
         return true;
