@@ -245,7 +245,11 @@ export function createCommandRuntime({
       status: "status",
       h: "help",
       c: "contracts",
-      m: "map",
+      n: "navigation",
+      nav: "navigation",
+      navigation: "navigation",
+      map: "navigation",
+      maps: "navigation",
       p: "pause",
     };
     return aliases[lower] || lower;
@@ -566,8 +570,8 @@ export function createCommandRuntime({
     if (parts[0] === "h" && parts.length >= 2) command = "hail";
 
     if (command === "help") {
-      logLine("help | status | comms | hail <name> | map [routes] | fleet | select <ship|number> | assign <contract> <ship> | queue <contract> <ship> | send <ship> <destination> | pause", "sys");
-      logLine("Global shortcuts: F fleet, C contracts, M map, H help.", "sys");
+      logLine("help | status | comms | hail <name> | navigation [routes] | fleet | select <ship|number> | assign <contract> <ship> | queue <contract> <ship> | send <ship> <destination> | pause", "sys");
+      logLine("Global shortcuts: F fleet, C contracts, N navigation, H help.", "sys");
       logLine("Flexible chains: a B1 c3 or F 1 a 3. Console prints the interpreted command before executing.", "sys");
       logLine("Aliases: A assign, S send, contract/contracts, sel/select, B1/B-1, C1/C-1, Blue-1. Extra spaces and case are ignored.", "sys");
       return true;
@@ -617,9 +621,9 @@ export function createCommandRuntime({
       return true;
     }
 
-    if (command === "map" || command === "routes") {
-      const mapSubPrompt = (parts[1] || "").toLowerCase();
-      if (command === "routes" || mapSubPrompt === "routes" || mapSubPrompt === "") {
+    if (command === "navigation" || command === "routes") {
+      const navigationSubPrompt = (parts[1] || "").toLowerCase();
+      if (command === "routes" || navigationSubPrompt === "routes" || navigationSubPrompt === "") {
         const nodeIds = Object.keys(getNodes());
         state.selection.pending = "await_route_from";
         state.selection.routeSelectableNodeIds = nodeIds;
@@ -631,7 +635,7 @@ export function createCommandRuntime({
         });
         return true;
       }
-      buddeInform("Use map or routes to start route planning.");
+      buddeInform("Use navigation or routes to start route planning.");
       return true;
     }
 
