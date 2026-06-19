@@ -868,8 +868,8 @@ function stylizeConsoleText(text) {
   const escaped = escapeHtml(text);
   return escaped
     .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|\s)([AISRDUFCHMaisrdufchm]\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|[,:]\s*)([AISRDUFCHMaisrdufchm])(?=\s+(assign|information|send|recall|report|dock|undock|fleet|contracts|map|help)\b)/g, '$1<span class="choice">$2</span>');
+    .replace(/(^|\s)([AISRQDUFCHMaisrqdufchm]\.)/g, '$1<span class="choice">$2</span>')
+    .replace(/(^|[,:]\s*)([AISRQDUFCHMaisrqdufchm])(?=\s+(assign|information|send|queue|recall|report|dock|undock|fleet|contracts|map|help)\b)/g, '$1<span class="choice">$2</span>');
 }
 
 const { logLine } = createConsoleLogger({
