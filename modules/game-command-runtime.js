@@ -562,7 +562,7 @@ export function createCommandRuntime({
 
     if (command === "help") {
       logLine("help | status | comms | hail <name> | fleet | select <ship|number> | assign <contract> <ship> | queue <contract> <ship> | send <ship> <destination> | pause", "sys");
-      logLine("Global shortcuts: F fleet, C contracts, H help. Ship menu: M manage sensors.", "sys");
+      logLine("Global shortcuts: F fleet, C contracts, H help. Ship menu: M Manage sensors.", "sys");
       logLine("Flexible chains: a B1 c3 or F 1 a 3. Console prints the interpreted command before executing.", "sys");
       logLine("Aliases: A assign, S send, contract/contracts, sel/select, B1/B-1, C1/C-1, Blue-1. Extra spaces and case are ignored.", "sys");
       return true;
@@ -609,6 +609,12 @@ export function createCommandRuntime({
         playerHailFlow.enable(query);
         logLine("Select a hail response from the dropdown menu.", "sys");
       }
+      return true;
+    }
+
+    if ((command === "manage" || command === "sensors") && state.selection.selectedShipId) {
+      state.selection.pending = "ship_menu";
+      if (typeof showSensorMenu === "function") showSensorMenu(state.selection.selectedShipId);
       return true;
     }
 

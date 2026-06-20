@@ -870,7 +870,7 @@ function stylizeConsoleText(text) {
   return escaped
     .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
     .replace(/(^|\s)([AISRQMDUFCHaisrqmdufch]\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|[,:]\s*)([AISRQMDUFCHaisrqmdufch])(?=\s+(assign|information|send|queue|manage|recall|report|dock|undock|fleet|contracts|help)\b)/g, '$1<span class="choice">$2</span>');
+    .replace(/(^|[,:]\s*)([AISRQMDUFCHaisrqmdufch])(?=\s+(assign|information|send|queue|[Mm]anage|recall|report|dock|undock|fleet|contracts|help)\b)/g, '$1<span class="choice">$2</span>');
 }
 
 const { logLine } = createConsoleLogger({
@@ -1715,7 +1715,7 @@ function commandPromptLabel() {
   if (pending === "await_queue_contract") return `<${playerShipLabelById(selectedShipId)} queued contracts>`;
   if (pending === "await_destination") return `<${playerShipLabelById(selectedShipId)} destinations>`;
   if (pending === "await_dock_target") return `<${playerShipLabelById(selectedShipId)} dock target>`;
-  return `<${playerShipLabelById(selectedShipId)} actions>`;
+  return `<${playerShipLabelById(selectedShipId)} actions: M Manage sensors>`;
 }
 
 function render() {
@@ -2333,15 +2333,15 @@ function showShipMenu(shipId) {
   }
   const recallOption = shipRecallAvailable(ship) ? ", R recall" : "";
   const queuedOption = ship.queuedContractId ? ` (queued ${ship.queuedContractId})` : "";
-  let menuOptions = `A assign, S send, I information, M manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
+  let menuOptions = `A assign, S send, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
   if (shipCanQueueWork(ship)) {
     menuOptions = ship.utility
-      ? `I information, M manage sensors${recallOption}. Global: F fleet, C contracts, H help.`
-      : `Q queue${queuedOption}, I information, M manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
+      ? `I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, H help.`
+      : `Q queue${queuedOption}, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
   } else if (ship.utility && ship.status === "docked") {
-    menuOptions = "U undock, M manage sensors. Global: F fleet, C contracts, H help.";
+    menuOptions = "U undock, M Manage sensors. Global: F fleet, C contracts, H help.";
   } else if (ship.utility) {
-    menuOptions = `D dock, S send, I information, M manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
+    menuOptions = `D dock, S send, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
   }
   logLine(`${formatShipId(shipId)} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
 }
