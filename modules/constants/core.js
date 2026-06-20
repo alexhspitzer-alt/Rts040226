@@ -1,0 +1,20 @@
+export const TUTORIAL_GOAL = 3;
+export const BASIL_NAME = "BASIL";
+export const BUDDE_NAME = "BUDDE";
+export const TUG_ID = "tug-1";
+export const ARCWORKS_EXEC_NAME = "Arcworks Chief Executive Lewin";
+export const THORNE_NAME = "Cmdr. Elias Thorne";
+export const VENN_NAME = "Capt. Hadrik Venn";
+export const PLAYER_NODE = "anchor_station";
+export const CONSOLE_MESSAGE_GAP_MS = 750;
+export const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
+export const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
+export const CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT = 20;
+export const OPERATING_COST_PER_SHIP_PER_MINUTE = 8;
+export const OPERATING_COST_INTERVAL_SECONDS = 15;
+export const OPERATING_COST_PER_SHIP_PER_INTERVAL =
+  (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
+export const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
+export const SCENARIO_PATH = "./scenarioDat.json";
+export const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
+export const CONFLICT_OUTCOMES_PATH = "./conflict_outcomes.json";

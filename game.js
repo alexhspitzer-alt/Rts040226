@@ -23,159 +23,65 @@ import { createCommandRuntime } from "./modules/game-command-runtime.js";
 import { createNpcController } from "./modules/game-npc-controller.js";
 import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js";
 import { createInitialGameState } from "./modules/game-state.js";
+import {
+  ALMANAC_PATH,
+  ARCWORKS_EXEC_NAME,
+  BASIL_NAME,
+  BUDDE_NAME,
+  COMMAND_RESPONSE_DOTS_DELAY_MS,
+  COMMAND_RESPONSE_REVEAL_DELAY_MS,
+  CONFLICT_OUTCOMES_PATH,
+  CONSOLE_MESSAGE_GAP_MS,
+  CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT,
+  OPERATING_COST_INTERVAL_SECONDS,
+  OPERATING_COST_PER_SHIP_PER_INTERVAL,
+  OPERATING_COST_REPORT_INTERVAL_SECONDS,
+  PLAYER_NODE,
+  SCENARIO_PATH,
+  THORNE_NAME,
+  TUG_ID,
+  TUTORIAL_GOAL,
+  VENN_NAME,
+} from "./modules/constants/core.js";
+import {
+  DOCK_CONDITION_ARRIVAL_DECREMENT,
+  DOCK_CONDITION_DEPARTURE_DECREMENT,
+  DOCK_CONDITION_INITIAL_MAX_VALUE,
+  DOCK_CONDITION_INITIAL_MIN_VALUE,
+  DOCK_HAZARD_ROLLS,
+  DOCK_HAZARD_SEVERITY_LABELS,
+  DOCK_HAZARDS,
+  DOCK_MAINTENANCE_CLEAR_VALUE,
+  DOCK_MAINTENANCE_RECOVERY_PER_SECOND,
+  DOCK_MAINTENANCE_TRIGGER_VALUE,
+  DOCK_OPERATIONAL_VALUE,
+  PORT_AUTHORITY_BY_MOON,
+} from "./modules/constants/dock.js";
+import {
+  CAMPAIGN_DEFENDER_RESPONSE_LINES,
+  CAMPAIGN_FALLBACK_LOCATION_NODE_ID,
+  CAMPAIGN_HOME_BASE_NODE_IDS,
+  FACTION_DISPLAY_NAMES,
+  FACTION_HEAT_CAMPAIGN_COLLATERAL_AMOUNT,
+  FACTION_HEAT_CAMPAIGN_CONCURRENT_DECAY,
+  FACTION_HEAT_CAMPAIGN_FIRE_AMOUNT,
+  FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS,
+  FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS,
+  FACTION_HEAT_CAMPAIGN_PROBABILITY_ASYMPTOTE,
+  FACTION_HEAT_CAMPAIGN_PROBABILITY_HEAT_SCALE,
+  FACTION_HEAT_CAMPAIGN_ROLL_FLOOR,
+  FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS,
+  FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD,
+  FACTION_HEAT_COLLATERAL_AMOUNT,
+  FACTION_HEAT_FIRE_AMOUNT,
+  FACTION_HEAT_MAX,
+  FACTION_HEAT_STAGE_AMOUNT,
+  HEAT_FACTIONS,
+} from "./modules/constants/factions.js";
 
 let nodes = {};
 let edges = [];
 
-const TUTORIAL_GOAL = 3;
-const BASIL_NAME = "BASIL";
-const BUDDE_NAME = "BUDDE";
-const TUG_ID = "tug-1";
-const ARCWORKS_EXEC_NAME = "Arcworks Chief Executive Lewin";
-const THORNE_NAME = "Cmdr. Elias Thorne";
-const VENN_NAME = "Capt. Hadrik Venn";
-const PORT_AUTHORITY_BY_MOON = {
-  "Cat's Eye": "Port Marshal Celia Wren",
-  Corkscrew: THORNE_NAME,
-  Peltier: "Harbor Prefect Octavia Brindle",
-  Oxblood: "Dock Adjudicator Terek Halden",
-  Patch: "Pier Controller Zofia Krail",
-  "Onion Skin": "Port Factor Sable Orwick",
-  Shooter: "Berth Warden Kez Rourke",
-  Sulphide: "Dock Registrar Lysette Vorn",
-  Clambroth: "Harbor Officer Bram Caldus",
-  "End-of-Day": "Quay Auditor Odel Quince",
-};
-const PLAYER_NODE = "anchor_station";
-const CONSOLE_MESSAGE_GAP_MS = 750;
-const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
-const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
-const CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT = 20;
-const OPERATING_COST_PER_SHIP_PER_MINUTE = 8;
-const OPERATING_COST_INTERVAL_SECONDS = 15;
-const OPERATING_COST_PER_SHIP_PER_INTERVAL =
-  (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
-const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
-const DOCK_CONDITION_INITIAL_MIN_VALUE = 955;
-const DOCK_CONDITION_INITIAL_MAX_VALUE = 1000;
-const DOCK_CONDITION_ARRIVAL_DECREMENT = 3;
-const DOCK_CONDITION_DEPARTURE_DECREMENT = 2;
-const DOCK_MAINTENANCE_TRIGGER_VALUE = 700;
-const DOCK_OPERATIONAL_VALUE = 940;
-const DOCK_MAINTENANCE_CLEAR_VALUE = 1000;
-const DOCK_MAINTENANCE_RECOVERY_PER_SECOND = 1;
-const DOCK_HAZARD_SEVERITY_LABELS = {
-  1: "minor",
-  2: "moderate",
-  3: "serious",
-  4: "catastrophic",
-};
-const DOCK_HAZARD_ROLLS = [
-  { minDock: 950, chance: 0.02, maxSeverity: 1 },
-  { minDock: 900, chance: 0.08, maxSeverity: 1 },
-  { minDock: 850, chance: 0.16, maxSeverity: 2 },
-  { minDock: 775, chance: 0.27, maxSeverity: 3 },
-  { minDock: -Infinity, chance: 0.42, maxSeverity: 4 },
-];
-const DOCK_HAZARDS = [
-  { label: "telemetry synchronization error", severity: 1, phases: ["arrival", "departure"] },
-  { label: "contact with debris", severity: 1, phases: ["arrival", "departure"] },
-  { label: "wake dampers fail to engage", severity: 1, phases: ["arrival", "departure"] },
-  { label: "assigned bay blocked by poor parking job", severity: 1, phases: ["arrival"] },
-  { label: "visibility reduced by dust and debris", severity: 1, phases: ["arrival", "departure"] },
-  { label: "traffic stalled for disabled freighter", severity: 2, phases: ["arrival", "departure"] },
-  { label: "construction on pier pylons", severity: 2, phases: ["arrival", "departure"] },
-  { label: "labor dispute at dock", severity: 2, phases: ["arrival", "departure"] },
-  { label: "autocrane out of service", severity: 2, phases: ["arrival"] },
-  { label: "Gauss array not available for launch", severity: 3, phases: ["departure"] },
-  { label: "bay doors fail to open", severity: 3, phases: ["arrival"] },
-  { label: "dock clamp fails to open", severity: 3, phases: ["departure"] },
-  { label: "telemetry synchronization error", severity: 4, phases: ["arrival", "departure"] },
-  { label: "contact with debris", severity: 4, phases: ["arrival", "departure"] },
-  { label: "wake dampers fail to engage", severity: 4, phases: ["arrival", "departure"] },
-];
-const FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS = 180;
-const FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS = 540;
-const FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS = 10;
-const FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD = 100;
-const FACTION_HEAT_CAMPAIGN_ROLL_FLOOR = 25;
-const FACTION_HEAT_CAMPAIGN_PROBABILITY_ASYMPTOTE = 0.06;
-const FACTION_HEAT_CAMPAIGN_PROBABILITY_HEAT_SCALE = 55;
-const FACTION_HEAT_CAMPAIGN_CONCURRENT_DECAY = 0.35;
-const FACTION_HEAT_MAX = 120;
-const FACTION_HEAT_STAGE_AMOUNT = { verbal: 4, intercept: 7 };
-const FACTION_HEAT_FIRE_AMOUNT = 10;
-const FACTION_HEAT_COLLATERAL_AMOUNT = 4;
-const FACTION_HEAT_CAMPAIGN_FIRE_AMOUNT = 1;
-const FACTION_HEAT_CAMPAIGN_COLLATERAL_AMOUNT = 0;
-const HEAT_FACTIONS = ["ufp", "arcworks", "blister"];
-const FACTION_DISPLAY_NAMES = {
-  ufp: "UFP",
-  arcworks: "Arcworks",
-  blister: "Blister",
-};
-const CAMPAIGN_HOME_BASE_NODE_IDS = {
-  ufp: [
-    "ufp_indigo_system_administration",
-    "ufp_outpost_alpha",
-    "ufp_outpost_bravo",
-    "ufp_outpost_delta",
-    "ufp_science_station",
-    "anchor_station",
-    "indigo_station",
-    "barons_market",
-  ],
-  arcworks: [
-    "arcworks_operations_hub",
-    "arcworks_militia_barracks",
-    "arcworks_fuel_depot",
-    "onion_skin",
-    "refinery",
-    "condenser_columns",
-    "barons_market",
-    "indigo_station",
-  ],
-  blister: [
-    "deep_space_transfer_lane",
-    "high_orbit_transfer_lane",
-    "ring_transfer_lane",
-    "low_orbit_transfer_lane",
-    "yard",
-    "refinery",
-    "barons_market",
-  ],
-};
-const CAMPAIGN_FALLBACK_LOCATION_NODE_ID = "barons_market";
-const CAMPAIGN_DEFENDER_RESPONSE_LINES = [
-  "Piss off and try someone easier.",
-  "I'd like to see them try.",
-  "They've bitten off more than they can chew.",
-  "Tell them to bring more ships.",
-  "They want a campaign? We will give them a graveyard.",
-  "They can have this route when we are done using it to break them.",
-  "We are still here. That is their first problem.",
-  "Let them come closer. We have answers loaded.",
-  "They picked the wrong target and the wrong day.",
-  "We are not moving. They are welcome to learn why.",
-  "Their threats are louder than their guns.",
-  "They should have counted our batteries before starting this.",
-  "We will be waiting at the marker with engines hot.",
-  "They can explain this mistake to their survivors.",
-  "If they want the lane, they can bleed for every kilometer.",
-  "They are overextended and about to notice.",
-  "This attack ends when they run out of nerve or hulls.",
-  "They came looking for weakness and found a hard lock.",
-  "We have seen worse threats from worse captains.",
-  "Let them commit. Retreat is harder after the first burn.",
-  "They are not taking our ground by headline.",
-  "We will make this expensive enough to remember.",
-  "They are welcome to test the perimeter.",
-  "They opened the door. Now they can eat the room.",
-  "Stand firm. They have already made the fatal mistake."
-];
-const SCENARIO_PATH = "./scenarioDat.json";
-const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
-const CONFLICT_OUTCOMES_PATH = "./conflict_outcomes.json";
 const LEGACY_NODE_ALIASES = {
   anchor: "anchor_station",
   cinder_hub: "refinery",
