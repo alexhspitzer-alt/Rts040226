@@ -1200,10 +1200,12 @@ function buildAlmanacViewModel(entries) {
   const stationEntries = Array.isArray(locations?.["Stations, Outposts, and Facilities"])
     ? locations["Stations, Outposts, and Facilities"]
     : [];
-  const factions = Array.isArray(organizations?.["Factions and Institutions"])
-    ? organizations["Factions and Institutions"]
-    : [];
-  const clients = Array.isArray(organizations?.Clients) ? organizations.Clients : [];
+  const organizationEntries = Array.isArray(organizations)
+    ? organizations
+    : [
+        ...(Array.isArray(organizations?.["Factions and Institutions"]) ? organizations["Factions and Institutions"] : []),
+        ...(Array.isArray(organizations?.Clients) ? organizations.Clients : []),
+      ];
 
   const orbitBandsEntry = indigoSystemEntries.find((entry) => entry?.name === "Orbit Bands");
   const orbitBandChildren = indigoSystemEntries.filter((entry) => (
@@ -1224,9 +1226,7 @@ function buildAlmanacViewModel(entries) {
       "Stations, Outposts, and Facilities": stationEntries,
       "Transfer Lanes": transferLaneEntries,
     },
-    Organizations: {
-      "Factions, Institutions, and Clients": [...factions, ...clients],
-    },
+    Organizations: organizationEntries,
     "Ships and Classes": Array.isArray(entries?.ships_and_classes) ? entries.ships_and_classes : [],
     "Cargo Types": Array.isArray(entries?.cargo_types) ? entries.cargo_types : [],
   };

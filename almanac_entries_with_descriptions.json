@@ -154,36 +154,28 @@
         }
       ]
     },
-    "organizations": {
-      "Factions and Institutions": [
-        {
-          "name": "bluFreight",
-          "description": "bluFreight is a civilian logistics company operating in the Indigo system. It moves cargo for government, municipal, corporate, and local clients, with most of its protected work tied to Union of Free Planets contracts. The company is not a military organization, but its Union alignment affects access, escort coverage, and how other factions treat its ships."
-        },
-        {
-          "name": "Union of Free Planets",
-          "description": "The Union of Free Planets is the interplanetary state that asserted control over Indigo after the system's deuterium value was confirmed. It presents its role as security, lawful trade, and market stabilization while also securing fuel, infrastructure, and strategic depth. In Indigo the Union acts as regulator, patrol authority, military power, and major contract client for logistics firms such as bluFreight."
-        },
-        {
-          "name": "Arcworks",
-          "description": "Arcworks is a mining and industrial corporation with operations in Indigo that predate formal Union control. It operates extraction sites, fuel infrastructure, command facilities, and armed security forces. Arcworks treats Union-backed authority as an external claim over infrastructure that the company considers locally built and commercially earned."
-        },
-        {
-          "name": "Blister",
-          "description": "Blister is a loose armed faction operating through raids, tribute, negotiated passage, and local control of vulnerable routes. Union authorities classify it as predatory and unlawful, but Blister captains also maintain practical arrangements where force, reputation, and payment define safe movement. Its presence raises the political and security cost of freight traffic."
-        },
-        {
-          "name": "Station Municipal Authorities",
-          "description": "Station Municipal Authorities are local civic administrations responsible for keeping inhabited stations supplied and functional. They manage utilities, food supply, medical needs, berthing priorities, and public services. Their contracts usually concern continuity of life and station maintenance rather than military objectives or corporate expansion."
-        }
-      ],
-      "Clients": [
-        {
-          "name": "Station Municipal",
-          "description": "Station Municipal clients are civic authorities purchasing freight service for inhabited stations and public facilities. Their contracts cover practical needs such as agricultural shipments, medical supplies, deuterium for utilities, replacement parts, and other cargo required for station stability."
-        }
-      ]
-    },
+    "organizations": [
+      {
+        "name": "bluFreight",
+        "description": "bluFreight is a civilian logistics company operating in the Indigo system. It moves cargo for government, municipal, corporate, and local clients, with most of its protected work tied to Union of Free Planets contracts. The company is not a military organization, but its Union alignment affects access, escort coverage, and how other factions treat its ships."
+      },
+      {
+        "name": "Union of Free Planets",
+        "description": "The Union of Free Planets is the interplanetary state that asserted control over Indigo after the system's deuterium value was confirmed. It presents its role as security, lawful trade, and market stabilization while also securing fuel, infrastructure, and strategic depth. In Indigo the Union acts as regulator, patrol authority, military power, and major contract client for logistics firms such as bluFreight."
+      },
+      {
+        "name": "Arcworks",
+        "description": "Arcworks is a mining and industrial corporation with operations in Indigo that predate formal Union control. It operates extraction sites, fuel infrastructure, command facilities, and armed security forces. Arcworks treats Union-backed authority as an external claim over infrastructure that the company considers locally built and commercially earned."
+      },
+      {
+        "name": "Blister",
+        "description": "Blister is a loose armed faction operating through raids, tribute, negotiated passage, and local control of vulnerable routes. Union authorities classify it as predatory and unlawful, but Blister captains also maintain practical arrangements where force, reputation, and payment define safe movement. Its presence raises the political and security cost of freight traffic."
+      },
+      {
+        "name": "Station Municipal Authorities",
+        "description": "Station Municipal Authorities are local civic administrations and freight clients responsible for keeping inhabited stations supplied and functional. They manage utilities, food supply, medical needs, berthing priorities, public services, and practical contracts such as agricultural shipments, medical supplies, deuterium, replacement parts, and other cargo required for station stability. Their priorities usually concern continuity of life and station maintenance rather than military objectives or corporate expansion."
+      }
+    ],
     "ships_and_classes": [
       {
         "name": "Hauler",
