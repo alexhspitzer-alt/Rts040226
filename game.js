@@ -22,6 +22,7 @@ import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js";
 import { createCommandRuntime } from "./modules/game-command-runtime.js";
 import { createNpcController } from "./modules/game-npc-controller.js";
 import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js";
+import { createInitialGameState } from "./modules/game-state.js";
 
 let nodes = {};
 let edges = [];
@@ -403,76 +404,10 @@ const CONTACT_PROFILES = {
   [ARCWORKS_EXEC_NAME]: { nodeId: "indigo_station", present: true },
 };
 
-const state = {
-  tick: 0,
-  running: true,
-  cash: 2200,
-  rep: 58,
-  risk: 22,
-  escort: false,
-  contracts: [],
-  contractBoardTargetOpen: null,
-  completedContracts: 0,
-  tutorialDone: false,
-  currentScenario: 1,
-  scenario2Activated: false,
-  scenario3Activated: false,
-  scenario4Activated: false,
-  ships: [
-    { id: "hauler-1", at: "anchor_station", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["hauler-1"], busyUntil: 0, departAt: 0, lastKnownAt: "anchor_station", lastContactTick: 0, acquiredAtTick: 0 },
-    { id: "hauler-2", at: "refinery", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["hauler-2"], busyUntil: 0, departAt: 0, lastKnownAt: "refinery", lastContactTick: 0, acquiredAtTick: 0 },
-    { id: "courier-1", at: "indigo_station", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["courier-1"], busyUntil: 0, departAt: 0, lastKnownAt: "indigo_station", lastContactTick: 0, acquiredAtTick: 0 },
-  ],
-  delayedMessages: [],
-  nextContract: 1,
-  selection: {
-    selectedShipId: null,
-    pending: null,
-    allowedDestinationIds: [],
-    dockableShipIds: [],
-  },
-  loreSummary: DEFAULT_LORE_SUMMARY,
-  dialogueDb: {},
-  ambientNeutralConversation: [],
-  ambientDialoguePools: {},
-  characterNameRegistry: null,
-  latencyBriefed: false,
-  lastAmbientLine: null,
-  lastAmbientChatterTick: -Infinity,
-  mapData: null,
-  shipRegistry: null,
-  conflictOutcomes: null,
-  buddeData: null,
-  civilianNpcs: [],
-  scenarioDialogue: {},
-  scenario2Dialogue: null,
-  scenario3Dialogue: null,
-  scenario4Dialogue: null,
-  playerRequestDialogue: null,
-  almanacEntries: null,
-  tugIntroPlayed: false,
-  buddeIntroduced: false,
-  scenario3CapacityBriefed: false,
-  scenario3Completed: false,
-  scenario3TowRequestPlayed: false,
-  scenario3TowRequestDeferred: false,
-  lastLatencyReminderTick: -Infinity,
-  consoleReadyAtMs: Date.now(),
-  respondingToCommand: false,
-  inbox: [],
-  unreadInboxCount: 0,
-  inboxOpenIndexes: [],
-  news: [],
-  factionHeatEnabled: false,
-  factionHeat: { ufp: 0, arcworks: 0, blister: 0 },
-  activeFactionCampaigns: [],
-  nextFactionCampaignRollTick: 0,
-  operatingExpenseAccrued: 0,
-  operatingExpenseWindowStartTick: 0,
-  trafficLocks: {},
-  dockConditions: {},
-  dockMaintenance: {},
-};
+const state = createInitialGameState({
+  shipCapacityById: SHIP_CAPACITY_BY_ID,
+  defaultLoreSummary: DEFAULT_LORE_SUMMARY,
+});
 
 function isPlayerBankrupt() {
   return state.cash <= -600 || state.rep <= 0;
