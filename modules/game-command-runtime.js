@@ -34,6 +34,8 @@ export function createCommandRuntime({
   contactProfiles,
   oneWaySignalToNode,
   basilInform,
+  buddeInform,
+  buildBuddeRouteBrief,
   basilSpeak,
   scheduleMessage,
   speakerContext,
@@ -245,6 +247,9 @@ export function createCommandRuntime({
       status: "status",
       h: "help",
       c: "contracts",
+      n: "navigation",
+      nav: "navigation",
+      navigation: "navigation",
       p: "pause",
     };
     return aliases[lower] || lower;
@@ -435,6 +440,33 @@ export function createCommandRuntime({
       return showShipMenu(state.selection.selectedShipId);
     }
 
+    if (state.selection.pending === "await_route_from") {
+      const fromNodeId = state.selection.routeSelectableNodeIds?.[n - 1];
+      if (!fromNodeId) return logLine("Invalid origin number.", "error");
+      state.selection.routeFromNodeId = fromNodeId;
+      state.selection.pending = "await_route_to";
+      buddeInform(`Origin set: ${nodeLabel(fromNodeId)}. Select destination by number.`);
+      (state.selection.routeSelectableNodeIds || [])
+        .filter((nodeId) => nodeId !== fromNodeId)
+        .forEach((nodeId, idx) => {
+          const node = getNodes()[nodeId];
+          logLine(`${idx + 1}. ${nodeLabel(nodeId)} | approach ${node?.approach ?? "n/a"}`, "sys");
+        });
+      return true;
+    }
+
+    if (state.selection.pending === "await_route_to") {
+      const options = (state.selection.routeSelectableNodeIds || []).filter((nodeId) => nodeId !== state.selection.routeFromNodeId);
+      const toNodeId = options[n - 1];
+      if (!toNodeId) return logLine("Invalid destination number.", "error");
+      const fromNodeId = state.selection.routeFromNodeId;
+      buddeInform(buildBuddeRouteBrief(fromNodeId, toNodeId));
+      state.selection.pending = "await_ship";
+      state.selection.routeFromNodeId = null;
+      state.selection.routeSelectableNodeIds = [];
+      return true;
+    }
+
     if (state.selection.pending === "await_sensor_option") {
       const shipId = state.selection.selectedShipId;
       if (n === 1) {
@@ -561,8 +593,8 @@ export function createCommandRuntime({
     if (parts[0] === "h" && parts.length >= 2) command = "hail";
 
     if (command === "help") {
-      logLine("help | status | comms | hail <name> | fleet | select <ship|number> | assign <contract> <ship> | queue <contract> <ship> | send <ship> <destination> | pause", "sys");
-      logLine("Global shortcuts: F fleet, C contracts, H help. Ship menu: M Manage sensors.", "sys");
+      logLine("help | status | comms | hail <name> | navigation | fleet | select <ship|number> | assign <contract> <ship> | queue <contract> <ship> | send <ship> <destination> | pause", "sys");
+      logLine("Global shortcuts: F fleet, C contracts, N Navigation, H help. Ship menu: M Manage sensors.", "sys");
       logLine("Flexible chains: a B1 c3 or F 1 a 3. Console prints the interpreted command before executing.", "sys");
       logLine("Aliases: A assign, S send, contract/contracts, sel/select, B1/B-1, C1/C-1, Blue-1. Extra spaces and case are ignored.", "sys");
       return true;
@@ -609,6 +641,19 @@ export function createCommandRuntime({
         playerHailFlow.enable(query);
         logLine("Select a hail response from the dropdown menu.", "sys");
       }
+      return true;
+    }
+
+    if (command === "navigation") {
+      const nodeIds = Object.keys(getNodes());
+      state.selection.pending = "await_route_from";
+      state.selection.routeSelectableNodeIds = nodeIds;
+      state.selection.routeFromNodeId = null;
+      buddeInform("Navigation online. Select origin by number. Approach indicates local distance from the parent moon.");
+      nodeIds.forEach((id, idx) => {
+        const node = getNodes()[id];
+        logLine(`${idx + 1}. ${nodeLabel(id)} | approach ${node.approach ?? "n/a"}`, "sys");
+      });
       return true;
     }
 

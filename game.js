@@ -869,8 +869,8 @@ function stylizeConsoleText(text) {
   const escaped = escapeHtml(text);
   return escaped
     .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|\s)([AISRQMDUFCHaisrqmdufch]\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|[,:]\s*)([AISRQMDUFCHaisrqmdufch])(?=\s+(assign|information|send|queue|[Mm]anage|recall|report|dock|undock|fleet|contracts|help)\b)/g, '$1<span class="choice">$2</span>');
+    .replace(/(^|\s)([AISRQNMDUFCHaisrqnmdufch]\.)/g, '$1<span class="choice">$2</span>')
+    .replace(/(^|[,:]\s*)([AISRQNMDUFCHaisrqnmdufch])(?=\s+(assign|information|send|queue|[Mm]anage|[Nn]avigation|recall|report|dock|undock|fleet|contracts|help)\b)/g, '$1<span class="choice">$2</span>');
 }
 
 const { logLine } = createConsoleLogger({
@@ -1552,6 +1552,48 @@ function buildDepartureComms(ship, mission) {
   return { captain, message };
 }
 
+function minimumFuelForPlayerFleet(fromNodeId, toNodeId) {
+  const candidates = state.ships
+    .map((ship) => fuelCostForRoute(fromNodeId, toNodeId, effectiveDriveShipId(ship.id)))
+    .filter((value) => Number.isFinite(value));
+  if (!candidates.length) return null;
+  return Math.min(...candidates);
+}
+
+function buildBuddeRouteBrief(fromNodeId, toNodeId) {
+  const distance = safeRouteDistance(fromNodeId, toNodeId);
+  const minFuel = minimumFuelForPlayerFleet(fromNodeId, toNodeId);
+  const fromLabel = nodeLabel(fromNodeId);
+  const toLabel = nodeLabel(toNodeId);
+  const distanceText = Number.isFinite(distance) ? `${distance}s route span` : "route span unavailable";
+  const fuelText = Number.isFinite(minFuel) ? `${minFuel} minimum fuel` : "minimum fuel unavailable";
+
+  const fromAngle = angleForNode(fromNodeId);
+  const toAngle = angleForNode(toNodeId);
+  const fromBand = orbitBandValueForNode(fromNodeId);
+  const toBand = orbitBandValueForNode(toNodeId);
+  const steps = [];
+
+  if (Number.isFinite(fromAngle) && Number.isFinite(toAngle)) {
+    const ccwDelta = (toAngle - fromAngle + 360) % 360;
+    const cwDelta = (fromAngle - toAngle + 360) % 360;
+    const prograde = ccwDelta <= cwDelta;
+    steps.push(prograde
+      ? "Begin with a prograde burn (counterclockwise). Yes, the shorter way is usually better."
+      : "Begin with a retrograde burn (clockwise). Even now, this is still the efficient option.");
+  }
+
+  if (Number.isFinite(fromBand) && Number.isFinite(toBand)) {
+    const delta = toBand - fromBand;
+    if (delta > 0) steps.push(delta >= 2 ? `Climb window: +${delta} orbit bands. Budget for an expensive uphill burn.` : "Climb window: +1 orbit band.");
+    else if (delta < 0) steps.push(`Descent window: ${delta} orbit band${Math.abs(delta) > 1 ? "s" : ""}. Use the gravity assist and try not to waste it.`);
+    else steps.push("No orbit-band change required; remain on current band.");
+  }
+
+  steps.push(`Final approach: transition onto ${toLabel} local traffic corridor and hold station.`);
+  return `Navigation ${fromLabel} -> ${toLabel}. ${steps.join(" ")} Estimated ${distanceText}, ${fuelText}.`;
+}
+
 function basilShipIntel(ship) {
   const knownNode = ship.lastKnownAt || ship.at;
   const knownLabel = nodeLabel(knownNode);
@@ -1710,6 +1752,8 @@ function commandPromptLabel() {
   const pending = state.selection?.pending;
   const selectedShipId = state.selection?.selectedShipId;
   if (pending === "await_sensor_option") return `<${playerShipLabelById(selectedShipId)} sensors>`;
+  if (pending === "await_route_from") return "<Navigation: from>";
+  if (pending === "await_route_to") return "<Navigation: to>";
   if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
   if (pending === "await_contract") return `<${playerShipLabelById(selectedShipId)} contracts>`;
   if (pending === "await_queue_contract") return `<${playerShipLabelById(selectedShipId)} queued contracts>`;
@@ -2333,15 +2377,15 @@ function showShipMenu(shipId) {
   }
   const recallOption = shipRecallAvailable(ship) ? ", R recall" : "";
   const queuedOption = ship.queuedContractId ? ` (queued ${ship.queuedContractId})` : "";
-  let menuOptions = `A assign, S send, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
+  let menuOptions = `A assign, S send, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`;
   if (shipCanQueueWork(ship)) {
     menuOptions = ship.utility
-      ? `I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, H help.`
-      : `Q queue${queuedOption}, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
+      ? `I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`
+      : `Q queue${queuedOption}, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`;
   } else if (ship.utility && ship.status === "docked") {
-    menuOptions = "U undock, M Manage sensors. Global: F fleet, C contracts, H help.";
+    menuOptions = "U undock, M Manage sensors. Global: F fleet, C contracts, N Navigation, H help.";
   } else if (ship.utility) {
-    menuOptions = `D dock, S send, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
+    menuOptions = `D dock, S send, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`;
   }
   logLine(`${formatShipId(shipId)} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
 }
@@ -3336,6 +3380,8 @@ commandRuntime = createCommandRuntime({
   contactProfiles: CONTACT_PROFILES,
   oneWaySignalToNode,
   basilInform,
+  buddeInform,
+  buildBuddeRouteBrief,
   basilSpeak,
   scheduleMessage,
   speakerContext,
