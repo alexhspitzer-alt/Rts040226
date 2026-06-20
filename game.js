@@ -21,6 +21,7 @@ import { createContractTools } from "./modules/game-contracts.js";
 import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js";
 import { createCommandRuntime } from "./modules/game-command-runtime.js";
 import { createNpcController } from "./modules/game-npc-controller.js";
+import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js";
 
 let nodes = {};
 let edges = [];
@@ -477,27 +478,7 @@ function isPlayerBankrupt() {
   return state.cash <= -600 || state.rep <= 0;
 }
 
-const ui = {
-  clock: document.getElementById("clock"),
-  cash: document.getElementById("cash"),
-  rep: document.getElementById("rep"),
-  risk: document.getElementById("risk"),
-  escort: document.getElementById("escort"),
-  contracts: document.getElementById("contracts"),
-  fleet: document.getElementById("fleet"),
-  feed: document.getElementById("feed"),
-  copyConsole: document.getElementById("copy-console-link"),
-  consoleFollowToggle: document.getElementById("console-follow-toggle"),
-  cmdForm: document.getElementById("cmd-form"),
-  cmdInput: document.getElementById("cmd"),
-  hailAction: document.getElementById("hail-action"),
-  almanacRoot: document.getElementById("almanac-root"),
-  inboxList: document.getElementById("inbox-list"),
-  inboxUnread: document.getElementById("inbox-unread"),
-  newsList: document.getElementById("news-list"),
-  tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
-  tabPanels: Array.from(document.querySelectorAll(".tab-panel")),
-};
+const ui = createGameUi();
 
 let adjacency = {};
 
@@ -3402,57 +3383,36 @@ commandRuntime = createCommandRuntime({
 });
 NpcController.bootstrap();
 
-ui.cmdForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (PlayerHailFlow.isAwaitingChoice()) {
-    PlayerHailFlow.submitSelection(ui.hailAction?.value || "request");
-  } else {
-    handleCommand(ui.cmdInput.value);
-    ui.cmdInput.value = "";
-  }
-  render();
-});
-
-ui.copyConsole?.addEventListener("click", (event) => {
-  event.preventDefault();
-  copyConsoleToClipboard();
-});
-
-ui.tabButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    activateTab(button.dataset.tab || "contracts");
-  });
-});
-
-async function init() {
-  await loadReferenceData();
-  renderAlmanac();
-  PlayerHailFlow.disable();
-  if (!Object.keys(nodes).length) {
-    nodes = {
-      anchor_station: { label: "Anchor Station", moonName: "Cat's Eye", approach: 2 },
-      refinery: { label: "Refinery", moonName: "Oxblood", approach: 3 },
-      indigo_station: { label: "Indigo Station", moonName: "Sulphide", approach: 4 },
-    };
-    edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
-    adjacency = buildGraph(nodes, edges);
-    syncDockConditionsToActiveLocations();
-  }
+function installFallbackMap() {
+  nodes = {
+    anchor_station: { label: "Anchor Station", moonName: "Cat's Eye", approach: 2 },
+    refinery: { label: "Refinery", moonName: "Oxblood", approach: 3 },
+    indigo_station: { label: "Indigo Station", moonName: "Sulphide", approach: 4 },
+  };
+  edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
+  adjacency = buildGraph(nodes, edges);
   syncDockConditionsToActiveLocations();
-  fillContractBoard({ forceNewTarget: true });
-  state.selection.pending = "await_ship";
-  basilInform("Dispatch online. I've sent operating instructions to your inbox because management has asked me to stop spamming the console with monologues.", "basil");
-  playScenarioIntro();
-  logLine("Tutorial online. Select ship by typing its number or ID.", "sys");
-  showShipsList();
-  render();
-
-  setInterval(() => {
-    if (!state.running) return;
-    state.tick += 1;
-    updateSimulation();
-    render();
-  }, 1000);
 }
 
-init();
+const GameBootstrap = createGameBootstrap({
+  state,
+  ui,
+  loadReferenceData,
+  renderAlmanac,
+  playerHailFlow: PlayerHailFlow,
+  handleCommand,
+  render,
+  activateTab,
+  copyConsoleToClipboard,
+  hasActiveNodes: () => Object.keys(nodes).length > 0,
+  installFallbackMap,
+  syncDockConditionsToActiveLocations,
+  fillContractBoard,
+  basilInform,
+  playScenarioIntro,
+  logLine,
+  showShipsList,
+  updateSimulation,
+});
+
+GameBootstrap.init();
