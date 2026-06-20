@@ -682,6 +682,86 @@
           "Happy to negotiate, but physics keeps final authority."
         ]
       }
+    },
+    "Harbor Prefect Octavia Brindle": {
+      "faction": "civilian",
+      "dialogue": {
+        "acknowledgements": ["Peltier Port Authority acknowledges.", "Dock condition advisory logged.", "Traffic note received and filed."],
+        "greetings": ["Peltier Port Authority channel open.", "Port Authority standing by for docking traffic.", "Dock control monitoring local approach lanes."],
+        "positive": ["Dock queue is moving again.", "Local traffic is recovering.", "That clears one problem from the board."],
+        "negative": ["Dock condition is degrading.", "Local traffic has another complication.", "That will make the approach board uglier."],
+        "neutral": ["Dock condition changes one ship at a time.", "Every arrival leaves a mark on the pier schedule.", "Port Authority has the local hazard board under review."]
+      }
+    },
+    "Dock Adjudicator Terek Halden": {
+      "faction": "civilian",
+      "dialogue": {
+        "acknowledgements": ["Oxblood Port Authority acknowledges.", "Dock condition advisory logged.", "Traffic note received and filed."],
+        "greetings": ["Oxblood Port Authority channel open.", "Port Authority standing by for docking traffic.", "Dock control monitoring local approach lanes."],
+        "positive": ["Dock queue is moving again.", "Local traffic is recovering.", "That clears one problem from the board."],
+        "negative": ["Dock condition is degrading.", "Local traffic has another complication.", "That will make the approach board uglier."],
+        "neutral": ["Dock condition changes one ship at a time.", "Every arrival leaves a mark on the pier schedule.", "Port Authority has the local hazard board under review."]
+      }
+    },
+    "Pier Controller Zofia Krail": {
+      "faction": "civilian",
+      "dialogue": {
+        "acknowledgements": ["Patch Port Authority acknowledges.", "Dock condition advisory logged.", "Traffic note received and filed."],
+        "greetings": ["Patch Port Authority channel open.", "Port Authority standing by for docking traffic.", "Dock control monitoring local approach lanes."],
+        "positive": ["Dock queue is moving again.", "Local traffic is recovering.", "That clears one problem from the board."],
+        "negative": ["Dock condition is degrading.", "Local traffic has another complication.", "That will make the approach board uglier."],
+        "neutral": ["Dock condition changes one ship at a time.", "Every arrival leaves a mark on the pier schedule.", "Port Authority has the local hazard board under review."]
+      }
+    },
+    "Port Factor Sable Orwick": {
+      "faction": "civilian",
+      "dialogue": {
+        "acknowledgements": ["Onion Skin Port Authority acknowledges.", "Dock condition advisory logged.", "Traffic note received and filed."],
+        "greetings": ["Onion Skin Port Authority channel open.", "Port Authority standing by for docking traffic.", "Dock control monitoring local approach lanes."],
+        "positive": ["Dock queue is moving again.", "Local traffic is recovering.", "That clears one problem from the board."],
+        "negative": ["Dock condition is degrading.", "Local traffic has another complication.", "That will make the approach board uglier."],
+        "neutral": ["Dock condition changes one ship at a time.", "Every arrival leaves a mark on the pier schedule.", "Port Authority has the local hazard board under review."]
+      }
+    },
+    "Berth Warden Kez Rourke": {
+      "faction": "civilian",
+      "dialogue": {
+        "acknowledgements": ["Shooter Port Authority acknowledges.", "Dock condition advisory logged.", "Traffic note received and filed."],
+        "greetings": ["Shooter Port Authority channel open.", "Port Authority standing by for docking traffic.", "Dock control monitoring local approach lanes."],
+        "positive": ["Dock queue is moving again.", "Local traffic is recovering.", "That clears one problem from the board."],
+        "negative": ["Dock condition is degrading.", "Local traffic has another complication.", "That will make the approach board uglier."],
+        "neutral": ["Dock condition changes one ship at a time.", "Every arrival leaves a mark on the pier schedule.", "Port Authority has the local hazard board under review."]
+      }
+    },
+    "Dock Registrar Lysette Vorn": {
+      "faction": "civilian",
+      "dialogue": {
+        "acknowledgements": ["Sulphide Port Authority acknowledges.", "Dock condition advisory logged.", "Traffic note received and filed."],
+        "greetings": ["Sulphide Port Authority channel open.", "Port Authority standing by for docking traffic.", "Dock control monitoring local approach lanes."],
+        "positive": ["Dock queue is moving again.", "Local traffic is recovering.", "That clears one problem from the board."],
+        "negative": ["Dock condition is degrading.", "Local traffic has another complication.", "That will make the approach board uglier."],
+        "neutral": ["Dock condition changes one ship at a time.", "Every arrival leaves a mark on the pier schedule.", "Port Authority has the local hazard board under review."]
+      }
+    },
+    "Harbor Officer Bram Caldus": {
+      "faction": "civilian",
+      "dialogue": {
+        "acknowledgements": ["Clambroth Port Authority acknowledges.", "Dock condition advisory logged.", "Traffic note received and filed."],
+        "greetings": ["Clambroth Port Authority channel open.", "Port Authority standing by for docking traffic.", "Dock control monitoring local approach lanes."],
+        "positive": ["Dock queue is moving again.", "Local traffic is recovering.", "That clears one problem from the board."],
+        "negative": ["Dock condition is degrading.", "Local traffic has another complication.", "That will make the approach board uglier."],
+        "neutral": ["Dock condition changes one ship at a time.", "Every arrival leaves a mark on the pier schedule.", "Port Authority has the local hazard board under review."]
+      }
+    },
+    "Quay Auditor Odel Quince": {
+      "faction": "civilian",
+      "dialogue": {
+        "acknowledgements": ["End-of-Day Port Authority acknowledges.", "Dock condition advisory logged.", "Traffic note received and filed."],
+        "greetings": ["End-of-Day Port Authority channel open.", "Port Authority standing by for docking traffic.", "Dock control monitoring local approach lanes."],
+        "positive": ["Dock queue is moving again.", "Local traffic is recovering.", "That clears one problem from the board."],
+        "negative": ["Dock condition is degrading.", "Local traffic has another complication.", "That will make the approach board uglier."],
+        "neutral": ["Dock condition changes one ship at a time.", "Every arrival leaves a mark on the pier schedule.", "Port Authority has the local hazard board under review."]
+      }
     }
   },
   "ambientNeutralConversation": {

@@ -32,6 +32,18 @@ const TUG_ID = "tug-1";
 const ARCWORKS_EXEC_NAME = "Arcworks Chief Executive Lewin";
 const THORNE_NAME = "Cmdr. Elias Thorne";
 const VENN_NAME = "Capt. Hadrik Venn";
+const PORT_AUTHORITY_BY_MOON = {
+  "Cat's Eye": "Port Marshal Celia Wren",
+  Corkscrew: THORNE_NAME,
+  Peltier: "Harbor Prefect Octavia Brindle",
+  Oxblood: "Dock Adjudicator Terek Halden",
+  Patch: "Pier Controller Zofia Krail",
+  "Onion Skin": "Port Factor Sable Orwick",
+  Shooter: "Berth Warden Kez Rourke",
+  Sulphide: "Dock Registrar Lysette Vorn",
+  Clambroth: "Harbor Officer Bram Caldus",
+  "End-of-Day": "Quay Auditor Odel Quince",
+};
 const PLAYER_NODE = "anchor_station";
 const CONSOLE_MESSAGE_GAP_MS = 750;
 const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
@@ -42,6 +54,44 @@ const OPERATING_COST_INTERVAL_SECONDS = 15;
 const OPERATING_COST_PER_SHIP_PER_INTERVAL =
   (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
 const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
+const DOCK_CONDITION_INITIAL_MIN_VALUE = 955;
+const DOCK_CONDITION_INITIAL_MAX_VALUE = 1000;
+const DOCK_CONDITION_ARRIVAL_DECREMENT = 3;
+const DOCK_CONDITION_DEPARTURE_DECREMENT = 2;
+const DOCK_MAINTENANCE_TRIGGER_VALUE = 700;
+const DOCK_OPERATIONAL_VALUE = 940;
+const DOCK_MAINTENANCE_CLEAR_VALUE = 1000;
+const DOCK_MAINTENANCE_RECOVERY_PER_SECOND = 1;
+const DOCK_HAZARD_SEVERITY_LABELS = {
+  1: "minor",
+  2: "moderate",
+  3: "serious",
+  4: "catastrophic",
+};
+const DOCK_HAZARD_ROLLS = [
+  { minDock: 950, chance: 0.02, maxSeverity: 1 },
+  { minDock: 900, chance: 0.08, maxSeverity: 1 },
+  { minDock: 850, chance: 0.16, maxSeverity: 2 },
+  { minDock: 775, chance: 0.27, maxSeverity: 3 },
+  { minDock: -Infinity, chance: 0.42, maxSeverity: 4 },
+];
+const DOCK_HAZARDS = [
+  { label: "telemetry synchronization error", severity: 1, phases: ["arrival", "departure"] },
+  { label: "contact with debris", severity: 1, phases: ["arrival", "departure"] },
+  { label: "wake dampers fail to engage", severity: 1, phases: ["arrival", "departure"] },
+  { label: "assigned bay blocked by poor parking job", severity: 1, phases: ["arrival"] },
+  { label: "visibility reduced by dust and debris", severity: 1, phases: ["arrival", "departure"] },
+  { label: "traffic stalled for disabled freighter", severity: 2, phases: ["arrival", "departure"] },
+  { label: "construction on pier pylons", severity: 2, phases: ["arrival", "departure"] },
+  { label: "labor dispute at dock", severity: 2, phases: ["arrival", "departure"] },
+  { label: "autocrane out of service", severity: 2, phases: ["arrival"] },
+  { label: "Gauss array not available for launch", severity: 3, phases: ["departure"] },
+  { label: "bay doors fail to open", severity: 3, phases: ["arrival"] },
+  { label: "dock clamp fails to open", severity: 3, phases: ["departure"] },
+  { label: "telemetry synchronization error", severity: 4, phases: ["arrival", "departure"] },
+  { label: "contact with debris", severity: 4, phases: ["arrival", "departure"] },
+  { label: "wake dampers fail to engage", severity: 4, phases: ["arrival", "departure"] },
+];
 const FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS = 180;
 const FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS = 540;
 const FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS = 10;
@@ -210,6 +260,19 @@ const SHIP_CAPACITY_BY_ID = {
   [TUG_ID]: 1,
   "tug-2": 1,
 };
+
+function originalShipCargoCapacity(ship) {
+  if (!ship) return 0;
+  const registeredCapacity = SHIP_CAPACITY_BY_ID[ship.id];
+  if (Number.isFinite(registeredCapacity)) return registeredCapacity;
+  if (Number.isFinite(ship.originalCargoCapacity)) return ship.originalCargoCapacity;
+  return Number.isFinite(ship.cargoCapacity) ? ship.cargoCapacity : 0;
+}
+
+function currentShipCargoCapacity(ship) {
+  if (!ship) return 0;
+  return Number.isFinite(ship.cargoCapacity) ? ship.cargoCapacity : originalShipCargoCapacity(ship);
+}
 const CARGO_GENERATION_RULES = {
   locationSets: {
     stations: [
@@ -305,9 +368,17 @@ const DEFAULT_SPEAKER_STATUS = "on-station";
 const SPEAKER_PROFILES = {
   BASIL: { location: "Dispatch Core", status: "active" },
   BUDDE: { location: "Navigation Layer", status: "active" },
-  [THORNE_NAME]: { location: "UFP Patrol Group", status: DEFAULT_SPEAKER_STATUS },
   [VENN_NAME]: { location: "Blister Trade Lane", status: DEFAULT_SPEAKER_STATUS },
-  "Port Marshal Celia Wren": { location: "Anchor Station Docks", status: DEFAULT_SPEAKER_STATUS },
+  "Port Marshal Celia Wren": { location: "Port Authority (Cat's Eye)", status: DEFAULT_SPEAKER_STATUS },
+  [THORNE_NAME]: { location: "Port Authority (Corkscrew)", status: DEFAULT_SPEAKER_STATUS },
+  "Harbor Prefect Octavia Brindle": { location: "Port Authority (Peltier)", status: DEFAULT_SPEAKER_STATUS },
+  "Dock Adjudicator Terek Halden": { location: "Port Authority (Oxblood)", status: DEFAULT_SPEAKER_STATUS },
+  "Pier Controller Zofia Krail": { location: "Port Authority (Patch)", status: DEFAULT_SPEAKER_STATUS },
+  "Port Factor Sable Orwick": { location: "Port Authority (Onion Skin)", status: DEFAULT_SPEAKER_STATUS },
+  "Berth Warden Kez Rourke": { location: "Port Authority (Shooter)", status: DEFAULT_SPEAKER_STATUS },
+  "Dock Registrar Lysette Vorn": { location: "Port Authority (Sulphide)", status: DEFAULT_SPEAKER_STATUS },
+  "Harbor Officer Bram Caldus": { location: "Port Authority (Clambroth)", status: DEFAULT_SPEAKER_STATUS },
+  "Quay Auditor Odel Quince": { location: "Port Authority (End-of-Day)", status: DEFAULT_SPEAKER_STATUS },
   [ARCWORKS_EXEC_NAME]: { location: "Arcworks Transit Authority", status: DEFAULT_SPEAKER_STATUS },
 };
 const NPC_CAPTAIN_FACTIONS = {
@@ -398,6 +469,8 @@ const state = {
   operatingExpenseAccrued: 0,
   operatingExpenseWindowStartTick: 0,
   trafficLocks: {},
+  dockConditions: {},
+  dockMaintenance: {},
 };
 
 function isPlayerBankrupt() {
@@ -433,7 +506,297 @@ function applyMapModel(mapModel) {
   nodes = mapModel.nodes;
   edges = mapModel.edges;
   adjacency = mapModel.adjacency;
+  syncDockConditionsToActiveLocations();
   return true;
+}
+
+
+function randomInitialDockCondition() {
+  return DOCK_CONDITION_INITIAL_MIN_VALUE
+    + Math.floor(Math.random() * (DOCK_CONDITION_INITIAL_MAX_VALUE - DOCK_CONDITION_INITIAL_MIN_VALUE + 1));
+}
+
+function activeCampaignAtNode(nodeId) {
+  return (state.activeFactionCampaigns || []).some((campaign) => (
+    campaign
+    && !campaign.resolved
+    && campaign.endsAt > state.tick
+    && campaign.locationNodeId === nodeId
+  ));
+}
+
+function dockStatusLabel(nodeId) {
+  if (!nodeId || !nodes[nodeId]) return "unknown";
+  if (activeCampaignAtNode(nodeId)) return "hostile";
+  const value = ensureDockCondition(nodeId);
+  if (!Number.isFinite(value)) return "unknown";
+  updateDockMaintenanceStatus(nodeId);
+  if (value >= 990) return "normal";
+  if (value >= DOCK_OPERATIONAL_VALUE) return "operational";
+  if (state.dockMaintenance[nodeId] || value < DOCK_MAINTENANCE_TRIGGER_VALUE) return "needs maintenance";
+  if (value >= 850) return "hazardous";
+  return "very hazardous";
+}
+
+function ensureDockCondition(nodeId) {
+  if (!nodeId || !nodes[nodeId]) return null;
+  if (!Number.isFinite(state.dockConditions[nodeId])) {
+    state.dockConditions[nodeId] = randomInitialDockCondition();
+  }
+  return state.dockConditions[nodeId];
+}
+
+function syncDockConditionsToActiveLocations() {
+  Object.keys(nodes || {}).forEach((nodeId) => ensureDockCondition(nodeId));
+}
+
+function updateDockMaintenanceStatus(nodeId) {
+  const value = ensureDockCondition(nodeId);
+  if (!Number.isFinite(value)) return false;
+  if (value < DOCK_MAINTENANCE_TRIGGER_VALUE) state.dockMaintenance[nodeId] = true;
+  if (state.dockMaintenance[nodeId] && value >= DOCK_MAINTENANCE_CLEAR_VALUE) delete state.dockMaintenance[nodeId];
+  return Boolean(state.dockMaintenance[nodeId]);
+}
+
+function adjustDockCondition(nodeId, amount) {
+  const current = ensureDockCondition(nodeId);
+  if (!Number.isFinite(current)) return null;
+  state.dockConditions[nodeId] = current + amount;
+  updateDockMaintenanceStatus(nodeId);
+  return state.dockConditions[nodeId];
+}
+
+function updateDockMaintenanceRecovery() {
+  Object.keys(state.dockMaintenance || {}).forEach((nodeId) => {
+    const current = ensureDockCondition(nodeId);
+    if (!Number.isFinite(current)) return;
+    state.dockConditions[nodeId] = Math.min(
+      DOCK_MAINTENANCE_CLEAR_VALUE,
+      current + DOCK_MAINTENANCE_RECOVERY_PER_SECOND
+    );
+    updateDockMaintenanceStatus(nodeId);
+  });
+}
+
+function dockMaintenanceHoldSeconds(nodeId) {
+  updateDockMaintenanceStatus(nodeId);
+  if (!state.dockMaintenance[nodeId]) return 0;
+  return Math.max(0, DOCK_OPERATIONAL_VALUE - ensureDockCondition(nodeId));
+}
+
+function recordDockArrival(nodeId) {
+  return adjustDockCondition(nodeId, -DOCK_CONDITION_ARRIVAL_DECREMENT);
+}
+
+function recordDockDeparture(nodeId) {
+  return adjustDockCondition(nodeId, -DOCK_CONDITION_DEPARTURE_DECREMENT);
+}
+
+function portAuthorityMoonForName(name) {
+  return Object.entries(PORT_AUTHORITY_BY_MOON).find(([, authorityName]) => authorityName === name)?.[0] || null;
+}
+
+function portAuthorityForNode(nodeId) {
+  const moonName = nodes[nodeId]?.moonName || moonForNode(nodeId)?.name;
+  return moonName ? PORT_AUTHORITY_BY_MOON[moonName] || null : null;
+}
+
+function dockHazardRollProfile(dockValue) {
+  return DOCK_HAZARD_ROLLS.find((profile) => dockValue >= profile.minDock) || DOCK_HAZARD_ROLLS[DOCK_HAZARD_ROLLS.length - 1];
+}
+
+function dockHazardRiskLabel(dockValue) {
+  const profile = dockHazardRollProfile(dockValue);
+  return `${Math.round(profile.chance * 100)}% up to severity ${profile.maxSeverity}`;
+}
+
+function randomDockHazard(nodeId, phase) {
+  const dockValue = ensureDockCondition(nodeId);
+  if (!Number.isFinite(dockValue)) return null;
+  const profile = dockHazardRollProfile(dockValue);
+  if (Math.random() >= profile.chance) return null;
+  const candidates = DOCK_HAZARDS.filter((hazard) => (hazard.phases || []).includes(phase) && hazard.severity <= profile.maxSeverity);
+  if (!candidates.length) return null;
+  const severityFloor = Math.max(1, profile.maxSeverity - 1);
+  const likely = candidates.filter((hazard) => hazard.severity >= severityFloor);
+  return (likely.length ? likely : candidates)[Math.floor(Math.random() * (likely.length ? likely.length : candidates.length))];
+}
+
+function rollDockHazardEffect(hazard) {
+  if (!hazard) return { delaySeconds: 0, damage: "none", cargoLost: false, disablesShip: false };
+  const roll = Math.random();
+  if (hazard.severity === 1) return { delaySeconds: roll < 0.5 ? 60 : 0, damage: "none", cargoLost: false, disablesShip: false };
+  if (hazard.severity === 2) return { delaySeconds: roll < 0.5 ? 120 : 60, damage: "none", cargoLost: false, disablesShip: false };
+  if (hazard.severity === 3) return { delaySeconds: 180, damage: roll < 0.5 ? "none" : "minor", cargoLost: false, disablesShip: false };
+  if (hazard.severity === 4 && roll < 0.5) return { delaySeconds: 210, damage: "minor", cargoLost: false, disablesShip: false };
+  if (hazard.severity === 4) return { delaySeconds: 0, damage: "major", cargoLost: true, disablesShip: true };
+  return { delaySeconds: 0, damage: "none", cargoLost: false, disablesShip: false };
+}
+
+function portAuthorityShipCallsign(ship) {
+  return playerShipCallsign(ship).replace(/^\S+\s+/, "");
+}
+
+function dockHazardReason(hazard, phase) {
+  const label = String(hazard?.label || "local dock hazard").toLowerCase();
+  if (label.includes("poor parking")) return "There's another ship badly parked in front of your assigned berth";
+  if (label.includes("debris")) return phase === "departure" ? "debris removal is active on your launch vector" : "debris removal is active in the final approach corridor";
+  if (label.includes("bay doors")) return "bay doors are failing to open on your assigned berth";
+  if (label.includes("dock clamp")) return "your dock clamp is failing to open on the launch checklist";
+  if (label.includes("freighter")) return "traffic is stalled around a disabled freighter";
+  if (label.includes("pylons")) return "construction crews are still on the pier pylons";
+  if (label.includes("labor")) return "a dock labor dispute is blocking the crew board";
+  if (label.includes("autocrane")) return "the assigned autocrane is out of service";
+  if (label.includes("gauss")) return "the Gauss launch array is not available";
+  if (label.includes("telemetry")) return "local telemetry is not synchronized";
+  if (label.includes("wake dampers")) return "wake dampers are not engaging on schedule";
+  if (label.includes("visibility")) return "visibility is reduced by dust and debris";
+  return `local control reports ${hazard?.label || "a docking hazard"}`;
+}
+
+function portAuthorityMaintenanceAnnouncement(ship, nodeId, phase, holdSeconds) {
+  const call = portAuthorityShipCallsign(ship);
+  if (phase === "departure") {
+    return `Negative, ${call}. Hold for ${holdSeconds}s. ${nodeLabel(nodeId)} is under maintenance on the launch side. Launch clearance resumes when dock condition reaches ${DOCK_OPERATIONAL_VALUE}.`;
+  }
+  return `Negative, ${call}. Hold pattern for ${holdSeconds}s. ${nodeLabel(nodeId)} is under maintenance. Docking clearance resumes when dock condition reaches ${DOCK_OPERATIONAL_VALUE}.`;
+}
+
+function announcePortAuthorityMaintenanceHold(ship, nodeId, phase, holdSeconds) {
+  const authorityName = portAuthorityForNode(nodeId);
+  const message = portAuthorityMaintenanceAnnouncement(ship, nodeId, phase, holdSeconds);
+  if (authorityName) logLine(`${authorityName} ${speakerContext(authorityName)}: ${message}`, "alert");
+  else logLine(`${formatShipId(ship.id)} ${message}`, "alert");
+}
+
+function portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, effect) {
+  const severityLabel = DOCK_HAZARD_SEVERITY_LABELS[hazard.severity] || `severity ${hazard.severity}`;
+  const call = portAuthorityShipCallsign(ship);
+  const reason = dockHazardReason(hazard, phase);
+  const damageNote = effect.damage === "minor" ? " Minor damage reported." : effect.damage === "major" ? " Major damage reported; cargo is lost." : "";
+  if (effect.disablesShip && effect.damage === "minor") {
+    const cargoNote = effect.cargoLost ? " Cargo capacity no longer meets contract requirement; cargo is lost." : "";
+    return `Negative, ${call}. ${reason}. Minor damage reported; ship is below safe cargo capacity.${cargoNote} Disable and await recovery crew.`;
+  }
+  if (effect.disablesShip) return `Negative, ${call}. ${reason}. Major damage reported; cargo is lost. Disable and await recovery crew.`;
+  if (effect.delaySeconds > 0) {
+    if (phase === "departure") {
+      return `Negative, ${call}. Hold for ${effect.delaySeconds}s. ${reason}.${damageNote} Stand by for launch clearance.`;
+    }
+    return `Negative, ${call}. Hold pattern for ${effect.delaySeconds}s. ${reason}.${damageNote} Stand by for docking clearance.`;
+  }
+  return `${call}, advisory: ${reason}. Dock hazard ${severityLabel}; continue with caution.${damageNote}`;
+}
+
+function failActiveShipContract(ship) {
+  if (!ship?.activeContractId) return null;
+  const contract = state.contracts.find((c) => c.id === ship.activeContractId && (c.status === "assigned" || c.status === "delivered_pending_report"));
+  if (!contract) return null;
+  contract.status = "failed";
+  contract.cargoLost = true;
+  contract.assignedShipId = null;
+  ship.activeContractId = undefined;
+  return contract;
+}
+
+function disableShipAtDock(ship, nodeId) {
+  ship.combatStatus = "major_damage";
+  ship.status = "disabled";
+  ship.at = nodeId;
+  ship.lastKnownAt = nodeId;
+  ship.destination = undefined;
+  ship.activeContractId = undefined;
+  ship.departAt = 0;
+  ship.busyUntil = 0;
+}
+
+function applyDockHazardEffect(ship, nodeId, effect) {
+  if (!effect || effect.damage === "none") return;
+  if (effect.damage === "minor") {
+    const originalCapacity = originalShipCargoCapacity(ship);
+    const damagedCapacity = Math.max(0, currentShipCargoCapacity(ship) - 1);
+    ship.cargoCapacity = damagedCapacity;
+    ship.combatStatus = ship.combatStatus || "minor_damage";
+    if (ship.status === "idle") ship.status = "damaged";
+    const activeContract = ship.activeContractId
+      ? state.contracts.find((c) => c.id === ship.activeContractId && (c.status === "assigned" || c.status === "delivered_pending_report"))
+      : null;
+    if (activeContract && Number.isInteger(activeContract.cargoRequirement) && damagedCapacity < activeContract.cargoRequirement) {
+      failActiveShipContract(ship);
+      effect.cargoLost = true;
+    }
+    if (originalCapacity > 0 && damagedCapacity < originalCapacity / 2) {
+      effect.disablesShip = true;
+      disableShipAtDock(ship, nodeId);
+    }
+    return;
+  }
+  if (effect.disablesShip) {
+    failActiveShipContract(ship);
+    disableShipAtDock(ship, nodeId);
+  }
+}
+
+function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effectOverride = null, options = {}) {
+  const hazard = hazardOverride || randomDockHazard(nodeId, phase);
+  if (!hazard) return null;
+  const effect = effectOverride || rollDockHazardEffect(hazard);
+  if (effect?.delaySeconds > 0) effect.delaySeconds = shipHazardDelaySeconds(ship, effect.delaySeconds);
+  applyDockHazardEffect(ship, nodeId, effect);
+  const severityLabel = DOCK_HAZARD_SEVERITY_LABELS[hazard.severity] || `severity ${hazard.severity}`;
+  const damageText = effect.damage !== "none" ? `, ${effect.damage} damage` : "";
+  const cargoText = effect.cargoLost ? ", cargo lost" : "";
+  const disabledText = effect.disablesShip ? ", disabled" : "";
+  const text = `Dock hazard (${phase}, ${severityLabel}): ${hazard.label} at ${nodeLabel(nodeId)} (${effect.delaySeconds}s delay${damageText}${cargoText}${disabledText}).`;
+  ship.travelPlan = ship.travelPlan || {};
+  ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
+  ship.travelPlan.hazards.push(text);
+  const authorityName = portAuthorityForNode(nodeId);
+  const lineType = hazard.severity >= 3 ? "alert" : authorityName ? speakerMessageType(authorityName) : "sys";
+  const announcement = portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, effect);
+  const message = authorityName
+    ? `${authorityName} ${speakerContext(authorityName)}: ${announcement}`
+    : `${formatShipId(ship.id)} ${text}`;
+  const announceDelay = Math.max(0, Number(options.announceDelay || 0));
+  if (announceDelay > 0) scheduleMessage(announceDelay, message, lineType);
+  else logLine(message, lineType);
+  return effect;
+}
+
+function recordPlayerDockArrival(ship, nodeId, options = {}) {
+  const value = recordDockArrival(nodeId);
+  if (!ship.travelPlan?.arrivalHazardRolled) return recordPlayerDockHazard(ship, nodeId, "arrival", null, null, options);
+  return null;
+}
+
+function recordPlayerDockDeparture(ship, nodeId, hazardOverride = null, effectOverride = null, options = {}) {
+  const value = recordDockDeparture(nodeId);
+  if (hazardOverride) return recordPlayerDockHazard(ship, nodeId, "departure", hazardOverride, effectOverride, options);
+  if (!ship.travelPlan?.departureHazardRolled) {
+    if (ship.travelPlan) ship.travelPlan.departureHazardRolled = true;
+    return recordPlayerDockHazard(ship, nodeId, "departure", null, null, options);
+  }
+  return null;
+}
+
+
+function dockDebugLines() {
+  syncDockConditionsToActiveLocations();
+  const entries = Object.keys(nodes || {})
+    .map((nodeId) => ({ nodeId, value: ensureDockCondition(nodeId) }))
+    .sort((a, b) => nodeLabel(a.nodeId).localeCompare(nodeLabel(b.nodeId)));
+  if (!entries.length) return ["dbDock: no locations available."];
+  return [
+    "dbDock: local dock condition by location",
+    ...entries.map((entry) => {
+      const maintenance = state.dockMaintenance[entry.nodeId]
+        ? ` | maintenance=${entry.value < DOCK_OPERATIONAL_VALUE ? `holding until ${DOCK_OPERATIONAL_VALUE}` : `recovering until ${DOCK_MAINTENANCE_CLEAR_VALUE}`}`
+        : "";
+      return `${nodeLabel(entry.nodeId)} (${entry.nodeId}): dock=${entry.value}${maintenance} | hazard risk ${dockHazardRiskLabel(entry.value)}`;
+    }),
+    "dbDock hazard severity ranking: 1 minor, 2 moderate, 3 serious, 4 catastrophic.",
+    `dbDock hazards: ${DOCK_HAZARDS.map((hazard) => `${hazard.severity}=${hazard.label} [${(hazard.phases || []).join("/")}]`).join(" | ")}`,
+  ];
 }
 
 function buildCanonicalTutorialMap(mapData) {
@@ -506,8 +869,8 @@ function stylizeConsoleText(text) {
   const escaped = escapeHtml(text);
   return escaped
     .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|\s)([AISRDUFCHMaisrdufchm]\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|[,:]\s*)([AISRDUFCHMaisrdufchm])(?=\s+(assign|information|send|recall|report|dock|undock|fleet|contracts|map|help)\b)/g, '$1<span class="choice">$2</span>');
+    .replace(/(^|\s)([AISRQNMDUFCHaisrqnmdufch]\.)/g, '$1<span class="choice">$2</span>')
+    .replace(/(^|[,:]\s*)([AISRQNMDUFCHaisrqnmdufch])(?=\s+(assign|information|send|queue|[Mm]anage|[Nn]avigation|recall|report|dock|undock|fleet|contracts|help)\b)/g, '$1<span class="choice">$2</span>');
 }
 
 const { logLine } = createConsoleLogger({
@@ -624,6 +987,9 @@ function speakerContext(name, statusOverride) {
 
   const ambientNpc = (state.civilianNpcs || []).find((npc) => npc.captainName === name);
   if (ambientNpc) return formatNpcShipContext(ambientNpc, statusOverride);
+
+  const portAuthorityMoon = portAuthorityMoonForName(name);
+  if (portAuthorityMoon) return `[Port Authority (${portAuthorityMoon})]`;
 
   const contactProfile = CONTACT_PROFILES[name];
   if (contactProfile?.nodeId && nodes[contactProfile.nodeId]) {
@@ -834,10 +1200,12 @@ function buildAlmanacViewModel(entries) {
   const stationEntries = Array.isArray(locations?.["Stations, Outposts, and Facilities"])
     ? locations["Stations, Outposts, and Facilities"]
     : [];
-  const factions = Array.isArray(organizations?.["Factions and Institutions"])
-    ? organizations["Factions and Institutions"]
-    : [];
-  const clients = Array.isArray(organizations?.Clients) ? organizations.Clients : [];
+  const organizationEntries = Array.isArray(organizations)
+    ? organizations
+    : [
+        ...(Array.isArray(organizations?.["Factions and Institutions"]) ? organizations["Factions and Institutions"] : []),
+        ...(Array.isArray(organizations?.Clients) ? organizations.Clients : []),
+      ];
 
   const orbitBandsEntry = indigoSystemEntries.find((entry) => entry?.name === "Orbit Bands");
   const orbitBandChildren = indigoSystemEntries.filter((entry) => (
@@ -858,9 +1226,7 @@ function buildAlmanacViewModel(entries) {
       "Stations, Outposts, and Facilities": stationEntries,
       "Transfer Lanes": transferLaneEntries,
     },
-    Organizations: {
-      "Factions, Institutions, and Clients": [...factions, ...clients],
-    },
+    Organizations: organizationEntries,
     "Ships and Classes": Array.isArray(entries?.ships_and_classes) ? entries.ships_and_classes : [],
     "Cargo Types": Array.isArray(entries?.cargo_types) ? entries.cargo_types : [],
   };
@@ -1068,7 +1434,6 @@ const BuddeAdvisor = createBuddeAdvisor({
   nodeLabel,
   candidateDestinationsForShip,
   resolveDriveShipId: (shipId) => effectiveDriveShipId(shipId),
-  buddeInform,
   buddeSpeak,
 });
 
@@ -1077,7 +1442,25 @@ function scheduleMessage(delay, textOrFactory, type = "report") {
 }
 
 const oneWaySignalToNode = (...args) => NavigationModel.oneWaySignalToNode(...args);
-const oneWaySignalToShip = (...args) => NavigationModel.oneWaySignalToShip(...args);
+function shipSensorCommandMultiplier(ship) {
+  if (ship?.sensorMode === "instruments") return 1.25;
+  if (ship?.sensorMode === "comms") return 0.9;
+  return 1;
+}
+
+function oneWaySignalToShip(shipOrId, ...args) {
+  const base = NavigationModel.oneWaySignalToShip(shipOrId, ...args);
+  const ship = typeof shipOrId === "string" ? state.ships.find((entry) => entry.id === shipOrId) : shipOrId;
+  const multiplier = shipSensorCommandMultiplier(ship);
+  if (multiplier === 1) return base;
+  return Math.max(1, Math.ceil(base * multiplier));
+}
+
+function shipHazardDelaySeconds(ship, seconds) {
+  const value = Math.max(0, Number(seconds) || 0);
+  if (!value) return 0;
+  return ship?.sensorMode === "comms" ? Math.ceil(value * 1.5) : value;
+}
 const NpcController = createNpcController({
   state,
   getNodes: () => nodes,
@@ -1107,6 +1490,8 @@ const NpcController = createNpcController({
   onConflictFire: ({ result, collateral, campaignCombat }) => {
     applyConflictFireHeat(result, collateral, { campaignCombat });
   },
+  onShipArrivedAtLocation: recordDockArrival,
+  onShipDepartedFromLocation: recordDockDeparture,
 });
 
 function moonForNode(nodeId) {
@@ -1206,7 +1591,7 @@ function buildBuddeRouteBrief(fromNodeId, toNodeId) {
   }
 
   steps.push(`Final approach: transition onto ${toLabel} local traffic corridor and hold station.`);
-  return `Route ${fromLabel} -> ${toLabel}. ${steps.join(" ")} Estimated ${distanceText}, ${fuelText}.`;
+  return `Navigation ${fromLabel} -> ${toLabel}. ${steps.join(" ")} Estimated ${distanceText}, ${fuelText}.`;
 }
 
 function basilShipIntel(ship) {
@@ -1269,6 +1654,10 @@ function shipRecallAvailable(ship) {
   return shipActionAvailable(ship) && (ship.status === "tasked" || ship.status === "enroute");
 }
 
+function shipCanQueueWork(ship) {
+  return shipActionAvailable(ship) && ["tasked", "enroute", "arrived_pending_report"].includes(ship.status);
+}
+
 function targetOpenContractCount() {
   const target = playerControlledShipCount();
   if (state.contractBoardTargetOpen !== target) state.contractBoardTargetOpen = target;
@@ -1307,6 +1696,7 @@ function destroyPlayerShip(shipId, reason = "destroyed") {
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return false;
   if (shipDestroyed(ship)) return true;
+  const reportNodeId = ship.at;
   if (ship.activeContractId) {
     const contract = state.contracts.find((c) => c.id === ship.activeContractId && (c.status === "assigned" || c.status === "delivered_pending_report"));
     if (contract) {
@@ -1339,7 +1729,9 @@ function destroyPlayerShip(shipId, reason = "destroyed") {
   ship.utilityDockedBy = null;
   ship.travelPlan = null;
   ship.lastCombatTick = state.tick;
-  logLine(`${formatShipId(ship.id)} destroyed (${reason}). Ship moved to unavailable.`, "alert");
+  const destructionLine = `${formatShipId(ship.id)} destroyed (${reason}). Ship moved to unavailable.`;
+  if (String(reason || "").includes("debug")) logLine(destructionLine, "alert");
+  else scheduleMessage(oneWaySignalToNode(reportNodeId), destructionLine, "alert");
   return true;
 }
 
@@ -1359,13 +1751,15 @@ function contractNumber(contractId) {
 function commandPromptLabel() {
   const pending = state.selection?.pending;
   const selectedShipId = state.selection?.selectedShipId;
-  if (pending === "await_route_from") return "<Map routes: from>";
-  if (pending === "await_route_to") return "<Map routes: to>";
+  if (pending === "await_sensor_option") return `<${playerShipLabelById(selectedShipId)} sensors>`;
+  if (pending === "await_route_from") return "<Navigation: from>";
+  if (pending === "await_route_to") return "<Navigation: to>";
   if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
   if (pending === "await_contract") return `<${playerShipLabelById(selectedShipId)} contracts>`;
+  if (pending === "await_queue_contract") return `<${playerShipLabelById(selectedShipId)} queued contracts>`;
   if (pending === "await_destination") return `<${playerShipLabelById(selectedShipId)} destinations>`;
   if (pending === "await_dock_target") return `<${playerShipLabelById(selectedShipId)} dock target>`;
-  return `<${playerShipLabelById(selectedShipId)} actions>`;
+  return `<${playerShipLabelById(selectedShipId)} actions: M Manage sensors>`;
 }
 
 function render() {
@@ -1400,7 +1794,7 @@ function render() {
   state.ships.forEach((s, idx) => {
     const li = document.createElement("li");
     const capacityLabel = state.currentScenario >= 3 && !s.utility
-      ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
+      ? ` | ${currentShipCargoCapacity(s)}T cap`
       : "";
     const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
     li.textContent = `${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${playerShipDisplayId(s) || s.id}${capacityLabel}`;
@@ -1552,23 +1946,27 @@ function chooseCampaignLocation(defenderFaction) {
 }
 
 function postCampaignNewsCard(campaign) {
-  const location = nodeLabel(campaign.locationNodeId) || "Baron's Market";
-  const aggressorName = factionDisplayName(campaign.aggressorFaction);
-  const defenderName = factionDisplayName(campaign.defenderFaction);
-  const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
-  const item = {
-    id: campaign.id,
-    headline: `${aggressorName} attacks ${defenderName} at ${location}`,
-    body: `${fmtTime(state.tick)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${campaign.durationSeconds}s.`,
-    tick: state.tick,
-    timestamp: fmtTime(state.tick),
-    aggressorFaction: campaign.aggressorFaction,
-    defenderFaction: campaign.defenderFaction,
-    location,
-  };
-  state.news.push(item);
-  renderNews();
-  logLine(`News update: ${item.headline}.`, "sys");
+  const reportDelay = oneWaySignalToNode(campaign.locationNodeId || CAMPAIGN_FALLBACK_LOCATION_NODE_ID);
+  scheduleMessage(reportDelay, () => {
+    const location = nodeLabel(campaign.locationNodeId) || "Baron's Market";
+    const aggressorName = factionDisplayName(campaign.aggressorFaction);
+    const defenderName = factionDisplayName(campaign.defenderFaction);
+    const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
+    const item = {
+      id: campaign.id,
+      headline: `${aggressorName} attacks ${defenderName} at ${location}`,
+      body: `${fmtTime(campaign.startedAt)} — System feeds report ${aggressorName} forces attacking ${defenderName} assets at ${location}. ${defenderName} response: “${defenderResponse}” Campaign monitors expect the action to remain active for ${campaign.durationSeconds}s.`,
+      tick: state.tick,
+      eventTick: campaign.startedAt,
+      timestamp: fmtTime(state.tick),
+      aggressorFaction: campaign.aggressorFaction,
+      defenderFaction: campaign.defenderFaction,
+      location,
+    };
+    state.news.push(item);
+    renderNews();
+    return `News update: ${item.headline}.`;
+  }, "sys");
 }
 
 function startFactionCampaign(defenderFaction, options = {}) {
@@ -1619,20 +2017,26 @@ function updateFactionCampaigns() {
     if (campaign.endsAt <= state.tick && !campaign.resolved) {
       campaign.resolved = true;
       if (campaign.defenderFaction) state.factionHeat[campaign.defenderFaction] = 0;
-      const location = nodeLabel(campaign.locationNodeId || CAMPAIGN_FALLBACK_LOCATION_NODE_ID) || "Baron's Market";
-      state.news.push({
-        id: `${campaign.id}-resolved`,
-        headline: `${factionDisplayName(campaign.aggressorFaction)} campaign at ${location} winds down`,
-        body: `${fmtTime(state.tick)} — The ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} at ${location} has ended. Heat on ${factionDisplayName(campaign.defenderFaction)} has reset.`,
-        tick: state.tick,
-        timestamp: fmtTime(state.tick),
-        aggressorFaction: campaign.aggressorFaction,
-        defenderFaction: campaign.defenderFaction,
-        location,
-      });
+      const endedAt = state.tick;
+      const reportDelay = oneWaySignalToNode(campaign.locationNodeId || CAMPAIGN_FALLBACK_LOCATION_NODE_ID);
+      scheduleMessage(reportDelay, () => {
+        const location = nodeLabel(campaign.locationNodeId || CAMPAIGN_FALLBACK_LOCATION_NODE_ID) || "Baron's Market";
+        const item = {
+          id: `${campaign.id}-resolved`,
+          headline: `${factionDisplayName(campaign.aggressorFaction)} campaign at ${location} winds down`,
+          body: `${fmtTime(endedAt)} — The ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} at ${location} has ended. Heat on ${factionDisplayName(campaign.defenderFaction)} has reset.`,
+          tick: state.tick,
+          eventTick: endedAt,
+          timestamp: fmtTime(state.tick),
+          aggressorFaction: campaign.aggressorFaction,
+          defenderFaction: campaign.defenderFaction,
+          location,
+        };
+        state.news.push(item);
+        renderNews();
+        return `News update: ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} has ended.`;
+      }, "sys");
       if (NpcController?.endCampaign) NpcController.endCampaign(campaign);
-      renderNews();
-      logLine(`News update: ${factionDisplayName(campaign.aggressorFaction)} campaign against ${factionDisplayName(campaign.defenderFaction)} has ended.`, "sys");
     }
   });
   state.activeFactionCampaigns = (state.activeFactionCampaigns || []).filter((campaign) => !campaign.resolved);
@@ -1873,7 +2277,7 @@ function showShipsList() {
     const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
     const dockedSuffix = s.dockedTo ? ` | docked to ${formatShipId(s.dockedTo)}` : s.utilityDockedBy ? ` | utility ${formatShipId(s.utilityDockedBy)}` : "";
     const capacityLabel = state.currentScenario >= 3 && !s.utility
-      ? ` | ${s.cargoCapacity || SHIP_CAPACITY_BY_ID[s.id] || 0}T cap`
+      ? ` | ${currentShipCargoCapacity(s)}T cap`
       : "";
     logLine(`${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${playerShipDisplayId(s) || s.id}${dockedSuffix}${capacityLabel}`, "sys");
   });
@@ -1972,13 +2376,75 @@ function showShipMenu(shipId) {
     }
   }
   const recallOption = shipRecallAvailable(ship) ? ", R recall" : "";
-  let menuOptions = `A assign, S send, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
-  if (ship.utility && ship.status === "docked") {
-    menuOptions = "U undock. Global: F fleet, C contracts, M map, H help.";
+  const queuedOption = ship.queuedContractId ? ` (queued ${ship.queuedContractId})` : "";
+  let menuOptions = `A assign, S send, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`;
+  if (shipCanQueueWork(ship)) {
+    menuOptions = ship.utility
+      ? `I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`
+      : `Q queue${queuedOption}, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`;
+  } else if (ship.utility && ship.status === "docked") {
+    menuOptions = "U undock, M Manage sensors. Global: F fleet, C contracts, N Navigation, H help.";
   } else if (ship.utility) {
-    menuOptions = `D dock, S send, I information${recallOption}. Global: F fleet, C contracts, M map, H help.`;
+    menuOptions = `D dock, S send, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`;
   }
   logLine(`${formatShipId(shipId)} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
+}
+
+
+function sensorModeLabel(ship) {
+  if (ship?.sensorMode === "instruments") return "Boost instrument array";
+  if (ship?.sensorMode === "comms") return "Boost comms array";
+  return "Default sensor suite";
+}
+
+function showSensorMenu(shipId) {
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return;
+  state.selection.pending = "await_sensor_option";
+  state.selection.selectedShipId = shipId;
+  const muteLabel = ship.sensorsMuted ? "Unmute sensors" : "Mute sensors";
+  logLine(`Manage sensors for ${formatShipId(shipId)}. Current suite: ${sensorModeLabel(ship)}. Ambient sensors: ${ship.sensorsMuted ? "muted" : "audible"}.`, "sys");
+  logLine(`1. ${muteLabel}`, "sys");
+  logLine(`2. Boost instrument array${ship.sensorMode === "instruments" ? " (active)" : ""} | destination fire/hazard monitoring while enroute; uplink +25%`, "sys");
+  logLine(`3. Boost comms array${ship.sensorMode === "comms" ? " (active)" : ""} | uplink -10%; hazard/traffic delays +50%`, "sys");
+  logLine(`4. Default sensor suite${!ship.sensorMode || ship.sensorMode === "default" ? " (active)" : ""}`, "sys");
+}
+
+function scheduleShipSensorChange(shipId, label, applyChange) {
+  const ship = state.ships.find((entry) => entry.id === shipId);
+  if (!ship || shipDestroyed(ship)) {
+    logLine(`${formatShipId(shipId)} cannot receive sensor commands.`, "error");
+    return false;
+  }
+  const uplink = oneWaySignalToShip(ship);
+  scheduleMessage(uplink, () => {
+    const liveShip = state.ships.find((entry) => entry.id === shipId);
+    if (!liveShip || shipDestroyed(liveShip)) return null;
+    applyChange(liveShip);
+    return `${formatShipId(shipId)} sensors updated: ${label}.`;
+  }, "sys");
+  logLine(`Sensor command uplinked to ${formatShipId(shipId)} (${uplink}s). ${label} will take effect on receipt.`, "sys");
+  return true;
+}
+
+function toggleShipSensorMute(shipId) {
+  const ship = state.ships.find((entry) => entry.id === shipId);
+  const nextMuted = !ship?.sensorsMuted;
+  return scheduleShipSensorChange(shipId, nextMuted ? "ambient sensors muted" : "ambient sensors unmuted", (liveShip) => {
+    liveShip.sensorsMuted = nextMuted;
+  });
+}
+
+function setShipSensorMode(shipId, mode) {
+  const labels = {
+    instruments: "boost instrument array active",
+    comms: "boost comms array active",
+    default: "default sensor suite active",
+  };
+  const nextMode = ["instruments", "comms"].includes(mode) ? mode : "default";
+  return scheduleShipSensorChange(shipId, labels[nextMode], (liveShip) => {
+    liveShip.sensorMode = nextMode;
+  });
 }
 
 function showContractsForSelectedShip() {
@@ -1997,6 +2463,23 @@ function showContractsForSelectedShip() {
     logLine(`${displayNumber}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)}${scenarioFlavor}${cargoRequirementLabel} (+$${c.payout})`, "sys");
   });
   logLine("Pick number or contract ID.", "sys");
+}
+
+function showQueuedContractsForSelectedShip() {
+  const contracts = visibleOpenContracts();
+  if (!contracts.length) return logLine("No open contracts to queue.", "sys");
+  logLine(`Queue ${formatShipId(state.selection.selectedShipId)} for what contract?`, "sys");
+  contracts.forEach((c, idx) => {
+    const displayNumber = contractNumber(c.id) || (idx + 1);
+    const scenarioFlavor = state.currentScenario >= 2 && c.client && c.cargoType
+      ? ` | ${c.client} | ${c.cargoType}`
+      : "";
+    const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
+      ? ` | cargo ${c.cargoRequirement}T`
+      : "";
+    logLine(`${displayNumber}. ${c.id} ${nodeLabel(c.from)} -> ${nodeLabel(c.to)}${scenarioFlavor}${cargoRequirementLabel} (+$${c.payout})`, "sys");
+  });
+  logLine("Pick number or contract ID. BUDDE suggestions are not available for queued work.", "sys");
 }
 
 function checkScenarioCompletion() {
@@ -2115,7 +2598,10 @@ function shipReport(shipId) {
   const locationOrDestination = ship.status === "enroute"
     ? `destination=${ship.destination || ship.at}`
     : `location=${ship.at}`;
-  scheduleMessage(rtt, `Report ${formatShipId(ship.id)}: status=${reportStatus}, ${locationOrDestination}, eta=${eta}s (RTT ${rtt}s).`, "report");
+  const dockStatusText = ship.status === "idle" && ship.at
+    ? `, dock=${dockStatusLabel(ship.at)}`
+    : "";
+  scheduleMessage(rtt, `Report ${formatShipId(ship.id)}: status=${reportStatus}, ${locationOrDestination}${dockStatusText}, eta=${eta}s (RTT ${rtt}s).`, "report");
   const captain = SHIP_CAPTAINS[ship.id];
   if (captain) {
     scheduleCharacterMessage(
@@ -2170,13 +2656,39 @@ function scheduleFinalApproachDockingCall(ship, {
   const sameMoonOutbound = uplink + departureOffset + Math.min(sameMoonCallDelay, Math.max(0, transitTime - 1));
   const crossMoonOutbound = uplink + departureOffset + Math.max(0, transitTime - preArrivalLead);
   const shipCallAt = sameMoonTransit ? sameMoonOutbound : crossMoonOutbound;
+  const approachMessageDelay = shipCallAt + oneWaySignalToNode(destinationNodeId);
   scheduleCharacterMessage(
-    shipCallAt + oneWaySignalToNode(destinationNodeId),
+    approachMessageDelay,
     captain,
     pickBluFreightApproachLine(captain, nodeLabel(destinationNodeId)),
     "arriving",
     "comms"
   );
+  const authorityName = portAuthorityForNode(destinationNodeId);
+  if (authorityName) {
+    scheduleMessage(approachMessageDelay + 2, () => {
+      const liveShip = state.ships.find((entry) => entry.id === ship.id);
+      if (!liveShip || shipDestroyed(liveShip) || liveShip.destination !== destinationNodeId || liveShip.status !== "enroute") return null;
+      liveShip.travelPlan = liveShip.travelPlan || {};
+      const maintenanceHold = dockMaintenanceHoldSeconds(destinationNodeId);
+      if (maintenanceHold > 0) {
+        if (!liveShip.travelPlan.arrivalMaintenanceHoldNotified) {
+          liveShip.travelPlan.arrivalMaintenanceHoldNotified = true;
+          announcePortAuthorityMaintenanceHold(liveShip, destinationNodeId, "arrival", maintenanceHold);
+        }
+        liveShip.busyUntil += shipHazardDelaySeconds(liveShip, maintenanceHold);
+        return null;
+      }
+      if (liveShip.travelPlan.arrivalHazardRolled) return null;
+      liveShip.travelPlan.arrivalHazardRolled = true;
+      const hazard = randomDockHazard(destinationNodeId, "arrival");
+      if (!hazard) return null;
+      const effect = recordPlayerDockHazard(liveShip, destinationNodeId, "arrival", hazard);
+      if (effect?.disablesShip) return null;
+      if (effect?.delaySeconds > 0) liveShip.busyUntil += effect.delaySeconds;
+      return null;
+    }, speakerMessageType(authorityName));
+  }
 }
 
 
@@ -2190,7 +2702,6 @@ function applyTrafficControlLock(nodeId, seconds, reason) {
   const until = state.tick + seconds;
   const current = state.trafficLocks[nodeId] || 0;
   state.trafficLocks[nodeId] = Math.max(current, until);
-  logLine(`Traffic control at ${nodeLabel(nodeId)}: ${reason} (${seconds}s hold).`, "alert");
 }
 
 function trafficLockRemaining(nodeId) {
@@ -2271,7 +2782,57 @@ function sendShip(shipId, destination) {
   return true;
 }
 
-function assignContract(contractId, shipId) {
+function queuedContractStartNode(ship) {
+  return ship?.destination || ship?.travelPlan?.secondLegTo || ship?.travelPlan?.currentLegTo || ship?.at || null;
+}
+
+function queueContract(contractId, shipId) {
+  const contract = state.contracts.find((c) => c.id.toLowerCase() === contractId.toLowerCase() && c.status === "open");
+  if (!contract) return logLine(`Contract ${contractId} not found/open.`, "error");
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return logLine(`Unknown ship: ${formatShipId(shipId)}.`, "error");
+  if (shipDestroyed(ship)) return logLine(`${formatShipId(ship.id)} is destroyed and unavailable.`, "error");
+  if (ship.utility) return logLine(`${formatShipId(ship.id)} cannot queue cargo contracts.`, "error");
+  if (!shipCanQueueWork(ship)) return logLine(`${formatShipId(ship.id)} can only queue work while current work is in progress.`, "error");
+  if (ship.queuedContractId) return logLine(`${formatShipId(ship.id)} already has queued contract ${ship.queuedContractId}.`, "error");
+  if (state.currentScenario >= 3 && Number.isInteger(contract.cargoRequirement)) {
+    const shipCapacity = currentShipCargoCapacity(ship);
+    if (shipCapacity < contract.cargoRequirement) {
+      return logLine(
+        `${formatShipId(ship.id)} capacity ${shipCapacity} is below required cargo ${contract.cargoRequirement} for ${contract.id}.`,
+        "error"
+      );
+    }
+  }
+  const startNode = queuedContractStartNode(ship);
+  contract.status = "queued";
+  contract.queuedShipId = ship.id;
+  contract.queuedStartNode = startNode;
+  ship.queuedContractId = contract.id;
+  fillContractBoard();
+  logLine(`Queued ${contract.id} for ${formatShipId(ship.id)} after current work completes from ${nodeLabel(startNode)}.`, "dispatch");
+  return true;
+}
+
+function startQueuedContractIfReady(ship) {
+  if (!ship?.queuedContractId || ship.status !== "idle") return false;
+  const contract = state.contracts.find((c) => c.id === ship.queuedContractId && c.status === "queued" && c.queuedShipId === ship.id);
+  const queuedId = ship.queuedContractId;
+  ship.queuedContractId = undefined;
+  if (!contract) return false;
+  contract.status = "open";
+  contract.queuedShipId = undefined;
+  contract.queuedStartNode = undefined;
+  const assigned = assignContract(contract.id, ship.id, { suppressBuddeAdvice: true, skipUplink: true });
+  if (assigned) {
+    logLine(`Queued contract ${queuedId} started for ${formatShipId(ship.id)} without additional uplink delay.`, "dispatch");
+  } else {
+    logLine(`Queued contract ${queuedId} could not start for ${formatShipId(ship.id)}; contract returned to open board.`, "error");
+  }
+  return assigned;
+}
+
+function assignContract(contractId, shipId, options = {}) {
   const contract = state.contracts.find((c) => c.id.toLowerCase() === contractId.toLowerCase() && c.status === "open");
   if (!contract) return logLine(`Contract ${contractId} not found/open.`, "error");
   const requestedShip = state.ships.find((s) => s.id === shipId);
@@ -2281,7 +2842,7 @@ function assignContract(contractId, shipId) {
   const ship = state.ships.find((s) => s.id === shipId);
   if (!ship) return logLine(`Unknown ship: ${formatShipId(shipId)}.`, "error");
   if (state.currentScenario >= 3 && Number.isInteger(contract.cargoRequirement)) {
-    const shipCapacity = ship.cargoCapacity || SHIP_CAPACITY_BY_ID[ship.id] || 0;
+    const shipCapacity = currentShipCargoCapacity(ship);
     if (shipCapacity < contract.cargoRequirement) {
       return logLine(
         `${formatShipId(ship.id)} capacity ${shipCapacity} is below required cargo ${contract.cargoRequirement} for ${contract.id}.`,
@@ -2290,8 +2851,8 @@ function assignContract(contractId, shipId) {
     }
   }
   const driveShipId = effectiveDriveShipId(ship.id);
-  const uplink = oneWaySignalToShip(ship);
-  basilCommsLatencyLine(ship, "orders");
+  const uplink = options.skipUplink ? 0 : oneWaySignalToShip(ship);
+  if (!options.skipUplink) basilCommsLatencyLine(ship, "orders");
   const toPickupSpan = safeRouteDistance(ship.at, contract.from);
   const toDropSpan = safeRouteDistance(contract.from, contract.to);
   const totalRouteSpan = toPickupSpan + toDropSpan;
@@ -2302,7 +2863,7 @@ function assignContract(contractId, shipId) {
     fuel: fuelCostForRoute(ship.at, c.from, driveShipId) + fuelCostForRoute(c.from, c.to, driveShipId),
   })).sort((a, b) => a.fuel - b.fuel);
   const bestContract = contractOptions[0];
-  if (state.currentScenario >= 2) {
+  if (state.currentScenario >= 2 && !options.suppressBuddeAdvice) {
     if (bestContract && fuelCost > bestContract.fuel) {
       buddeSpeak("objections", "Current assignment is not top efficiency.");
       buddeInform(`My recommendation would have reduced fuel burn by ${Math.max(1, fuelCost - bestContract.fuel)} units. Your selection has been relayed as ordered.`);
@@ -2339,7 +2900,8 @@ function assignContract(contractId, shipId) {
   };
 
   const fuelBillingNote = fuelBillingActive() ? `fuel ${fuelCost}.` : `fuel ${fuelCost} (training waiver: not charged in Scenario 1).`;
-  logLine(`Transmission sent: ${formatShipId(ship.id)} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
+  const assignmentVerb = options.skipUplink ? "Queued order executed" : "Transmission sent";
+  logLine(`${assignmentVerb}: ${formatShipId(ship.id)} to ${contract.id}. Uplink ${uplink}s + mission ${total}s, ${fuelBillingNote}`, "dispatch");
   maybePromptScenario3AssignedTowSupport(ship, contract, uplink);
   const returnSignal = oneWaySignalToNode(contract.to);
   basilInform(
@@ -2436,6 +2998,7 @@ function recallShip(shipId) {
     return true;
   }
   const driveShipId = effectiveDriveShipId(ship.id);
+  const recallReportDelay = oneWaySignalToShip(ship) * 2;
   const plan = ship.travelPlan || {};
   const elapsed = Math.max(0, state.tick - (ship.departAt || state.tick));
   let legElapsed = elapsed;
@@ -2478,23 +3041,28 @@ function recallShip(shipId) {
   const returnDistance = Math.round(Math.max(0, safeRouteDistance(currentLegTo, currentLegFrom) * legProgress));
   const recallRouteDistance = partialOutboundDistance + returnDistance;
   if (fuelBillingActive()) state.cash -= recallFuel;
+  const recallContractLabel = ship.activeContractId || "Cancelled active contract";
   if (ship.activeContractId) {
     const contract = state.contracts.find((c) => c.id === ship.activeContractId && c.status === "assigned");
     if (contract) contract.status = "open";
   }
-  postTripReportToInbox(ship, {
-    outcome: "Recall completed",
-    contractLabel: ship.activeContractId || "Cancelled active contract",
-    distanceText: `Partial current leg (${Math.round(legProgress * 100)}%) + return to ${nodeLabel(recallNodeId)}`,
-    fuelSpent: fuelBillingActive() ? `${recallFuel}` : `${recallFuel} (training waiver)`,
-    fuelSpentValue: recallFuel,
-    elapsedTimeSeconds: elapsed,
-    routeDistance: recallRouteDistance,
-    earnings: 0,
-    hazards: plan.hazards || [],
-    damage: "None reported",
-    netProceeds: fuelBillingActive() ? -recallFuel : 0,
-  });
+  scheduleMessage(recallReportDelay, () => {
+    postTripReportToInbox(ship, {
+      outcome: "Recall completed",
+      contractLabel: recallContractLabel,
+      distanceText: `Partial current leg (${Math.round(legProgress * 100)}%) + return to ${nodeLabel(recallNodeId)}`,
+      fuelSpent: fuelBillingActive() ? `${recallFuel}` : `${recallFuel} (training waiver)`,
+      fuelSpentValue: recallFuel,
+      elapsedTimeSeconds: elapsed,
+      routeDistance: recallRouteDistance,
+      earnings: 0,
+      hazards: plan.hazards || [],
+      damage: "None reported",
+      netProceeds: fuelBillingActive() ? -recallFuel : 0,
+    });
+    return null;
+  }, "sys");
+  if (ship.status === "enroute") recordPlayerDockArrival(ship, recallNodeId, { announceDelay: oneWaySignalToNode(recallNodeId) });
   ship.status = "idle";
   ship.at = recallNodeId;
   ship.destination = undefined;
@@ -2504,7 +3072,7 @@ function recallShip(shipId) {
   ship.lastKnownAt = recallNodeId;
   ship.lastContactTick = state.tick;
   ship.travelPlan = null;
-  logLine(`${formatShipId(ship.id)} recalled to ${nodeLabel(recallNodeId)}. ${fuelBillingActive() ? `Fuel billed: ${recallFuel}.` : `Fuel estimate: ${recallFuel} (training waiver in effect).`}`, "dispatch");
+  scheduleMessage(recallReportDelay, `${formatShipId(ship.id)} recalled to ${nodeLabel(recallNodeId)}. ${fuelBillingActive() ? `Fuel billed: ${recallFuel}.` : `Fuel estimate: ${recallFuel} (training waiver in effect).`}`, "dispatch");
   return true;
 }
 
@@ -2553,6 +3121,7 @@ function finalizeContractDelivery(contractId) {
 }
 
 function updateSimulation() {
+  updateDockMaintenanceRecovery();
   if (state.tick > 0 && state.tick % OPERATING_COST_INTERVAL_SECONDS === 0) {
     const operatingCost = Math.round((state.ships.length || 0) * OPERATING_COST_PER_SHIP_PER_INTERVAL);
     if (operatingCost > 0) {
@@ -2582,16 +3151,88 @@ function updateSimulation() {
       }
     }
     if (ship.status === "tasked" && state.tick >= ship.departAt) {
+      const maintenanceHold = dockMaintenanceHoldSeconds(ship.at);
+      if (maintenanceHold > 0) {
+        if (!ship.departureMaintenanceHoldNotified) {
+          scheduleMessage(oneWaySignalToNode(ship.at), () => {
+            announcePortAuthorityMaintenanceHold(ship, ship.at, "departure", maintenanceHold);
+            return null;
+          }, "alert");
+          ship.departureMaintenanceHoldNotified = true;
+        }
+        return;
+      }
+      ship.departureMaintenanceHoldNotified = false;
+      const departureHold = trafficLockRemaining(ship.at);
+      if (departureHold > 0) {
+        if (!ship.departureTrafficHoldNotified) {
+          const authorityName = portAuthorityForNode(ship.at);
+          const holdSeconds = Math.max(1, departureHold);
+          if (authorityName) {
+            scheduleMessage(oneWaySignalToNode(ship.at), `${authorityName} ${speakerContext(authorityName)}: Negative, ${portAuthorityShipCallsign(ship)}. Hold for ${holdSeconds}s. Debris removal is active on your launch vector. Stand by for clearance.`, "alert");
+          } else {
+            scheduleMessage(oneWaySignalToNode(ship.at), `Port Control [${nodeLabel(ship.at)}]: ${formatShipId(ship.id)}, hold for ${holdSeconds}s while the launch vector is cleared.`, "alert");
+          }
+          ship.departureTrafficHoldNotified = true;
+        }
+        return;
+      }
+      ship.departureTrafficHoldNotified = false;
+      let departureHazard = null;
+      let departureHazardEffect = null;
+      if (!ship.travelPlan?.departureHazardRolled) {
+        if (ship.travelPlan) ship.travelPlan.departureHazardRolled = true;
+        departureHazard = randomDockHazard(ship.at, "departure");
+        departureHazardEffect = rollDockHazardEffect(departureHazard);
+        if (departureHazardEffect.delaySeconds > 0 || departureHazardEffect.disablesShip) {
+          recordPlayerDockHazard(ship, ship.at, "departure", departureHazard, departureHazardEffect, { announceDelay: oneWaySignalToNode(ship.at) });
+          if (departureHazardEffect.disablesShip) return;
+          ship.departAt += departureHazardEffect.delaySeconds;
+          return;
+        }
+      }
+      const departureEffect = recordPlayerDockDeparture(ship, ship.at, departureHazard, departureHazardEffect, { announceDelay: oneWaySignalToNode(ship.at) });
+      if (departureEffect?.disablesShip) return;
       ship.status = "enroute";
+    }
+    if (ship.status === "enroute" && ship.travelPlan?.mode === "contract" && !ship.travelPlan.firstLegDockRecorded) {
+      const firstLegTransit = Number.isFinite(ship.travelPlan.firstLegTransit) ? ship.travelPlan.firstLegTransit : 0;
+      const firstLegArrivalTick = (ship.departAt || state.tick) + firstLegTransit;
+      if (ship.travelPlan.firstLegTo && ship.travelPlan.firstLegFrom !== ship.travelPlan.firstLegTo && state.tick >= firstLegArrivalTick && firstLegArrivalTick < ship.busyUntil) {
+        const midLegArrivalEffect = recordPlayerDockArrival(ship, ship.travelPlan.firstLegTo, { announceDelay: oneWaySignalToNode(ship.travelPlan.firstLegTo) });
+        if (midLegArrivalEffect?.disablesShip) return;
+        const midLegDepartureEffect = (ship.travelPlan.secondLegTransit || 0) > 0 ? recordPlayerDockDeparture(ship, ship.travelPlan.firstLegTo, null, null, { announceDelay: oneWaySignalToNode(ship.travelPlan.firstLegTo) }) : null;
+        if (midLegDepartureEffect?.disablesShip) return;
+        ship.travelPlan.firstLegDockRecorded = true;
+      } else if (state.tick >= firstLegArrivalTick) {
+        ship.travelPlan.firstLegDockRecorded = true;
+      }
     }
     if (ship.status === "enroute" && state.tick >= ship.busyUntil) {
       const arrivalNodeId = ship.destination;
       const returnSignal = oneWaySignalToNode(arrivalNodeId);
+      const maintenanceHold = dockMaintenanceHoldSeconds(arrivalNodeId);
+      if (maintenanceHold > 0) {
+        if (!ship.arrivalMaintenanceHoldNotified) {
+          scheduleMessage(returnSignal, () => {
+            announcePortAuthorityMaintenanceHold(ship, arrivalNodeId, "arrival", maintenanceHold);
+            return null;
+          }, "alert");
+          ship.arrivalMaintenanceHoldNotified = true;
+        }
+        ship.busyUntil += 1;
+        return;
+      }
+      ship.arrivalMaintenanceHoldNotified = false;
       const arrivalLock = trafficLockRemaining(arrivalNodeId);
       if (arrivalLock > 0) {
         if (isStationNode(arrivalNodeId) && ship.faction === "blufreight" && !ship.trafficHoldNotified) {
           const holdSeconds = Math.max(1, arrivalLock);
-          scheduleMessage(returnSignal, `Port Control [${nodeLabel(arrivalNodeId)}]: ${formatShipId(ship.id)}, hold short of final docking corridor. Delay in effect for approximately ${holdSeconds}s while traffic hazards are cleared.`, "comms");
+          const authorityName = portAuthorityForNode(arrivalNodeId);
+          const message = authorityName
+            ? `${authorityName} ${speakerContext(authorityName)}: Negative, ${portAuthorityShipCallsign(ship)}. Hold pattern for ${holdSeconds}s. Debris removal is active in the final docking corridor. Stand by for clearance.`
+            : `Port Control [${nodeLabel(arrivalNodeId)}]: ${formatShipId(ship.id)}, hold short of final docking corridor. Delay in effect for approximately ${holdSeconds}s while traffic hazards are cleared.`;
+          scheduleMessage(returnSignal, message, authorityName ? "alert" : "comms");
           ship.trafficHoldNotified = true;
         }
         ship.busyUntil += 1;
@@ -2613,6 +3254,8 @@ function updateSimulation() {
           }, "sys");
         }
       }
+      const finalArrivalEffect = recordPlayerDockArrival(ship, arrivalNodeId, { announceDelay: returnSignal });
+      if (finalArrivalEffect?.disablesShip) return;
       ship.at = arrivalNodeId;
       ship.status = "arrived_pending_report";
       ship.departAt = 0;
@@ -2624,6 +3267,7 @@ function updateSimulation() {
         ship.lastKnownAt = ship.at;
         ship.lastContactTick = state.tick;
         ship.travelPlan = null;
+        startQueuedContractIfReady(ship);
         return null;
       }, "sys");
     }
@@ -2703,7 +3347,6 @@ async function copyConsoleToClipboard() {
 commandRuntime = createCommandRuntime({
   state,
   getNodes: () => nodes,
-  getEdges: () => edges,
   logLine,
   normalizeConsoleInput,
   normalizeContractIdToken,
@@ -2712,6 +3355,7 @@ commandRuntime = createCommandRuntime({
   openContracts: visibleOpenContracts,
   contractNumber,
   assignContract,
+  queueContract,
   sendShip,
   recallShip,
   canRecallShip: (shipId) => shipRecallAvailable(state.ships.find((ship) => ship.id === shipId)),
@@ -2720,7 +3364,11 @@ commandRuntime = createCommandRuntime({
   shipReport,
   showShipsList,
   showShipMenu,
+  showSensorMenu,
+  toggleShipSensorMute,
+  setShipSensorMode,
   showContractsForSelectedShip,
+  showQueuedContractsForSelectedShip,
   showDestinationsForSelectedShip,
   dockableShipsForUtility,
   isPlayerBankrupt,
@@ -2732,6 +3380,8 @@ commandRuntime = createCommandRuntime({
   contactProfiles: CONTACT_PROFILES,
   oneWaySignalToNode,
   basilInform,
+  buddeInform,
+  buildBuddeRouteBrief,
   basilSpeak,
   scheduleMessage,
   speakerContext,
@@ -2739,13 +3389,12 @@ commandRuntime = createCommandRuntime({
   pickLine,
   speakerMessageType,
   characterSpeak,
-  buddeInform,
-  buildBuddeRouteBrief,
   playerHailFlow: PlayerHailFlow,
   tutorialGoal: TUTORIAL_GOAL,
   npcConflictDebugLines: () => NpcController.getConflictDebugLines(),
   bumpNpcConflictStress: (index, amount) => NpcController.bumpConflictStress(index, amount),
   factionHeatDebugLines,
+  dockDebugLines,
   warmFactionHeat: debugWarmFactionHeat,
   launchFactionCampaign: debugLaunchFactionCampaign,
   debugKillPlayerShip,
@@ -2787,7 +3436,9 @@ async function init() {
     };
     edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
     adjacency = buildGraph(nodes, edges);
+    syncDockConditionsToActiveLocations();
   }
+  syncDockConditionsToActiveLocations();
   fillContractBoard({ forceNewTarget: true });
   state.selection.pending = "await_ship";
   basilInform("Dispatch online. I've sent operating instructions to your inbox because management has asked me to stop spamming the console with monologues.", "basil");
