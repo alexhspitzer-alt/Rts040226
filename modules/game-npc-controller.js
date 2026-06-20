@@ -1448,6 +1448,16 @@ export function createNpcController({
     return `[${label}] to ${attacker.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.fire)}`;
   }
 
+  function combatResultInvolvesPlayerShip(result) {
+    return Boolean(result?.attacker?.playerShip || result?.defender?.playerShip);
+  }
+
+  function combatExchangeInvolvesPlayerShip(exchange) {
+    if (!exchange) return false;
+    if (combatResultInvolvesPlayerShip(exchange.direct) || combatResultInvolvesPlayerShip(exchange.returnFire)) return true;
+    return [...(exchange.collateral || []), ...(exchange.returnCollateral || [])].some(combatResultInvolvesPlayerShip);
+  }
+
   function scheduleCombatExchangeMessages(exchange, nodeId, initialDelay = 1, directPrefix = "Fire") {
     scheduleNpcConflictMessage(
       initialDelay,
@@ -1687,7 +1697,7 @@ export function createNpcController({
       if (!target) return;
       const exchange = resolveCombatExchange(defender, target, campaign.locationNodeId);
       notifyCombatExchangeHeat(exchange, campaign.locationNodeId, campaign.id);
-      if (playerLocalToNode(campaign.locationNodeId)) scheduleCombatExchangeMessages(exchange, campaign.locationNodeId, 2 + idx, "Defender fire");
+      if (playerLocalToNode(campaign.locationNodeId) || combatExchangeInvolvesPlayerShip(exchange)) scheduleCombatExchangeMessages(exchange, campaign.locationNodeId, 2 + idx, "Defender fire");
       endCampaignCombatIfSpent(campaign);
     });
   }
@@ -1725,7 +1735,7 @@ export function createNpcController({
       recordCampaignFire(campaign, attacker);
       const exchange = resolveCombatExchange(attacker, target, campaign.locationNodeId);
       notifyCombatExchangeHeat(exchange, campaign.locationNodeId, campaign.id);
-      if (playerLocalToNode(campaign.locationNodeId)) scheduleCombatExchangeMessages(exchange, campaign.locationNodeId, 1, "Campaign fire");
+      if (playerLocalToNode(campaign.locationNodeId) || combatExchangeInvolvesPlayerShip(exchange)) scheduleCombatExchangeMessages(exchange, campaign.locationNodeId, 1, "Campaign fire");
       endCampaignCombatIfSpent(campaign);
     });
   }
@@ -1751,12 +1761,22 @@ export function createNpcController({
   function playerShipListensAtNode(ship, nodeId) {
     if (!ship || ship.at !== nodeId) return false;
     if (ship.status === "enroute") return false;
+    if (ship.sensorsMuted && nodeId !== playerNodeId) return false;
     return ["idle", "tasked", "arrived_pending_report", "docked", "damaged", "disabled"].includes(ship.status);
   }
 
+  function playerShipMonitorsDestination(ship, nodeId) {
+    return ship
+      && ship.status === "enroute"
+      && ship.sensorMode === "instruments"
+      && ship.destination === nodeId;
+  }
+
   function playerLocalToNode(nodeId) {
-    if (nodeId === "anchor_station") return true;
-    return Array.isArray(state.ships) && state.ships.some((ship) => playerShipListensAtNode(ship, nodeId));
+    if (nodeId === playerNodeId) return true;
+    return Array.isArray(state.ships) && state.ships.some((ship) => (
+      playerShipListensAtNode(ship, nodeId) || playerShipMonitorsDestination(ship, nodeId)
+    ));
   }
   function conflictDecayPerHeartbeat() {
     const nodeCount = Object.keys(getNodes() || {}).length;

@@ -741,6 +741,7 @@ function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effe
   const hazard = hazardOverride || randomDockHazard(nodeId, phase);
   if (!hazard) return null;
   const effect = effectOverride || rollDockHazardEffect(hazard);
+  if (effect?.delaySeconds > 0) effect.delaySeconds = shipHazardDelaySeconds(ship, effect.delaySeconds);
   applyDockHazardEffect(ship, nodeId, effect);
   const severityLabel = DOCK_HAZARD_SEVERITY_LABELS[hazard.severity] || `severity ${hazard.severity}`;
   const damageText = effect.damage !== "none" ? `, ${effect.damage} damage` : "";
@@ -868,8 +869,8 @@ function stylizeConsoleText(text) {
   const escaped = escapeHtml(text);
   return escaped
     .replace(/(^|\s)(\d+\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|\s)([AISRQNDUFCHaisrqndufch]\.)/g, '$1<span class="choice">$2</span>')
-    .replace(/(^|[,:]\s*)([AISRQNDUFCHaisrqndufch])(?=\s+(assign|information|send|queue|navigation|nav|recall|report|dock|undock|fleet|contracts|help)\b)/g, '$1<span class="choice">$2</span>');
+    .replace(/(^|\s)([AISRQMDUFCHaisrqmdufch]\.)/g, '$1<span class="choice">$2</span>')
+    .replace(/(^|[,:]\s*)([AISRQMDUFCHaisrqmdufch])(?=\s+(assign|information|send|queue|manage|recall|report|dock|undock|fleet|contracts|help)\b)/g, '$1<span class="choice">$2</span>');
 }
 
 const { logLine } = createConsoleLogger({
@@ -1433,7 +1434,6 @@ const BuddeAdvisor = createBuddeAdvisor({
   nodeLabel,
   candidateDestinationsForShip,
   resolveDriveShipId: (shipId) => effectiveDriveShipId(shipId),
-  buddeInform,
   buddeSpeak,
 });
 
@@ -1442,7 +1442,25 @@ function scheduleMessage(delay, textOrFactory, type = "report") {
 }
 
 const oneWaySignalToNode = (...args) => NavigationModel.oneWaySignalToNode(...args);
-const oneWaySignalToShip = (...args) => NavigationModel.oneWaySignalToShip(...args);
+function shipSensorCommandMultiplier(ship) {
+  if (ship?.sensorMode === "instruments") return 1.25;
+  if (ship?.sensorMode === "comms") return 0.9;
+  return 1;
+}
+
+function oneWaySignalToShip(shipOrId, ...args) {
+  const base = NavigationModel.oneWaySignalToShip(shipOrId, ...args);
+  const ship = typeof shipOrId === "string" ? state.ships.find((entry) => entry.id === shipOrId) : shipOrId;
+  const multiplier = shipSensorCommandMultiplier(ship);
+  if (multiplier === 1) return base;
+  return Math.max(1, Math.ceil(base * multiplier));
+}
+
+function shipHazardDelaySeconds(ship, seconds) {
+  const value = Math.max(0, Number(seconds) || 0);
+  if (!value) return 0;
+  return ship?.sensorMode === "comms" ? Math.ceil(value * 1.5) : value;
+}
 const NpcController = createNpcController({
   state,
   getNodes: () => nodes,
@@ -1532,48 +1550,6 @@ function buildDepartureComms(ship, mission) {
     ? `Acknowledged, Dispatch. Destination ${destinationLabel}; purpose ${purpose}.`
     : `Acknowledged, Dispatch. Destination ${destinationLabel}; purpose ${purpose}; ${headingSegment}; ${orbitSegment}.`;
   return { captain, message };
-}
-
-function minimumFuelForPlayerFleet(fromNodeId, toNodeId) {
-  const candidates = state.ships
-    .map((ship) => fuelCostForRoute(fromNodeId, toNodeId, effectiveDriveShipId(ship.id)))
-    .filter((value) => Number.isFinite(value));
-  if (!candidates.length) return null;
-  return Math.min(...candidates);
-}
-
-function buildBuddeRouteBrief(fromNodeId, toNodeId) {
-  const distance = safeRouteDistance(fromNodeId, toNodeId);
-  const minFuel = minimumFuelForPlayerFleet(fromNodeId, toNodeId);
-  const fromLabel = nodeLabel(fromNodeId);
-  const toLabel = nodeLabel(toNodeId);
-  const distanceText = Number.isFinite(distance) ? `${distance}s route span` : "route span unavailable";
-  const fuelText = Number.isFinite(minFuel) ? `${minFuel} minimum fuel` : "minimum fuel unavailable";
-
-  const fromAngle = angleForNode(fromNodeId);
-  const toAngle = angleForNode(toNodeId);
-  const fromBand = orbitBandValueForNode(fromNodeId);
-  const toBand = orbitBandValueForNode(toNodeId);
-  const steps = [];
-
-  if (Number.isFinite(fromAngle) && Number.isFinite(toAngle)) {
-    const ccwDelta = (toAngle - fromAngle + 360) % 360;
-    const cwDelta = (fromAngle - toAngle + 360) % 360;
-    const prograde = ccwDelta <= cwDelta;
-    steps.push(prograde
-      ? "Begin with a prograde burn (counterclockwise). Yes, the shorter way is usually better."
-      : "Begin with a retrograde burn (clockwise). Even now, this is still the efficient option.");
-  }
-
-  if (Number.isFinite(fromBand) && Number.isFinite(toBand)) {
-    const delta = toBand - fromBand;
-    if (delta > 0) steps.push(delta >= 2 ? `Climb window: +${delta} orbit bands. Budget for an expensive uphill burn.` : "Climb window: +1 orbit band.");
-    else if (delta < 0) steps.push(`Descent window: ${delta} orbit band${Math.abs(delta) > 1 ? "s" : ""}. Use the gravity assist and try not to waste it.`);
-    else steps.push("No orbit-band change required; remain on current band.");
-  }
-
-  steps.push(`Final approach: transition onto ${toLabel} local traffic corridor and hold station.`);
-  return `Route ${fromLabel} -> ${toLabel}. ${steps.join(" ")} Estimated ${distanceText}, ${fuelText}.`;
 }
 
 function basilShipIntel(ship) {
@@ -1733,8 +1709,7 @@ function contractNumber(contractId) {
 function commandPromptLabel() {
   const pending = state.selection?.pending;
   const selectedShipId = state.selection?.selectedShipId;
-  if (pending === "await_route_from") return "<Navigation: from>";
-  if (pending === "await_route_to") return "<Navigation: to>";
+  if (pending === "await_sensor_option") return `<${playerShipLabelById(selectedShipId)} sensors>`;
   if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
   if (pending === "await_contract") return `<${playerShipLabelById(selectedShipId)} contracts>`;
   if (pending === "await_queue_contract") return `<${playerShipLabelById(selectedShipId)} queued contracts>`;
@@ -2358,17 +2333,74 @@ function showShipMenu(shipId) {
   }
   const recallOption = shipRecallAvailable(ship) ? ", R recall" : "";
   const queuedOption = ship.queuedContractId ? ` (queued ${ship.queuedContractId})` : "";
-  let menuOptions = `A assign, S send, I information${recallOption}. Global: F fleet, C contracts, N navigation, H help.`;
+  let menuOptions = `A assign, S send, I information, M manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
   if (shipCanQueueWork(ship)) {
     menuOptions = ship.utility
-      ? `I information${recallOption}. Global: F fleet, C contracts, N navigation, H help.`
-      : `Q queue${queuedOption}, I information${recallOption}. Global: F fleet, C contracts, N navigation, H help.`;
+      ? `I information, M manage sensors${recallOption}. Global: F fleet, C contracts, H help.`
+      : `Q queue${queuedOption}, I information, M manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
   } else if (ship.utility && ship.status === "docked") {
-    menuOptions = "U undock. Global: F fleet, C contracts, N navigation, H help.";
+    menuOptions = "U undock, M manage sensors. Global: F fleet, C contracts, H help.";
   } else if (ship.utility) {
-    menuOptions = `D dock, S send, I information${recallOption}. Global: F fleet, C contracts, N navigation, H help.`;
+    menuOptions = `D dock, S send, I information, M manage sensors${recallOption}. Global: F fleet, C contracts, H help.`;
   }
   logLine(`${formatShipId(shipId)} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
+}
+
+
+function sensorModeLabel(ship) {
+  if (ship?.sensorMode === "instruments") return "Boost instrument array";
+  if (ship?.sensorMode === "comms") return "Boost comms array";
+  return "Default sensor suite";
+}
+
+function showSensorMenu(shipId) {
+  const ship = state.ships.find((s) => s.id === shipId);
+  if (!ship) return;
+  state.selection.pending = "await_sensor_option";
+  state.selection.selectedShipId = shipId;
+  const muteLabel = ship.sensorsMuted ? "Unmute sensors" : "Mute sensors";
+  logLine(`Manage sensors for ${formatShipId(shipId)}. Current suite: ${sensorModeLabel(ship)}. Ambient sensors: ${ship.sensorsMuted ? "muted" : "audible"}.`, "sys");
+  logLine(`1. ${muteLabel}`, "sys");
+  logLine(`2. Boost instrument array${ship.sensorMode === "instruments" ? " (active)" : ""} | destination fire/hazard monitoring while enroute; uplink +25%`, "sys");
+  logLine(`3. Boost comms array${ship.sensorMode === "comms" ? " (active)" : ""} | uplink -10%; hazard/traffic delays +50%`, "sys");
+  logLine(`4. Default sensor suite${!ship.sensorMode || ship.sensorMode === "default" ? " (active)" : ""}`, "sys");
+}
+
+function scheduleShipSensorChange(shipId, label, applyChange) {
+  const ship = state.ships.find((entry) => entry.id === shipId);
+  if (!ship || shipDestroyed(ship)) {
+    logLine(`${formatShipId(shipId)} cannot receive sensor commands.`, "error");
+    return false;
+  }
+  const uplink = oneWaySignalToShip(ship);
+  scheduleMessage(uplink, () => {
+    const liveShip = state.ships.find((entry) => entry.id === shipId);
+    if (!liveShip || shipDestroyed(liveShip)) return null;
+    applyChange(liveShip);
+    return `${formatShipId(shipId)} sensors updated: ${label}.`;
+  }, "sys");
+  logLine(`Sensor command uplinked to ${formatShipId(shipId)} (${uplink}s). ${label} will take effect on receipt.`, "sys");
+  return true;
+}
+
+function toggleShipSensorMute(shipId) {
+  const ship = state.ships.find((entry) => entry.id === shipId);
+  const nextMuted = !ship?.sensorsMuted;
+  return scheduleShipSensorChange(shipId, nextMuted ? "ambient sensors muted" : "ambient sensors unmuted", (liveShip) => {
+    liveShip.sensorsMuted = nextMuted;
+  });
+}
+
+function setShipSensorMode(shipId, mode) {
+  const labels = {
+    instruments: "boost instrument array active",
+    comms: "boost comms array active",
+    default: "default sensor suite active",
+  };
+  const nextMode = ["instruments", "comms"].includes(mode) ? mode : "default";
+  return scheduleShipSensorChange(shipId, labels[nextMode], (liveShip) => {
+    liveShip.sensorMode = nextMode;
+  });
 }
 
 function showContractsForSelectedShip() {
@@ -2600,7 +2632,7 @@ function scheduleFinalApproachDockingCall(ship, {
           liveShip.travelPlan.arrivalMaintenanceHoldNotified = true;
           announcePortAuthorityMaintenanceHold(liveShip, destinationNodeId, "arrival", maintenanceHold);
         }
-        liveShip.busyUntil += maintenanceHold;
+        liveShip.busyUntil += shipHazardDelaySeconds(liveShip, maintenanceHold);
         return null;
       }
       if (liveShip.travelPlan.arrivalHazardRolled) return null;
@@ -3271,7 +3303,6 @@ async function copyConsoleToClipboard() {
 commandRuntime = createCommandRuntime({
   state,
   getNodes: () => nodes,
-  getEdges: () => edges,
   logLine,
   normalizeConsoleInput,
   normalizeContractIdToken,
@@ -3289,6 +3320,9 @@ commandRuntime = createCommandRuntime({
   shipReport,
   showShipsList,
   showShipMenu,
+  showSensorMenu,
+  toggleShipSensorMute,
+  setShipSensorMode,
   showContractsForSelectedShip,
   showQueuedContractsForSelectedShip,
   showDestinationsForSelectedShip,
@@ -3309,8 +3343,6 @@ commandRuntime = createCommandRuntime({
   pickLine,
   speakerMessageType,
   characterSpeak,
-  buddeInform,
-  buildBuddeRouteBrief,
   playerHailFlow: PlayerHailFlow,
   tutorialGoal: TUTORIAL_GOAL,
   npcConflictDebugLines: () => NpcController.getConflictDebugLines(),
