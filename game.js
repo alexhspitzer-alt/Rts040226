@@ -23,6 +23,8 @@ import { createCommandRuntime } from "./modules/game-command-runtime.js";
 import { createNpcController } from "./modules/game-npc-controller.js";
 import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js";
 import { createInitialGameState } from "./modules/game-state.js";
+import { loadGameReferenceData } from "./modules/game-data-loader.js";
+import { createEventBus } from "./modules/game-events.js";
 import {
   isShipDestroyed,
   selectActiveCommsContacts,
@@ -321,6 +323,9 @@ const state = createInitialGameState({
   shipCapacityById: SHIP_CAPACITY_BY_ID,
   defaultLoreSummary: DEFAULT_LORE_SUMMARY,
 });
+const gameEvents = createEventBus();
+
+gameEvents.on("data:warning", ({ message }) => logLine(`Reference load warning: ${message}`, "sys"));
 
 function isPlayerBankrupt() {
   return state.cash <= -600 || state.rep <= 0;
@@ -589,17 +594,20 @@ function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effe
   const announceDelay = Math.max(0, Number(options.announceDelay || 0));
   if (announceDelay > 0) scheduleMessage(announceDelay, message, lineType);
   else logLine(message, lineType);
+  gameEvents.emit("dock:hazard", { ship, nodeId, phase, hazard, effect, message, tick: state.tick });
   return effect;
 }
 
 function recordPlayerDockArrival(ship, nodeId, options = {}) {
   const value = recordDockArrival(nodeId);
+  gameEvents.emit("ship:arrived", { ship, nodeId, dockCondition: value, tick: state.tick });
   if (!ship.travelPlan?.arrivalHazardRolled) return recordPlayerDockHazard(ship, nodeId, "arrival", null, null, options);
   return null;
 }
 
 function recordPlayerDockDeparture(ship, nodeId, hazardOverride = null, effectOverride = null, options = {}) {
   const value = recordDockDeparture(nodeId);
+  gameEvents.emit("ship:departed", { ship, nodeId, dockCondition: value, tick: state.tick });
   if (hazardOverride) return recordPlayerDockHazard(ship, nodeId, "departure", hazardOverride, effectOverride, options);
   if (!ship.travelPlan?.departureHazardRolled) {
     if (ship.travelPlan) ship.travelPlan.departureHazardRolled = true;
@@ -912,83 +920,42 @@ let PlayerHailFlow;
 
 async function loadReferenceData() {
   try {
-    const noCache = { cache: "no-store" };
-    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse, nameRegistryResponse, conflictOutcomesResponse] = await Promise.all([
-      fetch("./bluFreight%20text%20RTS.txt", noCache),
-      fetch("./indigo_dialogue_characters.json", noCache),
-      fetch("./map.json", noCache),
-      fetch("./budde.json", noCache),
-      fetch(SCENARIO_PATH, noCache),
-      fetch(ALMANAC_PATH, noCache),
-      fetch("./ship_registry.json", noCache),
-      fetch("./character_name_registry.json", noCache),
-      fetch(CONFLICT_OUTCOMES_PATH, noCache),
-    ]);
+    const referenceData = await loadGameReferenceData({
+      paths: {
+        scenario: SCENARIO_PATH,
+        almanac: ALMANAC_PATH,
+        conflictOutcomes: CONFLICT_OUTCOMES_PATH,
+      },
+    });
 
-    if (loreResponse.ok) {
-      const loreText = await loreResponse.text();
-      const condensed = loreText.replace(/\s+/g, " ").trim();
-      if (condensed.length) state.loreSummary = condensed.slice(0, 340);
-    }
+    if (referenceData.loreSummary) state.loreSummary = referenceData.loreSummary;
+    if (referenceData.dialogueDb) state.dialogueDb = referenceData.dialogueDb;
+    state.playerRequestDialogue = referenceData.playerRequestDialogue || {};
+    state.ambientNeutralConversation = referenceData.ambientNeutralConversation || [];
+    state.ambientDialoguePools = referenceData.ambientDialoguePools || {};
 
-    if (dialogueResponse.ok) {
-      const dialogueData = await dialogueResponse.json();
-      state.dialogueDb = dialogueData?.characters || dialogueData;
-      state.playerRequestDialogue = dialogueData?.hailResponses || {};
-      state.ambientNeutralConversation = Array.isArray(dialogueData?.ambientNeutralConversation?.lines)
-        ? dialogueData.ambientNeutralConversation.lines
-        : [];
-      state.ambientDialoguePools = dialogueData?.ambientDialoguePools || {};
-    }
-
-    if (mapResponse.ok) {
-      state.mapData = await mapResponse.json();
+    if (referenceData.mapData) {
+      state.mapData = referenceData.mapData;
       const loaded = buildCanonicalTutorialMap(state.mapData);
-      if (!loaded) logLine("Map load warning: tutorial layer unavailable. Using fallback graph.", "error");
+      if (!loaded) gameEvents.emit("data:warning", { message: "Map tutorial layer unavailable. Using fallback graph." });
       syncShipLocationsToActiveMap();
     }
 
-    if (buddeResponse.ok) {
-      state.buddeData = await buddeResponse.json();
-    }
+    if (referenceData.buddeData) state.buddeData = referenceData.buddeData;
+    if (referenceData.scenarioDialogue) state.scenarioDialogue = referenceData.scenarioDialogue;
+    state.scenario2Dialogue = referenceData.scenario2Dialogue;
+    state.scenario3Dialogue = referenceData.scenario3Dialogue;
+    state.scenario4Dialogue = referenceData.scenario4Dialogue;
+    state.almanacEntries = referenceData.almanacEntries;
+    state.shipRegistry = referenceData.shipRegistry;
+    state.characterNameRegistry = referenceData.characterNameRegistry;
+    state.conflictOutcomes = referenceData.conflictOutcomes;
 
-    if (scenarioResponse.ok) {
-      const scenario = await scenarioResponse.json();
-      const basilScenario = scenario?.basil_scenario_dialogue || {};
-      state.scenarioDialogue = {
-        intro_welcome: basilScenario.intro_welcome?.text || null,
-        intro_information_integrity: basilScenario.intro_information_integrity?.text || null,
-        intro_tutorial_scenario: basilScenario.intro_tutorial_scenario?.text || null,
-        order_delay_acknowledgements: Array.isArray(basilScenario.order_delay_acknowledgements)
-          ? basilScenario.order_delay_acknowledgements.map((entry) => entry?.text).filter(Boolean)
-          : [],
-        report_staleness_acknowledgements: Array.isArray(basilScenario.report_staleness_acknowledgements)
-          ? basilScenario.report_staleness_acknowledgements.map((entry) => entry?.text).filter(Boolean)
-          : [],
-        tutorial_complete: basilScenario.tutorial_complete?.text || null,
-        budde_intro: scenario?.budde_scenario_dialogue?.intro?.text || null,
-      };
-      state.scenario2Dialogue = scenario?.scenario2_dialogue || null;
-      state.scenario3Dialogue = scenario?.scenario3_dialogue || null;
-      state.scenario4Dialogue = scenario?.scenario4_dialogue || null;
-    }
-
-
-    if (almanacResponse.ok) {
-      const parsedAlmanac = await almanacResponse.json();
-      state.almanacEntries = parsedAlmanac?.almanac_entries || null;
-    }
-    if (shipRegistryResponse.ok) {
-      state.shipRegistry = await shipRegistryResponse.json();
-    }
-    if (nameRegistryResponse.ok) {
-      state.characterNameRegistry = await nameRegistryResponse.json();
-    }
-    if (conflictOutcomesResponse.ok) {
-      state.conflictOutcomes = await conflictOutcomesResponse.json();
-    }
+    (referenceData.warnings || []).forEach((message) => gameEvents.emit("data:warning", { message }));
+    gameEvents.emit("data:loaded", { referenceData });
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
+    gameEvents.emit("data:error", { error: err });
   }
 }
 
@@ -2932,6 +2899,7 @@ function finalizeContractDelivery(contractId) {
   if (countsForProgress) state.completedContracts += 1;
   const deliveryShip = state.ships.find((ship) => ship.activeContractId === contractId) || state.ships.find((ship) => ship.id === contract.assignedShipId);
   if (deliveryShip) {
+    gameEvents.emit("contract:completed", { contract, ship: deliveryShip, netProceeds, tick: state.tick });
     const plan = deliveryShip.travelPlan || {};
     postTripReportToInbox(deliveryShip, {
       outcome: "Delivery completed",
