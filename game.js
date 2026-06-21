@@ -25,6 +25,7 @@ import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js";
 import { createInitialGameState } from "./modules/game-state.js";
 import { loadGameReferenceData } from "./modules/game-data-loader.js";
 import { createEventBus } from "./modules/game-events.js";
+import { createRouteCache } from "./modules/game-route-cache.js";
 import {
   isShipDestroyed,
   selectActiveCommsContacts,
@@ -90,6 +91,8 @@ import {
 
 let nodes = {};
 let edges = [];
+let mapGraphVersion = 0;
+let routeCache = null;
 
 const LEGACY_NODE_ALIASES = {
   anchor: "anchor_station",
@@ -340,6 +343,8 @@ function applyMapModel(mapModel) {
   nodes = mapModel.nodes;
   edges = mapModel.edges;
   adjacency = mapModel.adjacency;
+  mapGraphVersion += 1;
+  routeCache?.invalidate();
   syncDockConditionsToActiveLocations();
   return true;
 }
@@ -681,13 +686,19 @@ function buddeInform(text, type = "budde") {
   logLine(`${BUDDE_NAME} ${context}: ${text}`, type);
 }
 
-const NavigationModel = createNavigationModel({
+const ROUTE_CACHE_ENABLED = true;
+routeCache = createRouteCache({
+  enabled: ROUTE_CACHE_ENABLED,
+  getVersion: () => mapGraphVersion,
+});
+const BaseNavigationModel = createNavigationModel({
   state,
   getNodes: () => nodes,
   getAdjacency: () => adjacency,
   shipSpeedById: SHIP_SPEED_BY_ID,
   commandNodeId,
 });
+const NavigationModel = routeCache.wrapNavigationModel(BaseNavigationModel);
 
 function fmtTime(total) {
   const m = String(Math.floor(total / 60)).padStart(2, "0");
@@ -1215,7 +1226,12 @@ function maybeIntroduceBudde() {
 }
 
 function candidateDestinationsForShip(shipId) {
-  return findCandidateDestinations(shipId, state, nodes, state.mapData);
+  const ship = state.ships.find((entry) => entry.id === shipId);
+  return routeCache.candidateDestinationsForShip(
+    shipId,
+    ship?.at,
+    () => findCandidateDestinations(shipId, state, nodes, state.mapData),
+  );
 }
 
 const routeDistance = (...args) => NavigationModel.routeDistance(...args);
@@ -3210,6 +3226,8 @@ function installFallbackMap() {
   };
   edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
   adjacency = buildGraph(nodes, edges);
+  mapGraphVersion += 1;
+  routeCache?.invalidate();
   syncDockConditionsToActiveLocations();
 }
 
