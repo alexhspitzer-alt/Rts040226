@@ -24,6 +24,13 @@ import { createNpcController } from "./modules/game-npc-controller.js";
 import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js";
 import { createInitialGameState } from "./modules/game-state.js";
 import {
+  isShipDestroyed,
+  selectActiveCommsContacts,
+  selectOpenContracts,
+  selectPlayerControlledShipCount,
+  selectVisibleOpenContracts,
+} from "./modules/game-selectors.js";
+import {
   ALMANAC_PATH,
   ARCWORKS_EXEC_NAME,
   BASIL_NAME,
@@ -834,7 +841,10 @@ function isContactPresent(name) {
 }
 
 function activeCommsContacts() {
-  return Object.keys(state.dialogueDb).filter((name) => name !== BASIL_NAME && name !== BUDDE_NAME && isContactPresent(name));
+  return selectActiveCommsContacts(state, {
+    excluded: [BASIL_NAME, BUDDE_NAME],
+    isContactPresent,
+  });
 }
 
 function characterRegistryCategory(name) {
@@ -1449,11 +1459,11 @@ const contractTools = createContractTools({
 const generateContract = (...args) => contractTools.generateContract(...args);
 
 function openContracts() {
-  return state.contracts.filter((c) => c.status === "open");
+  return selectOpenContracts(state);
 }
 
 function playerControlledShipCount() {
-  return Array.isArray(state.ships) ? state.ships.filter((ship) => !shipDestroyed(ship)).length : 0;
+  return selectPlayerControlledShipCount(state);
 }
 
 function visibleContractCount() {
@@ -1461,7 +1471,7 @@ function visibleContractCount() {
 }
 
 function visibleOpenContracts() {
-  return openContracts().slice(0, visibleContractCount());
+  return selectVisibleOpenContracts(state);
 }
 
 function contractClientClass(contract) {
@@ -1502,7 +1512,7 @@ function fillContractBoard({ forceNewTarget = false } = {}) {
 }
 
 function shipDestroyed(ship) {
-  return ship?.status === "destroyed" || ship?.combatStatus === "killed";
+  return isShipDestroyed(ship);
 }
 
 function shipActionAvailable(ship) {
