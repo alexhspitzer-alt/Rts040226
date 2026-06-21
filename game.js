@@ -89,11 +89,15 @@ import {
   HEAT_FACTIONS,
 } from "./modules/constants/factions.js";
 
+// LEGACY MAP HANDOFF: these active-map globals mirror data owned by modules/game-map.js.
+// Keep them flagged so a future map-state extraction can remove duplicate graph storage in one pass.
 let nodes = {};
 let edges = [];
 let mapGraphVersion = 0;
 let routeCache = null;
 
+// LEGACY INPUT SHIM: aliases preserve older command names after canonical map IDs were introduced.
+// Trim this once saved commands/docs use canonical node IDs exclusively.
 const LEGACY_NODE_ALIASES = {
   anchor: "anchor_station",
   cinder_hub: "refinery",
@@ -338,6 +342,8 @@ const ui = createGameUi();
 
 let adjacency = {};
 
+// LEGACY MAP BRIDGE: scenario builders already return nodes/edges/adjacency; this function only
+// copies that model into the older game.js globals and invalidates dependent caches.
 function applyMapModel(mapModel) {
   if (!mapModel) return false;
   nodes = mapModel.nodes;
@@ -641,6 +647,9 @@ function dockDebugLines() {
   ];
 }
 
+// REDUNDANT MAP WRAPPERS: these keep old scenario-switch call sites stable while map
+// construction lives in modules/game-map.js. Prefer calling/applying map models through a
+// future map-state owner rather than adding more wrappers here.
 function buildCanonicalTutorialMap(mapData) {
   return applyMapModel(buildTutorialMapModel(mapData));
 }
@@ -657,6 +666,8 @@ function commandNodeId() {
   return resolveCommandNodeId(nodes, PLAYER_NODE);
 }
 
+// LEGACY SYNC SHIM: compensates for scenario maps that do not contain every prior ship node.
+// Keep isolated so this can move with map ownership rather than spreading location fixes.
 function syncShipLocationsToActiveMap() {
   syncShipsToMap(state, nodes, PLAYER_NODE);
 }
@@ -3218,6 +3229,8 @@ commandRuntime = createCommandRuntime({
 });
 NpcController.bootstrap();
 
+// LEGACY FALLBACK MAP: retained only as a startup safety net when external map data fails.
+// Remove once map loading/validation can provide a canonical in-module fallback model.
 function installFallbackMap() {
   nodes = {
     anchor_station: { label: "Anchor Station", moonName: "Cat's Eye", approach: 2 },
