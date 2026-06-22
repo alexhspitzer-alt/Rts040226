@@ -54,6 +54,7 @@ perf.measure('unit', () => { now += 5; });
 assert.equal(perf.report()[0].name, 'unit');
 assert.equal(perf.report()[0].totalMs, 5);
 assert.equal(isPerformanceSamplingEnabledByUrl({ pathname: '/ops/perf' }), true);
+assert.equal(isPerformanceSamplingEnabledByUrl({ pathname: '/ops/play', search: '?perf' }), true);
 assert.equal(isPerformanceSamplingEnabledByUrl({ pathname: '/ops/play' }), false);
 
 const almanac = buildAlmanacViewModel({

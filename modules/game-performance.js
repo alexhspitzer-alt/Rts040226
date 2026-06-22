@@ -38,9 +38,16 @@ export function createPerformanceMonitor({ enabled = false, now = () => performa
 
 
 export function isPerformanceSamplingEnabledByUrl(locationLike = globalThis.location) {
-  const pathname = String(locationLike?.pathname || "");
-  return pathname.split("/").filter(Boolean).some((part) => {
-    const normalized = part.toLowerCase();
+  const matchesPerfToken = (value) => {
+    const normalized = String(value || "").toLowerCase();
     return normalized === "perf" || normalized === "performance";
-  });
+  };
+  const pathname = String(locationLike?.pathname || "");
+  const pathEnabled = pathname.split("/").filter(Boolean).some(matchesPerfToken);
+  const search = String(locationLike?.search || "").replace(/^\?/, "");
+  const queryEnabled = search
+    .split("&")
+    .filter(Boolean)
+    .some((part) => matchesPerfToken(part.split("=")[0]));
+  return pathEnabled || queryEnabled;
 }
