@@ -26,6 +26,9 @@ import { createInitialGameState } from "./modules/game-state.js";
 import { loadGameReferenceData } from "./modules/game-data-loader.js";
 import { createEventBus } from "./modules/game-events.js";
 import { createRouteCache } from "./modules/game-route-cache.js";
+import { createSimulationTicker } from "./modules/game-ticks.js";
+import { renderAlmanacView } from "./modules/views/almanac-view.js";
+import { renderDashboardView } from "./modules/views/game-dashboard-view.js";
 import {
   isShipDestroyed,
   selectActiveCommsContacts,
@@ -982,104 +985,7 @@ async function loadReferenceData() {
 }
 
 function renderAlmanac() {
-  if (!ui.almanacRoot) return;
-  ui.almanacRoot.innerHTML = "";
-  const entries = state.almanacEntries;
-  if (!entries || typeof entries !== "object") {
-    const empty = document.createElement("p");
-    empty.textContent = "Almanac data unavailable.";
-    ui.almanacRoot.appendChild(empty);
-    return;
-  }
-
-  const normalizedEntries = buildAlmanacViewModel(entries);
-  Object.entries(normalizedEntries).forEach(([categoryName, categoryPayload]) => {
-    const categoryNode = document.createElement("details");
-    categoryNode.className = "almanac-category";
-
-    const categorySummary = document.createElement("summary");
-    categorySummary.textContent = categoryName.replaceAll("_", " ");
-    categoryNode.appendChild(categorySummary);
-
-    if (Array.isArray(categoryPayload)) {
-      addAlmanacItems(categoryNode, null, categoryPayload);
-    } else if (categoryPayload && typeof categoryPayload === "object") {
-      Object.entries(categoryPayload).forEach(([groupName, groupEntries]) => {
-        addAlmanacItems(categoryNode, groupName, groupEntries);
-      });
-    }
-    ui.almanacRoot.appendChild(categoryNode);
-  });
-}
-
-function buildAlmanacViewModel(entries) {
-  const locations = entries?.locations || {};
-  const organizations = entries?.organizations || {};
-  const indigoSystemEntries = Array.isArray(locations?.["Indigo System"]) ? locations["Indigo System"] : [];
-  const transferLaneEntries = Array.isArray(locations?.["Transfer Lanes"]) ? locations["Transfer Lanes"] : [];
-  const moonEntries = Array.isArray(locations?.Moons) ? locations.Moons : [];
-  const stationEntries = Array.isArray(locations?.["Stations, Outposts, and Facilities"])
-    ? locations["Stations, Outposts, and Facilities"]
-    : [];
-  const organizationEntries = Array.isArray(organizations)
-    ? organizations
-    : [
-        ...(Array.isArray(organizations?.["Factions and Institutions"]) ? organizations["Factions and Institutions"] : []),
-        ...(Array.isArray(organizations?.Clients) ? organizations.Clients : []),
-      ];
-
-  const orbitBandsEntry = indigoSystemEntries.find((entry) => entry?.name === "Orbit Bands");
-  const orbitBandChildren = indigoSystemEntries.filter((entry) => (
-    ["Low Orbit", "Ring Orbit", "High Orbit", "Outer Orbit"].includes(entry?.name)
-  ));
-  const indigoSystemCoreEntries = indigoSystemEntries.filter((entry) => (
-    !["Low Orbit", "Ring Orbit", "High Orbit", "Outer Orbit", "Orbit Bands"].includes(entry?.name)
-  ));
-  const orbitBandsGroup = [];
-  if (orbitBandsEntry) orbitBandsGroup.push(orbitBandsEntry);
-  orbitBandsGroup.push(...orbitBandChildren);
-
-  return {
-    "Indigo System": {
-      Overview: indigoSystemCoreEntries,
-      "Orbit Bands": orbitBandsGroup,
-      Moons: moonEntries,
-      "Stations, Outposts, and Facilities": stationEntries,
-      "Transfer Lanes": transferLaneEntries,
-    },
-    Organizations: organizationEntries,
-    "Ships and Classes": Array.isArray(entries?.ships_and_classes) ? entries.ships_and_classes : [],
-    "Cargo Types": Array.isArray(entries?.cargo_types) ? entries.cargo_types : [],
-  };
-}
-
-function addAlmanacItems(parentNode, groupName, entries) {
-  if (!Array.isArray(entries) || !entries.length) return;
-  const containerNode = groupName ? document.createElement("details") : parentNode;
-  if (groupName) {
-    containerNode.className = "almanac-group";
-
-    const groupSummary = document.createElement("summary");
-    groupSummary.textContent = groupName;
-    containerNode.appendChild(groupSummary);
-  }
-
-  entries.forEach((entry) => {
-    const itemNode = document.createElement("details");
-    itemNode.className = "almanac-entry";
-
-    const itemSummary = document.createElement("summary");
-    itemSummary.textContent = entry?.name || "Unnamed entry";
-    itemNode.appendChild(itemSummary);
-
-    const description = document.createElement("p");
-    description.className = "almanac-entry-description";
-    description.textContent = entry?.description || "No description available.";
-    itemNode.appendChild(description);
-    containerNode.appendChild(itemNode);
-  });
-
-  if (groupName) parentNode.appendChild(containerNode);
+  renderAlmanacView({ root: ui.almanacRoot, entries: state.almanacEntries });
 }
 
 function playScenarioIntro() {
@@ -1589,42 +1495,18 @@ function commandPromptLabel() {
 }
 
 function render() {
-  if (ui.cmdInput) ui.cmdInput.placeholder = commandPromptLabel();
-  ui.clock.textContent = fmtTime(state.tick);
-  ui.cash.textContent = String(state.cash);
-  ui.rep.textContent = String(state.rep);
-  ui.risk.textContent = String(state.risk);
-  ui.escort.textContent = state.escort ? "On" : "Off";
-
-  ui.contracts.innerHTML = "";
-  visibleOpenContracts().forEach((c, idx) => {
-    const li = document.createElement("li");
-    li.className = contractClientClass(c);
-    const displayNumber = contractNumber(c.id) || (idx + 1);
-    const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
-      ? ` | cargo ${c.cargoRequirement}T`
-      : "";
-    const scenarioFlavor = state.currentScenario >= 2 && c.client && c.cargoType
-      ? ` | ${c.client} | ${c.cargoType}${cargoRequirementLabel}`
-      : "";
-    li.textContent = `${displayNumber}. ${c.id} ${nodeLabel(c.from)} → ${nodeLabel(c.to)}${scenarioFlavor} | +$${c.payout}`;
-    ui.contracts.appendChild(li);
-  });
-  if (!ui.contracts.children.length) {
-    const li = document.createElement("li");
-    li.textContent = state.tutorialDone ? "Tutorial complete. No required contracts left." : "No open contracts.";
-    ui.contracts.appendChild(li);
-  }
-
-  ui.fleet.innerHTML = "";
-  state.ships.forEach((s, idx) => {
-    const li = document.createElement("li");
-    const capacityLabel = state.currentScenario >= 3 && !s.utility
-      ? ` | ${currentShipCargoCapacity(s)}T cap`
-      : "";
-    const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
-    li.textContent = `${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${playerShipDisplayId(s) || s.id}${capacityLabel}`;
-    ui.fleet.appendChild(li);
+  renderDashboardView({
+    ui,
+    state,
+    visibleContracts: visibleOpenContracts(),
+    commandPromptLabel,
+    formatTime: fmtTime,
+    contractClientClass,
+    contractNumber,
+    nodeLabel,
+    currentShipCargoCapacity,
+    formatPlayerShipIdentity,
+    playerShipDisplayId,
   });
   if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
   renderNews();
@@ -2947,8 +2829,11 @@ function finalizeContractDelivery(contractId) {
   checkScenarioCompletion();
 }
 
-function updateSimulation() {
+function tickDocks() {
   updateDockMaintenanceRecovery();
+}
+
+function tickEconomy() {
   if (state.tick > 0 && state.tick % OPERATING_COST_INTERVAL_SECONDS === 0) {
     const operatingCost = Math.round((state.ships.length || 0) * OPERATING_COST_PER_SHIP_PER_INTERVAL);
     if (operatingCost > 0) {
@@ -2959,9 +2844,18 @@ function updateSimulation() {
   if (state.tick > 0 && state.tick % OPERATING_COST_REPORT_INTERVAL_SECONDS === 0) {
     postOperatingExpenseReport();
   }
+}
+
+function tickNpcTraffic() {
   NpcController.update();
+}
+
+function tickFactionHeat() {
   updateFactionCampaigns();
   evaluateFactionCampaignTriggers();
+}
+
+function tickShips() {
   state.ships.forEach((ship) => {
     if (ship.utility && ship.status === "docked" && ship.dockedTo) {
       const host = state.ships.find((entry) => entry.id === ship.dockedTo);
@@ -3099,7 +2993,9 @@ function updateSimulation() {
       }, "sys");
     }
   });
+}
 
+function tickDelayedMessages() {
   const due = state.delayedMessages.filter((m) => m.at <= state.tick);
   due.forEach((m) => {
     const text = typeof m.text === "function" ? m.text() : m.text;
@@ -3107,14 +3003,20 @@ function updateSimulation() {
     logLine(text, m.type);
   });
   state.delayedMessages = state.delayedMessages.filter((m) => m.at > state.tick);
+}
 
+function tickContracts() {
   fillContractBoard();
+}
 
+function tickRisk() {
   if (state.tick % 30 === 0) {
     state.risk += Math.random() < 0.5 ? 1 : -1;
     state.risk = Math.max(8, Math.min(70, state.risk));
   }
+}
 
+function tickAmbientComms() {
   const ambientRollWindowReached = state.tick % 120 === 0;
   const ambientSafetyWindowExceeded = state.tick - state.lastAmbientChatterTick >= 360;
   if (ambientRollWindowReached && (Math.random() < 0.35 || ambientSafetyWindowExceeded)) {
@@ -3130,11 +3032,30 @@ function updateSimulation() {
       }
     }
   }
+}
 
+function tickBankruptcy() {
   if (isPlayerBankrupt()) {
     logLine("bluFreight insolvency event. Simulation halted.", "alert");
     state.running = false;
   }
+}
+
+const SimulationTicker = createSimulationTicker({
+  tickDocks,
+  tickEconomy,
+  tickNpcTraffic,
+  tickFactionHeat,
+  tickShips,
+  tickDelayedMessages,
+  tickContracts,
+  tickRisk,
+  tickAmbientComms,
+  tickBankruptcy,
+});
+
+function updateSimulation() {
+  SimulationTicker.update();
 }
 
 function consoleTranscriptText() {
