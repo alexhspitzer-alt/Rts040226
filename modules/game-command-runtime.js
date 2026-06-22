@@ -56,6 +56,7 @@ export function createCommandRuntime({
   launchFactionCampaign,
   debugKillPlayerShip,
   debugKillNpc,
+  performanceMonitor = null,
 }) {
 
   function titleCaseWords(value) {
@@ -773,6 +774,37 @@ export function createCommandRuntime({
         return true;
       }
       launchFactionCampaign().forEach((line) => logLine(line, "sys"));
+      return true;
+    }
+
+
+    if (command === "dbdata") {
+      if (!performanceMonitor?.report) {
+        logLine("dbData: performance monitor unavailable.", "error");
+        return true;
+      }
+      if (parts[1] === "clear") {
+        performanceMonitor.clear?.();
+        logLine("dbData: performance samples cleared.", "sys");
+        return true;
+      }
+      const rows = performanceMonitor.report();
+      if (!performanceMonitor.enabled) {
+        logLine("dbData: performance monitor is disabled. Set DEBUG_PERFORMANCE to true to collect samples.", "sys");
+        return true;
+      }
+      if (!rows.length) {
+        logLine("dbData: no performance samples recorded yet. Let the simulation tick or run a command, then try again.", "sys");
+        return true;
+      }
+      logLine("dbData: performance samples (copyable)", "sys");
+      rows
+        .slice()
+        .sort((a, b) => b.totalMs - a.totalMs)
+        .forEach((row) => {
+          logLine(`${row.name}: count=${row.count} total=${row.totalMs.toFixed(2)}ms avg=${row.averageMs.toFixed(2)}ms max=${row.maxMs.toFixed(2)}ms`, "sys");
+        });
+      logLine('dbData: type "dbData clear" to reset samples.', "sys");
       return true;
     }
 

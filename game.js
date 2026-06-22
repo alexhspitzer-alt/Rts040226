@@ -336,7 +336,7 @@ const state = createInitialGameState({
   defaultLoreSummary: DEFAULT_LORE_SUMMARY,
 });
 const randomProvider = createRandomProvider();
-const DEBUG_PERFORMANCE = false;
+const DEBUG_PERFORMANCE = true;
 const performanceMonitor = createPerformanceMonitor({ enabled: DEBUG_PERFORMANCE });
 const gameEvents = createEventBus();
 
@@ -3155,6 +3155,7 @@ commandRuntime = createCommandRuntime({
   launchFactionCampaign: debugLaunchFactionCampaign,
   debugKillPlayerShip,
   debugKillNpc: (npcId) => NpcController.debugKillNpc(npcId),
+  performanceMonitor,
 });
 NpcController.bootstrap();
 
