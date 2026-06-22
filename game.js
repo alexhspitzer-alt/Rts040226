@@ -29,6 +29,8 @@ import { createRouteCache } from "./modules/game-route-cache.js";
 import { createSimulationTicker } from "./modules/game-ticks.js";
 import { renderAlmanacView } from "./modules/views/almanac-view.js";
 import { renderDashboardView } from "./modules/views/game-dashboard-view.js";
+import { createRandomProvider } from "./modules/game-random.js";
+import { createPerformanceMonitor } from "./modules/game-performance.js";
 import {
   isShipDestroyed,
   selectActiveCommsContacts,
@@ -165,7 +167,7 @@ function pickBluFreightApproachLine(captain, destinationLabel) {
     (dest) => `Final approach to ${dest}. Requesting dock clearance.`,
     (dest) => `On final for ${dest}. Requesting docking clearance.`,
   ];
-  const lineBuilder = variants[Math.floor(Math.random() * variants.length)] || variants[0];
+  const lineBuilder = variants[Math.floor(randomProvider.number() * variants.length)] || variants[0];
   return lineBuilder(destinationLabel);
 }
 
@@ -333,6 +335,9 @@ const state = createInitialGameState({
   shipCapacityById: SHIP_CAPACITY_BY_ID,
   defaultLoreSummary: DEFAULT_LORE_SUMMARY,
 });
+const randomProvider = createRandomProvider();
+const DEBUG_PERFORMANCE = false;
+const performanceMonitor = createPerformanceMonitor({ enabled: DEBUG_PERFORMANCE });
 const gameEvents = createEventBus();
 
 gameEvents.on("data:warning", ({ message }) => logLine(`Reference load warning: ${message}`, "sys"));
@@ -361,7 +366,7 @@ function applyMapModel(mapModel) {
 
 function randomInitialDockCondition() {
   return DOCK_CONDITION_INITIAL_MIN_VALUE
-    + Math.floor(Math.random() * (DOCK_CONDITION_INITIAL_MAX_VALUE - DOCK_CONDITION_INITIAL_MIN_VALUE + 1));
+    + Math.floor(randomProvider.number() * (DOCK_CONDITION_INITIAL_MAX_VALUE - DOCK_CONDITION_INITIAL_MIN_VALUE + 1));
 }
 
 function activeCampaignAtNode(nodeId) {
@@ -462,17 +467,17 @@ function randomDockHazard(nodeId, phase) {
   const dockValue = ensureDockCondition(nodeId);
   if (!Number.isFinite(dockValue)) return null;
   const profile = dockHazardRollProfile(dockValue);
-  if (Math.random() >= profile.chance) return null;
+  if (!randomProvider.chance(profile.chance)) return null;
   const candidates = DOCK_HAZARDS.filter((hazard) => (hazard.phases || []).includes(phase) && hazard.severity <= profile.maxSeverity);
   if (!candidates.length) return null;
   const severityFloor = Math.max(1, profile.maxSeverity - 1);
   const likely = candidates.filter((hazard) => hazard.severity >= severityFloor);
-  return (likely.length ? likely : candidates)[Math.floor(Math.random() * (likely.length ? likely.length : candidates.length))];
+  return (likely.length ? likely : candidates)[Math.floor(randomProvider.number() * (likely.length ? likely.length : candidates.length))];
 }
 
 function rollDockHazardEffect(hazard) {
   if (!hazard) return { delaySeconds: 0, damage: "none", cargoLost: false, disablesShip: false };
-  const roll = Math.random();
+  const roll = randomProvider.number();
   if (hazard.severity === 1) return { delaySeconds: roll < 0.5 ? 60 : 0, damage: "none", cargoLost: false, disablesShip: false };
   if (hazard.severity === 2) return { delaySeconds: roll < 0.5 ? 120 : 60, damage: "none", cargoLost: false, disablesShip: false };
   if (hazard.severity === 3) return { delaySeconds: 180, damage: roll < 0.5 ? "none" : "minor", cargoLost: false, disablesShip: false };
@@ -686,7 +691,7 @@ function normalizeNodeInput(rawNodeId) {
 function pickBuddeLine(bucket) {
   const lines = state.buddeData?.budde?.sampleLines?.[bucket];
   if (!lines?.length) return null;
-  return lines[Math.floor(Math.random() * lines.length)];
+  return lines[Math.floor(randomProvider.number() * lines.length)];
 }
 
 function buddeSpeak(bucket, fallback, type = "budde") {
@@ -749,7 +754,7 @@ function pickLine(characterName, bucket) {
   const actor = state.dialogueDb[characterName];
   const choices = actor?.dialogue?.[bucket];
   if (!choices?.length) return null;
-  return choices[Math.floor(Math.random() * choices.length)];
+  return choices[Math.floor(randomProvider.number() * choices.length)];
 }
 
 function playerShipIndex(shipOrId) {
@@ -1131,7 +1136,7 @@ function maybePromptScenario3AssignedTowSupport(ship, contract, uplink) {
 function pickScenarioArrayLine(key) {
   const lines = state.scenarioDialogue?.[key];
   if (!Array.isArray(lines) || !lines.length) return null;
-  return lines[Math.floor(Math.random() * lines.length)];
+  return lines[Math.floor(randomProvider.number() * lines.length)];
 }
 
 function maybeIntroduceBudde() {
@@ -1224,6 +1229,7 @@ const NpcController = createNpcController({
   },
   onShipArrivedAtLocation: recordDockArrival,
   onShipDepartedFromLocation: recordDockDeparture,
+  randomProvider,
 });
 
 function moonForNode(nodeId) {
@@ -1354,6 +1360,7 @@ const contractTools = createContractTools({
   shipCapacityById: SHIP_CAPACITY_BY_ID,
   cargoGenerationRules: CARGO_GENERATION_RULES,
   isTransferLaneNode: (nodeId) => isTransferLaneMapNode(nodeId, nodes),
+  randomProvider,
 });
 
 const generateContract = (...args) => contractTools.generateContract(...args);
@@ -1632,12 +1639,12 @@ function chooseCampaignAggressor(defenderFaction) {
     const weight = Math.max(1, Math.round(1 + heat / 20));
     for (let i = 0; i < weight; i += 1) weighted.push(faction);
   });
-  return weighted[Math.floor(Math.random() * weighted.length)] || candidates[0];
+  return weighted[Math.floor(randomProvider.number() * weighted.length)] || candidates[0];
 }
 
 function pickCampaignDurationSeconds() {
   return FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS
-    + Math.floor(Math.random() * (FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS - FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS + 1));
+    + Math.floor(randomProvider.number() * (FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS - FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS + 1));
 }
 
 function campaignHomeBaseCandidates(defenderFaction) {
@@ -1648,7 +1655,7 @@ function campaignHomeBaseCandidates(defenderFaction) {
 
 function chooseCampaignLocation(defenderFaction) {
   const candidates = campaignHomeBaseCandidates(defenderFaction);
-  if (candidates.length) return candidates[Math.floor(Math.random() * candidates.length)];
+  if (candidates.length) return candidates[Math.floor(randomProvider.number() * candidates.length)];
   if (nodes[CAMPAIGN_FALLBACK_LOCATION_NODE_ID]) return CAMPAIGN_FALLBACK_LOCATION_NODE_ID;
   return Object.keys(nodes)[0] || CAMPAIGN_FALLBACK_LOCATION_NODE_ID;
 }
@@ -1659,7 +1666,7 @@ function postCampaignNewsCard(campaign) {
     const location = nodeLabel(campaign.locationNodeId) || "Baron's Market";
     const aggressorName = factionDisplayName(campaign.aggressorFaction);
     const defenderName = factionDisplayName(campaign.defenderFaction);
-    const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
+    const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(randomProvider.number() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
     const item = {
       id: campaign.id,
       headline: `${aggressorName} attacks ${defenderName} at ${location}`,
@@ -1715,7 +1722,7 @@ function evaluateFactionCampaignTriggers() {
     if (activeCampaignAgainst(faction)) return;
     const heat = Number(state.factionHeat?.[faction] || 0);
     const probability = campaignTriggerProbability(heat, activeFactionCampaignCount());
-    if (probability > 0 && Math.random() < probability) startFactionCampaign(faction);
+    if (probability > 0 && randomProvider.chance(probability)) startFactionCampaign(faction);
   });
 }
 
@@ -2275,7 +2282,7 @@ PlayerHailFlow = createPlayerHailFlow({
   logLine,
   speakerContext,
   speakerMessageType,
-  pickResponse: (targetName, action) => pickHailResponse(state, targetName, action),
+  pickResponse: (targetName, action) => pickHailResponse(state, targetName, action, randomProvider),
 });
 
 function showDestinationsForSelectedShip() {
@@ -2960,7 +2967,7 @@ function tickShips() {
         return;
       }
       ship.trafficHoldNotified = false;
-      if (!isStationNode(arrivalNodeId) && Math.random() < (1 / 3)) {
+      if (!isStationNode(arrivalNodeId) && randomProvider.chance(1 / 3)) {
         ship.travelPlan = ship.travelPlan || {};
         ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
         ship.travelPlan.hazards.push("Minor transit damage from local fire-zone traffic");
@@ -3011,7 +3018,7 @@ function tickContracts() {
 
 function tickRisk() {
   if (state.tick % 30 === 0) {
-    state.risk += Math.random() < 0.5 ? 1 : -1;
+    state.risk += randomProvider.chance(0.5) ? 1 : -1;
     state.risk = Math.max(8, Math.min(70, state.risk));
   }
 }
@@ -3019,10 +3026,10 @@ function tickRisk() {
 function tickAmbientComms() {
   const ambientRollWindowReached = state.tick % 120 === 0;
   const ambientSafetyWindowExceeded = state.tick - state.lastAmbientChatterTick >= 360;
-  if (ambientRollWindowReached && (Math.random() < 0.35 || ambientSafetyWindowExceeded)) {
+  if (ambientRollWindowReached && (randomProvider.chance(0.35) || ambientSafetyWindowExceeded)) {
     const ambient = ["Cmdr. Elias Thorne", "Capt. Hadrik Venn", "Port Marshal Celia Wren"].filter(isContactPresent);
     if (ambient.length) {
-      const speaker = ambient[Math.floor(Math.random() * ambient.length)];
+      const speaker = ambient[Math.floor(randomProvider.number() * ambient.length)];
       const tone = state.risk >= 35 ? "negative" : "neutral";
       const line = pickLine(speaker, tone) || "Traffic conditions noted.";
       if (line !== state.lastAmbientLine) {
@@ -3052,6 +3059,7 @@ const SimulationTicker = createSimulationTicker({
   tickRisk,
   tickAmbientComms,
   tickBankruptcy,
+  performanceMonitor,
 });
 
 function updateSimulation() {
@@ -3184,6 +3192,7 @@ const GameBootstrap = createGameBootstrap({
   logLine,
   showShipsList,
   updateSimulation,
+  performanceMonitor,
 });
 
 GameBootstrap.init();

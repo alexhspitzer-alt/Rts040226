@@ -1,3 +1,5 @@
+let randomNumber = () => globalThis.Math.random();
+
 const NPC_LOITER_MIN = 40;
 const NPC_LOITER_MAX = 360;
 const NPC_LOITER_MODE = 200;
@@ -299,7 +301,7 @@ function makeStationQuestion(category = null, opts = {}) {
   const location = randomPick(bank.locations);
   const tagChance = opts.tagChance ?? 0.72;
   const mixChance = opts.mixChance ?? 0.24;
-  const tag = Math.random() < tagChance ? ` ${randomPick(bank.tags)}` : "";
+  const tag = randomNumber() < tagChance ? ` ${randomPick(bank.tags)}` : "";
   const templates = [
     `${opener} ${need} ${location}?${tag}`,
     `${opener} ${need}?${tag}`,
@@ -308,7 +310,7 @@ function makeStationQuestion(category = null, opts = {}) {
   ];
   let line = randomPick(templates);
 
-  if (Math.random() < mixChance) {
+  if (randomNumber() < mixChance) {
     line += ` ${randomPick(QUESTION_MIX_INS[primary])}`;
   }
 
@@ -496,12 +498,12 @@ const CAMPAIGN_MIN_SHIPS = 7;
 const CAMPAIGN_MAX_SHIPS = 11;
 
 function randomInt(min, max) {
-  return min + Math.floor(Math.random() * (max - min + 1));
+  return min + Math.floor(randomNumber() * (max - min + 1));
 }
 
 function randomPick(list) {
   if (!Array.isArray(list) || !list.length) return null;
-  return list[Math.floor(Math.random() * list.length)];
+  return list[Math.floor(randomNumber() * list.length)];
 }
 
 function clamp(min, max, value) {
@@ -512,7 +514,7 @@ function randomLoiterSeconds() {
   const min = NPC_LOITER_MIN;
   const max = NPC_LOITER_MAX;
   const mode = NPC_LOITER_MODE;
-  const u = Math.random();
+  const u = randomNumber();
   const split = (mode - min) / (max - min);
   if (u < split) {
     return Math.round(min + Math.sqrt(u * (max - min) * (mode - min)));
@@ -786,7 +788,9 @@ export function createNpcController({
   onConflictFire,
   onShipArrivedAtLocation,
   onShipDepartedFromLocation,
+  randomProvider = null,
 }) {
+  randomNumber = typeof randomProvider?.number === "function" ? () => randomProvider.number() : randomNumber;
   const recentNpcLineHistory = [];
   const conflictEncounters = new Map();
   let lastConflictHeartbeatTick = -Infinity;
@@ -806,7 +810,7 @@ export function createNpcController({
   function weightedPick(entries) {
     const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.weight || 0), 0);
     if (total <= 0) return randomPick(entries);
-    let roll = Math.random() * total;
+    let roll = randomNumber() * total;
     for (const entry of entries) {
       roll -= Math.max(0, entry.weight || 0);
       if (roll <= 0) return entry;
@@ -892,7 +896,7 @@ export function createNpcController({
 
     const homeFactions = homeBaseFactionsForNode(nodeId);
     const needsHomeFaction = homeFactions.some((faction) => countAmbientNpcsAtByFaction(nodeId, faction) < AMBIENT_HOME_BASE_MIN_FACTION_SHIPS);
-    if (homeFactions.length && needsHomeFaction && Math.random() < AMBIENT_HOME_BASE_FACTION_SHIP_CHANCE) {
+    if (homeFactions.length && needsHomeFaction && randomNumber() < AMBIENT_HOME_BASE_FACTION_SHIP_CHANCE) {
       const homeFactionShips = ships.filter((ship) => homeFactions.includes(factionForShipType(ship)));
       if (homeFactionShips.length) return weightedPick(homeFactionShips);
     }
@@ -963,7 +967,7 @@ export function createNpcController({
   }
 
   function scheduleAmbientNeutralLine(npc) {
-    const chatterRoll = Math.random();
+    const chatterRoll = randomNumber();
     const line = chatterRoll < OBSERVATION_CHATTER_CHANCE
       ? makeObservation()
       : chatterRoll < OBSERVATION_CHATTER_CHANCE + QUESTION_CHATTER_CHANCE
@@ -1031,7 +1035,7 @@ export function createNpcController({
       if (countAmbientNpcsAt(nodeId) >= ambientCapForNode(nodeId)) return false;
       return state.tick >= (ambientLocationSpawnCooldowns.get(nodeId) || 0);
     });
-    if (!candidates.length || Math.random() > AMBIENT_LOCATION_SPAWN_CHANCE) return;
+    if (!candidates.length || randomNumber() > AMBIENT_LOCATION_SPAWN_CHANCE) return;
     spawnAmbientLocationShip(randomPick(candidates));
   }
 
@@ -1049,7 +1053,7 @@ export function createNpcController({
   function updateAmbientLocationRemovals() {
     if (state.tick < nextAmbientLocationRemoveTick) return;
     nextAmbientLocationRemoveTick = state.tick + AMBIENT_LOCATION_REMOVE_INTERVAL;
-    if (Math.random() > AMBIENT_LOCATION_REMOVE_CHANCE) return;
+    if (randomNumber() > AMBIENT_LOCATION_REMOVE_CHANCE) return;
     const removable = ambientNpcs().filter((npc) => {
       const oldEnough = state.tick - (npc.spawnedAtTick || 0) >= AMBIENT_LOCATION_MIN_AGE_BEFORE_REMOVE;
       const dialogueSafe = state.tick - (npc.lastDialogueTick ?? -Infinity) >= AMBIENT_LOCATION_REMOVE_DIALOGUE_GRACE;
@@ -1174,7 +1178,7 @@ export function createNpcController({
     const entries = Object.entries(weights).filter(([, probability]) => probability > 0);
     if (!entries.length) return "no_effect";
     const total = entries.reduce((sum, [, probability]) => sum + probability, 0);
-    let roll = Math.random() * total;
+    let roll = randomNumber() * total;
     for (const [outcome, probability] of entries) {
       roll -= probability;
       if (roll <= 0) return outcome;
@@ -1332,7 +1336,7 @@ export function createNpcController({
       && combatCapable(target)
       && hasGuns(result.defender)
       && !sameFactionReprisalBlocked(result.defender, target)
-      && Math.random() < collateralReprisalChance(result.outcome);
+      && randomNumber() < collateralReprisalChance(result.outcome);
   }
 
   function resolveCollateralVolley(attacker, primaryTarget, nodeId, excludedIds = new Set()) {

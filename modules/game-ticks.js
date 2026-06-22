@@ -9,6 +9,7 @@ export function createSimulationTicker({
   tickRisk,
   tickAmbientComms,
   tickBankruptcy,
+  performanceMonitor = null,
 }) {
   const orderedTicks = [
     tickDocks,
@@ -24,7 +25,11 @@ export function createSimulationTicker({
   ].filter((tick) => typeof tick === "function");
 
   function update() {
-    orderedTicks.forEach((tick) => tick());
+    orderedTicks.forEach((tick) => {
+      const run = () => tick();
+      if (performanceMonitor?.measure) performanceMonitor.measure(`tick.${tick.name || "anonymous"}`, run);
+      else run();
+    });
   }
 
   return { update };

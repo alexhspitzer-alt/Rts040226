@@ -42,6 +42,7 @@ export function createGameBootstrap({
   showShipsList,
   updateSimulation,
   tickMs = 1000,
+  performanceMonitor = null,
 }) {
   function bindControls() {
     ui.cmdForm?.addEventListener("submit", (event) => {
@@ -49,10 +50,12 @@ export function createGameBootstrap({
       if (playerHailFlow.isAwaitingChoice()) {
         playerHailFlow.submitSelection(ui.hailAction?.value || "request");
       } else {
-        handleCommand(ui.cmdInput.value);
+        if (performanceMonitor?.measure) performanceMonitor.measure("command.handle", () => handleCommand(ui.cmdInput.value));
+        else handleCommand(ui.cmdInput.value);
         ui.cmdInput.value = "";
       }
-      render();
+      if (performanceMonitor?.measure) performanceMonitor.measure("render.command", render);
+      else render();
     });
 
     ui.copyConsole?.addEventListener("click", (event) => {
@@ -82,13 +85,16 @@ export function createGameBootstrap({
     playScenarioIntro();
     logLine("Tutorial online. Select ship by typing its number or ID.", "sys");
     showShipsList();
-    render();
+    if (performanceMonitor?.measure) performanceMonitor.measure("render.init", render);
+    else render();
 
     setInterval(() => {
       if (!state.running) return;
       state.tick += 1;
-      updateSimulation();
-      render();
+      if (performanceMonitor?.measure) performanceMonitor.measure("simulation.update", updateSimulation);
+      else updateSimulation();
+      if (performanceMonitor?.measure) performanceMonitor.measure("render.tick", render);
+      else render();
     }, tickMs);
   }
 
