@@ -35,3 +35,12 @@ export function createPerformanceMonitor({ enabled = false, now = () => performa
 
   return { enabled, measure, report, clear };
 }
+
+
+export function isPerformanceSamplingEnabledByUrl(locationLike = globalThis.location) {
+  const pathname = String(locationLike?.pathname || "");
+  return pathname.split("/").filter(Boolean).some((part) => {
+    const normalized = part.toLowerCase();
+    return normalized === "perf" || normalized === "performance";
+  });
+}

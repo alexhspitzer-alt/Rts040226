@@ -30,7 +30,7 @@ import { createSimulationTicker } from "./modules/game-ticks.js";
 import { renderAlmanacView } from "./modules/views/almanac-view.js";
 import { renderDashboardView } from "./modules/views/game-dashboard-view.js";
 import { createRandomProvider } from "./modules/game-random.js";
-import { createPerformanceMonitor } from "./modules/game-performance.js";
+import { createPerformanceMonitor, isPerformanceSamplingEnabledByUrl } from "./modules/game-performance.js";
 import {
   isShipDestroyed,
   selectActiveCommsContacts,
@@ -336,7 +336,7 @@ const state = createInitialGameState({
   defaultLoreSummary: DEFAULT_LORE_SUMMARY,
 });
 const randomProvider = createRandomProvider();
-const DEBUG_PERFORMANCE = true;
+const DEBUG_PERFORMANCE = isPerformanceSamplingEnabledByUrl();
 const performanceMonitor = createPerformanceMonitor({ enabled: DEBUG_PERFORMANCE });
 const gameEvents = createEventBus();
 
@@ -1156,7 +1156,6 @@ function candidateDestinationsForShip(shipId) {
   );
 }
 
-const routeDistance = (...args) => NavigationModel.routeDistance(...args);
 const safeRouteDistance = (...args) => NavigationModel.safeRouteDistance(...args);
 const shipSpeed = (...args) => NavigationModel.shipSpeed(...args);
 const travelTimeForRoute = (...args) => NavigationModel.travelTimeForRoute(...args);
