@@ -1487,18 +1487,61 @@ function contractNumber(contractId) {
   return m ? Number(m[1]) : null;
 }
 
+function promptShipToken(ship) {
+  return playerShipDisplayId(ship) || ship?.id || "ship";
+}
+
+function promptShipMenuActions(ship) {
+  if (!ship) return ["fleet"];
+  const actions = [];
+  if (shipCanQueueWork(ship)) {
+    if (!ship.utility) actions.push("queue");
+    actions.push("information", "manage");
+  } else if (ship.utility && ship.status === "docked") {
+    actions.push("undock", "manage");
+  } else if (ship.utility) {
+    actions.push("dock", "send", "information", "manage");
+  } else {
+    actions.push("assign", "send", "information", "manage");
+  }
+  if (shipRecallAvailable(ship)) actions.push("recall");
+  return actions;
+}
+
+function promptListLabel(prefix, options, fallback = prefix) {
+  const visibleOptions = options.filter(Boolean);
+  return visibleOptions.length ? `<${prefix}: ${visibleOptions.join(", ")}>` : `<${fallback}>`;
+}
+
 function commandPromptLabel() {
   const pending = state.selection?.pending;
   const selectedShipId = state.selection?.selectedShipId;
-  if (pending === "await_sensor_option") return `<${playerShipLabelById(selectedShipId)} sensors>`;
-  if (pending === "await_route_from") return "<Navigation: from>";
-  if (pending === "await_route_to") return "<Navigation: to>";
-  if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
-  if (pending === "await_contract") return `<${playerShipLabelById(selectedShipId)} contracts>`;
-  if (pending === "await_queue_contract") return `<${playerShipLabelById(selectedShipId)} queued contracts>`;
-  if (pending === "await_destination") return `<${playerShipLabelById(selectedShipId)} destinations>`;
-  if (pending === "await_dock_target") return `<${playerShipLabelById(selectedShipId)} dock target>`;
-  return `<${playerShipLabelById(selectedShipId)} actions: M Manage sensors>`;
+  const selectedShip = state.ships.find((ship) => ship.id === selectedShipId);
+  if (pending === "await_sensor_option") return "<sensors: 1 mute, 2 instruments, 3 comms, 4 default>";
+  if (pending === "await_route_from") return promptListLabel("navigation from", state.selection.routeSelectableNodeIds || [], "navigation from");
+  if (pending === "await_route_to") {
+    const options = (state.selection.routeSelectableNodeIds || []).filter((nodeId) => nodeId !== state.selection.routeFromNodeId);
+    return promptListLabel("navigation to", options, "navigation to");
+  }
+  if (pending === "await_ship" || !selectedShipId) {
+    return promptListLabel("select", state.ships.filter((ship) => !shipDestroyed(ship)).map(promptShipToken), "select a ship");
+  }
+  if (pending === "await_contract") {
+    return promptListLabel("contracts", visibleOpenContracts().map((contract) => contract.id), `${promptShipToken(selectedShip)} contracts`);
+  }
+  if (pending === "await_queue_contract") {
+    return promptListLabel("queue", visibleOpenContracts().map((contract) => contract.id), `${promptShipToken(selectedShip)} queue`);
+  }
+  if (pending === "await_destination") {
+    return promptListLabel("destinations", state.selection.allowedDestinationIds.map((nodeId) => nodeLabel(nodeId)), `${promptShipToken(selectedShip)} destinations`);
+  }
+  if (pending === "await_dock_target") {
+    const targetLabels = state.selection.dockableShipIds
+      .map((shipId) => state.ships.find((ship) => ship.id === shipId))
+      .map(promptShipToken);
+    return promptListLabel("dock target", targetLabels, `${promptShipToken(selectedShip)} dock target`);
+  }
+  return `<ship actions: ${promptShipMenuActions(selectedShip).join(", ")}>`;
 }
 
 function render() {
