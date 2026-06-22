@@ -100,6 +100,7 @@ export function createInitialGameState({ shipCapacityById, defaultLoreSummary, n
     nextFactionCampaignRollTick: 0,
     operatingExpenseAccrued: 0,
     operatingExpenseWindowStartTick: 0,
+    nextOperatingExpenseReportTick: null,
     trafficLocks: {},
     dockConditions: {},
     dockMaintenance: {},

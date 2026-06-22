@@ -2890,8 +2890,14 @@ function tickEconomy() {
       state.operatingExpenseAccrued += operatingCost;
     }
   }
-  if (state.tick > 0 && state.tick % OPERATING_COST_REPORT_INTERVAL_SECONDS === 0) {
+  if (!Number.isFinite(state.nextOperatingExpenseReportTick)) {
+    state.nextOperatingExpenseReportTick = OPERATING_COST_REPORT_INTERVAL_SECONDS;
+  }
+  if (state.tick > 0 && state.tick >= state.nextOperatingExpenseReportTick) {
     postOperatingExpenseReport();
+    while (state.nextOperatingExpenseReportTick <= state.tick) {
+      state.nextOperatingExpenseReportTick += OPERATING_COST_REPORT_INTERVAL_SECONDS;
+    }
   }
 }
 
