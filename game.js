@@ -21,159 +21,88 @@ import { createContractTools } from "./modules/game-contracts.js";
 import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js";
 import { createCommandRuntime } from "./modules/game-command-runtime.js";
 import { createNpcController } from "./modules/game-npc-controller.js";
+import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js";
+import { createInitialGameState } from "./modules/game-state.js";
+import { loadGameReferenceData } from "./modules/game-data-loader.js";
+import { createEventBus } from "./modules/game-events.js";
+import { createRouteCache } from "./modules/game-route-cache.js";
+import { createSimulationTicker } from "./modules/game-ticks.js";
+import { renderAlmanacView } from "./modules/views/almanac-view.js";
+import { renderDashboardView } from "./modules/views/game-dashboard-view.js";
+import { createRandomProvider } from "./modules/game-random.js";
+import { createPerformanceMonitor } from "./modules/game-performance.js";
+import {
+  isShipDestroyed,
+  selectActiveCommsContacts,
+  selectOpenContracts,
+  selectPlayerControlledShipCount,
+  selectVisibleOpenContracts,
+} from "./modules/game-selectors.js";
+import {
+  ALMANAC_PATH,
+  ARCWORKS_EXEC_NAME,
+  BASIL_NAME,
+  BUDDE_NAME,
+  COMMAND_RESPONSE_DOTS_DELAY_MS,
+  COMMAND_RESPONSE_REVEAL_DELAY_MS,
+  CONFLICT_OUTCOMES_PATH,
+  CONSOLE_MESSAGE_GAP_MS,
+  CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT,
+  OPERATING_COST_INTERVAL_SECONDS,
+  OPERATING_COST_PER_SHIP_PER_INTERVAL,
+  OPERATING_COST_REPORT_INTERVAL_SECONDS,
+  PLAYER_NODE,
+  SCENARIO_PATH,
+  THORNE_NAME,
+  TUG_ID,
+  TUTORIAL_GOAL,
+  VENN_NAME,
+} from "./modules/constants/core.js";
+import {
+  DOCK_CONDITION_ARRIVAL_DECREMENT,
+  DOCK_CONDITION_DEPARTURE_DECREMENT,
+  DOCK_CONDITION_INITIAL_MAX_VALUE,
+  DOCK_CONDITION_INITIAL_MIN_VALUE,
+  DOCK_HAZARD_ROLLS,
+  DOCK_HAZARD_SEVERITY_LABELS,
+  DOCK_HAZARDS,
+  DOCK_MAINTENANCE_CLEAR_VALUE,
+  DOCK_MAINTENANCE_RECOVERY_PER_SECOND,
+  DOCK_MAINTENANCE_TRIGGER_VALUE,
+  DOCK_OPERATIONAL_VALUE,
+  PORT_AUTHORITY_BY_MOON,
+} from "./modules/constants/dock.js";
+import {
+  CAMPAIGN_DEFENDER_RESPONSE_LINES,
+  CAMPAIGN_FALLBACK_LOCATION_NODE_ID,
+  CAMPAIGN_HOME_BASE_NODE_IDS,
+  FACTION_DISPLAY_NAMES,
+  FACTION_HEAT_CAMPAIGN_COLLATERAL_AMOUNT,
+  FACTION_HEAT_CAMPAIGN_CONCURRENT_DECAY,
+  FACTION_HEAT_CAMPAIGN_FIRE_AMOUNT,
+  FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS,
+  FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS,
+  FACTION_HEAT_CAMPAIGN_PROBABILITY_ASYMPTOTE,
+  FACTION_HEAT_CAMPAIGN_PROBABILITY_HEAT_SCALE,
+  FACTION_HEAT_CAMPAIGN_ROLL_FLOOR,
+  FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS,
+  FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD,
+  FACTION_HEAT_COLLATERAL_AMOUNT,
+  FACTION_HEAT_FIRE_AMOUNT,
+  FACTION_HEAT_MAX,
+  FACTION_HEAT_STAGE_AMOUNT,
+  HEAT_FACTIONS,
+} from "./modules/constants/factions.js";
 
+// LEGACY MAP HANDOFF: these active-map globals mirror data owned by modules/game-map.js.
+// Keep them flagged so a future map-state extraction can remove duplicate graph storage in one pass.
 let nodes = {};
 let edges = [];
+let mapGraphVersion = 0;
+let routeCache = null;
 
-const TUTORIAL_GOAL = 3;
-const BASIL_NAME = "BASIL";
-const BUDDE_NAME = "BUDDE";
-const TUG_ID = "tug-1";
-const ARCWORKS_EXEC_NAME = "Arcworks Chief Executive Lewin";
-const THORNE_NAME = "Cmdr. Elias Thorne";
-const VENN_NAME = "Capt. Hadrik Venn";
-const PORT_AUTHORITY_BY_MOON = {
-  "Cat's Eye": "Port Marshal Celia Wren",
-  Corkscrew: THORNE_NAME,
-  Peltier: "Harbor Prefect Octavia Brindle",
-  Oxblood: "Dock Adjudicator Terek Halden",
-  Patch: "Pier Controller Zofia Krail",
-  "Onion Skin": "Port Factor Sable Orwick",
-  Shooter: "Berth Warden Kez Rourke",
-  Sulphide: "Dock Registrar Lysette Vorn",
-  Clambroth: "Harbor Officer Bram Caldus",
-  "End-of-Day": "Quay Auditor Odel Quince",
-};
-const PLAYER_NODE = "anchor_station";
-const CONSOLE_MESSAGE_GAP_MS = 750;
-const COMMAND_RESPONSE_DOTS_DELAY_MS = 750;
-const COMMAND_RESPONSE_REVEAL_DELAY_MS = 1500;
-const CONTRACT_BOARD_GENERATION_ATTEMPT_LIMIT = 20;
-const OPERATING_COST_PER_SHIP_PER_MINUTE = 8;
-const OPERATING_COST_INTERVAL_SECONDS = 15;
-const OPERATING_COST_PER_SHIP_PER_INTERVAL =
-  (OPERATING_COST_PER_SHIP_PER_MINUTE / 60) * OPERATING_COST_INTERVAL_SECONDS;
-const OPERATING_COST_REPORT_INTERVAL_SECONDS = 300;
-const DOCK_CONDITION_INITIAL_MIN_VALUE = 955;
-const DOCK_CONDITION_INITIAL_MAX_VALUE = 1000;
-const DOCK_CONDITION_ARRIVAL_DECREMENT = 3;
-const DOCK_CONDITION_DEPARTURE_DECREMENT = 2;
-const DOCK_MAINTENANCE_TRIGGER_VALUE = 700;
-const DOCK_OPERATIONAL_VALUE = 940;
-const DOCK_MAINTENANCE_CLEAR_VALUE = 1000;
-const DOCK_MAINTENANCE_RECOVERY_PER_SECOND = 1;
-const DOCK_HAZARD_SEVERITY_LABELS = {
-  1: "minor",
-  2: "moderate",
-  3: "serious",
-  4: "catastrophic",
-};
-const DOCK_HAZARD_ROLLS = [
-  { minDock: 950, chance: 0.02, maxSeverity: 1 },
-  { minDock: 900, chance: 0.08, maxSeverity: 1 },
-  { minDock: 850, chance: 0.16, maxSeverity: 2 },
-  { minDock: 775, chance: 0.27, maxSeverity: 3 },
-  { minDock: -Infinity, chance: 0.42, maxSeverity: 4 },
-];
-const DOCK_HAZARDS = [
-  { label: "telemetry synchronization error", severity: 1, phases: ["arrival", "departure"] },
-  { label: "contact with debris", severity: 1, phases: ["arrival", "departure"] },
-  { label: "wake dampers fail to engage", severity: 1, phases: ["arrival", "departure"] },
-  { label: "assigned bay blocked by poor parking job", severity: 1, phases: ["arrival"] },
-  { label: "visibility reduced by dust and debris", severity: 1, phases: ["arrival", "departure"] },
-  { label: "traffic stalled for disabled freighter", severity: 2, phases: ["arrival", "departure"] },
-  { label: "construction on pier pylons", severity: 2, phases: ["arrival", "departure"] },
-  { label: "labor dispute at dock", severity: 2, phases: ["arrival", "departure"] },
-  { label: "autocrane out of service", severity: 2, phases: ["arrival"] },
-  { label: "Gauss array not available for launch", severity: 3, phases: ["departure"] },
-  { label: "bay doors fail to open", severity: 3, phases: ["arrival"] },
-  { label: "dock clamp fails to open", severity: 3, phases: ["departure"] },
-  { label: "telemetry synchronization error", severity: 4, phases: ["arrival", "departure"] },
-  { label: "contact with debris", severity: 4, phases: ["arrival", "departure"] },
-  { label: "wake dampers fail to engage", severity: 4, phases: ["arrival", "departure"] },
-];
-const FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS = 180;
-const FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS = 540;
-const FACTION_HEAT_CAMPAIGN_ROLL_INTERVAL_SECONDS = 10;
-const FACTION_HEAT_CAMPAIGN_TRIGGER_THRESHOLD = 100;
-const FACTION_HEAT_CAMPAIGN_ROLL_FLOOR = 25;
-const FACTION_HEAT_CAMPAIGN_PROBABILITY_ASYMPTOTE = 0.06;
-const FACTION_HEAT_CAMPAIGN_PROBABILITY_HEAT_SCALE = 55;
-const FACTION_HEAT_CAMPAIGN_CONCURRENT_DECAY = 0.35;
-const FACTION_HEAT_MAX = 120;
-const FACTION_HEAT_STAGE_AMOUNT = { verbal: 4, intercept: 7 };
-const FACTION_HEAT_FIRE_AMOUNT = 10;
-const FACTION_HEAT_COLLATERAL_AMOUNT = 4;
-const FACTION_HEAT_CAMPAIGN_FIRE_AMOUNT = 1;
-const FACTION_HEAT_CAMPAIGN_COLLATERAL_AMOUNT = 0;
-const HEAT_FACTIONS = ["ufp", "arcworks", "blister"];
-const FACTION_DISPLAY_NAMES = {
-  ufp: "UFP",
-  arcworks: "Arcworks",
-  blister: "Blister",
-};
-const CAMPAIGN_HOME_BASE_NODE_IDS = {
-  ufp: [
-    "ufp_indigo_system_administration",
-    "ufp_outpost_alpha",
-    "ufp_outpost_bravo",
-    "ufp_outpost_delta",
-    "ufp_science_station",
-    "anchor_station",
-    "indigo_station",
-    "barons_market",
-  ],
-  arcworks: [
-    "arcworks_operations_hub",
-    "arcworks_militia_barracks",
-    "arcworks_fuel_depot",
-    "onion_skin",
-    "refinery",
-    "condenser_columns",
-    "barons_market",
-    "indigo_station",
-  ],
-  blister: [
-    "deep_space_transfer_lane",
-    "high_orbit_transfer_lane",
-    "ring_transfer_lane",
-    "low_orbit_transfer_lane",
-    "yard",
-    "refinery",
-    "barons_market",
-  ],
-};
-const CAMPAIGN_FALLBACK_LOCATION_NODE_ID = "barons_market";
-const CAMPAIGN_DEFENDER_RESPONSE_LINES = [
-  "Piss off and try someone easier.",
-  "I'd like to see them try.",
-  "They've bitten off more than they can chew.",
-  "Tell them to bring more ships.",
-  "They want a campaign? We will give them a graveyard.",
-  "They can have this route when we are done using it to break them.",
-  "We are still here. That is their first problem.",
-  "Let them come closer. We have answers loaded.",
-  "They picked the wrong target and the wrong day.",
-  "We are not moving. They are welcome to learn why.",
-  "Their threats are louder than their guns.",
-  "They should have counted our batteries before starting this.",
-  "We will be waiting at the marker with engines hot.",
-  "They can explain this mistake to their survivors.",
-  "If they want the lane, they can bleed for every kilometer.",
-  "They are overextended and about to notice.",
-  "This attack ends when they run out of nerve or hulls.",
-  "They came looking for weakness and found a hard lock.",
-  "We have seen worse threats from worse captains.",
-  "Let them commit. Retreat is harder after the first burn.",
-  "They are not taking our ground by headline.",
-  "We will make this expensive enough to remember.",
-  "They are welcome to test the perimeter.",
-  "They opened the door. Now they can eat the room.",
-  "Stand firm. They have already made the fatal mistake."
-];
-const SCENARIO_PATH = "./scenarioDat.json";
-const ALMANAC_PATH = "./almanac_entries_with_descriptions.json";
-const CONFLICT_OUTCOMES_PATH = "./conflict_outcomes.json";
+// LEGACY INPUT SHIM: aliases preserve older command names after canonical map IDs were introduced.
+// Trim this once saved commands/docs use canonical node IDs exclusively.
 const LEGACY_NODE_ALIASES = {
   anchor: "anchor_station",
   cinder_hub: "refinery",
@@ -238,7 +167,7 @@ function pickBluFreightApproachLine(captain, destinationLabel) {
     (dest) => `Final approach to ${dest}. Requesting dock clearance.`,
     (dest) => `On final for ${dest}. Requesting docking clearance.`,
   ];
-  const lineBuilder = variants[Math.floor(Math.random() * variants.length)] || variants[0];
+  const lineBuilder = variants[Math.floor(randomProvider.number() * variants.length)] || variants[0];
   return lineBuilder(destinationLabel);
 }
 
@@ -402,110 +331,34 @@ const CONTACT_PROFILES = {
   [ARCWORKS_EXEC_NAME]: { nodeId: "indigo_station", present: true },
 };
 
-const state = {
-  tick: 0,
-  running: true,
-  cash: 2200,
-  rep: 58,
-  risk: 22,
-  escort: false,
-  contracts: [],
-  contractBoardTargetOpen: null,
-  completedContracts: 0,
-  tutorialDone: false,
-  currentScenario: 1,
-  scenario2Activated: false,
-  scenario3Activated: false,
-  scenario4Activated: false,
-  ships: [
-    { id: "hauler-1", at: "anchor_station", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["hauler-1"], busyUntil: 0, departAt: 0, lastKnownAt: "anchor_station", lastContactTick: 0, acquiredAtTick: 0 },
-    { id: "hauler-2", at: "refinery", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["hauler-2"], busyUntil: 0, departAt: 0, lastKnownAt: "refinery", lastContactTick: 0, acquiredAtTick: 0 },
-    { id: "courier-1", at: "indigo_station", status: "idle", cargoCapacity: SHIP_CAPACITY_BY_ID["courier-1"], busyUntil: 0, departAt: 0, lastKnownAt: "indigo_station", lastContactTick: 0, acquiredAtTick: 0 },
-  ],
-  delayedMessages: [],
-  nextContract: 1,
-  selection: {
-    selectedShipId: null,
-    pending: null,
-    allowedDestinationIds: [],
-    dockableShipIds: [],
-  },
-  loreSummary: DEFAULT_LORE_SUMMARY,
-  dialogueDb: {},
-  ambientNeutralConversation: [],
-  ambientDialoguePools: {},
-  characterNameRegistry: null,
-  latencyBriefed: false,
-  lastAmbientLine: null,
-  lastAmbientChatterTick: -Infinity,
-  mapData: null,
-  shipRegistry: null,
-  conflictOutcomes: null,
-  buddeData: null,
-  civilianNpcs: [],
-  scenarioDialogue: {},
-  scenario2Dialogue: null,
-  scenario3Dialogue: null,
-  scenario4Dialogue: null,
-  playerRequestDialogue: null,
-  almanacEntries: null,
-  tugIntroPlayed: false,
-  buddeIntroduced: false,
-  scenario3CapacityBriefed: false,
-  scenario3Completed: false,
-  scenario3TowRequestPlayed: false,
-  scenario3TowRequestDeferred: false,
-  lastLatencyReminderTick: -Infinity,
-  consoleReadyAtMs: Date.now(),
-  respondingToCommand: false,
-  inbox: [],
-  unreadInboxCount: 0,
-  inboxOpenIndexes: [],
-  news: [],
-  factionHeatEnabled: false,
-  factionHeat: { ufp: 0, arcworks: 0, blister: 0 },
-  activeFactionCampaigns: [],
-  nextFactionCampaignRollTick: 0,
-  operatingExpenseAccrued: 0,
-  operatingExpenseWindowStartTick: 0,
-  trafficLocks: {},
-  dockConditions: {},
-  dockMaintenance: {},
-};
+const state = createInitialGameState({
+  shipCapacityById: SHIP_CAPACITY_BY_ID,
+  defaultLoreSummary: DEFAULT_LORE_SUMMARY,
+});
+const randomProvider = createRandomProvider();
+const DEBUG_PERFORMANCE = true;
+const performanceMonitor = createPerformanceMonitor({ enabled: DEBUG_PERFORMANCE });
+const gameEvents = createEventBus();
+
+gameEvents.on("data:warning", ({ message }) => logLine(`Reference load warning: ${message}`, "sys"));
 
 function isPlayerBankrupt() {
   return state.cash <= -600 || state.rep <= 0;
 }
 
-const ui = {
-  clock: document.getElementById("clock"),
-  cash: document.getElementById("cash"),
-  rep: document.getElementById("rep"),
-  risk: document.getElementById("risk"),
-  escort: document.getElementById("escort"),
-  contracts: document.getElementById("contracts"),
-  fleet: document.getElementById("fleet"),
-  feed: document.getElementById("feed"),
-  copyConsole: document.getElementById("copy-console-link"),
-  consoleFollowToggle: document.getElementById("console-follow-toggle"),
-  cmdForm: document.getElementById("cmd-form"),
-  cmdInput: document.getElementById("cmd"),
-  hailAction: document.getElementById("hail-action"),
-  almanacRoot: document.getElementById("almanac-root"),
-  inboxList: document.getElementById("inbox-list"),
-  inboxUnread: document.getElementById("inbox-unread"),
-  newsList: document.getElementById("news-list"),
-  tabButtons: Array.from(document.querySelectorAll(".tab-btn")),
-  tabPanels: Array.from(document.querySelectorAll(".tab-panel")),
-};
+const ui = createGameUi();
 
 let adjacency = {};
 
+// LEGACY MAP BRIDGE: scenario builders already return nodes/edges/adjacency; this function only
+// copies that model into the older game.js globals and invalidates dependent caches.
 function applyMapModel(mapModel) {
   if (!mapModel) return false;
   nodes = mapModel.nodes;
   edges = mapModel.edges;
   adjacency = mapModel.adjacency;
+  mapGraphVersion += 1;
+  routeCache?.invalidate();
   syncDockConditionsToActiveLocations();
   return true;
 }
@@ -513,7 +366,7 @@ function applyMapModel(mapModel) {
 
 function randomInitialDockCondition() {
   return DOCK_CONDITION_INITIAL_MIN_VALUE
-    + Math.floor(Math.random() * (DOCK_CONDITION_INITIAL_MAX_VALUE - DOCK_CONDITION_INITIAL_MIN_VALUE + 1));
+    + Math.floor(randomProvider.number() * (DOCK_CONDITION_INITIAL_MAX_VALUE - DOCK_CONDITION_INITIAL_MIN_VALUE + 1));
 }
 
 function activeCampaignAtNode(nodeId) {
@@ -614,17 +467,17 @@ function randomDockHazard(nodeId, phase) {
   const dockValue = ensureDockCondition(nodeId);
   if (!Number.isFinite(dockValue)) return null;
   const profile = dockHazardRollProfile(dockValue);
-  if (Math.random() >= profile.chance) return null;
+  if (!randomProvider.chance(profile.chance)) return null;
   const candidates = DOCK_HAZARDS.filter((hazard) => (hazard.phases || []).includes(phase) && hazard.severity <= profile.maxSeverity);
   if (!candidates.length) return null;
   const severityFloor = Math.max(1, profile.maxSeverity - 1);
   const likely = candidates.filter((hazard) => hazard.severity >= severityFloor);
-  return (likely.length ? likely : candidates)[Math.floor(Math.random() * (likely.length ? likely.length : candidates.length))];
+  return (likely.length ? likely : candidates)[Math.floor(randomProvider.number() * (likely.length ? likely.length : candidates.length))];
 }
 
 function rollDockHazardEffect(hazard) {
   if (!hazard) return { delaySeconds: 0, damage: "none", cargoLost: false, disablesShip: false };
-  const roll = Math.random();
+  const roll = randomProvider.number();
   if (hazard.severity === 1) return { delaySeconds: roll < 0.5 ? 60 : 0, damage: "none", cargoLost: false, disablesShip: false };
   if (hazard.severity === 2) return { delaySeconds: roll < 0.5 ? 120 : 60, damage: "none", cargoLost: false, disablesShip: false };
   if (hazard.severity === 3) return { delaySeconds: 180, damage: roll < 0.5 ? "none" : "minor", cargoLost: false, disablesShip: false };
@@ -760,17 +613,20 @@ function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effe
   const announceDelay = Math.max(0, Number(options.announceDelay || 0));
   if (announceDelay > 0) scheduleMessage(announceDelay, message, lineType);
   else logLine(message, lineType);
+  gameEvents.emit("dock:hazard", { ship, nodeId, phase, hazard, effect, message, tick: state.tick });
   return effect;
 }
 
 function recordPlayerDockArrival(ship, nodeId, options = {}) {
   const value = recordDockArrival(nodeId);
+  gameEvents.emit("ship:arrived", { ship, nodeId, dockCondition: value, tick: state.tick });
   if (!ship.travelPlan?.arrivalHazardRolled) return recordPlayerDockHazard(ship, nodeId, "arrival", null, null, options);
   return null;
 }
 
 function recordPlayerDockDeparture(ship, nodeId, hazardOverride = null, effectOverride = null, options = {}) {
   const value = recordDockDeparture(nodeId);
+  gameEvents.emit("ship:departed", { ship, nodeId, dockCondition: value, tick: state.tick });
   if (hazardOverride) return recordPlayerDockHazard(ship, nodeId, "departure", hazardOverride, effectOverride, options);
   if (!ship.travelPlan?.departureHazardRolled) {
     if (ship.travelPlan) ship.travelPlan.departureHazardRolled = true;
@@ -799,6 +655,9 @@ function dockDebugLines() {
   ];
 }
 
+// REDUNDANT MAP WRAPPERS: these keep old scenario-switch call sites stable while map
+// construction lives in modules/game-map.js. Prefer calling/applying map models through a
+// future map-state owner rather than adding more wrappers here.
 function buildCanonicalTutorialMap(mapData) {
   return applyMapModel(buildTutorialMapModel(mapData));
 }
@@ -815,6 +674,8 @@ function commandNodeId() {
   return resolveCommandNodeId(nodes, PLAYER_NODE);
 }
 
+// LEGACY SYNC SHIM: compensates for scenario maps that do not contain every prior ship node.
+// Keep isolated so this can move with map ownership rather than spreading location fixes.
 function syncShipLocationsToActiveMap() {
   syncShipsToMap(state, nodes, PLAYER_NODE);
 }
@@ -830,7 +691,7 @@ function normalizeNodeInput(rawNodeId) {
 function pickBuddeLine(bucket) {
   const lines = state.buddeData?.budde?.sampleLines?.[bucket];
   if (!lines?.length) return null;
-  return lines[Math.floor(Math.random() * lines.length)];
+  return lines[Math.floor(randomProvider.number() * lines.length)];
 }
 
 function buddeSpeak(bucket, fallback, type = "budde") {
@@ -844,13 +705,19 @@ function buddeInform(text, type = "budde") {
   logLine(`${BUDDE_NAME} ${context}: ${text}`, type);
 }
 
-const NavigationModel = createNavigationModel({
+const ROUTE_CACHE_ENABLED = true;
+routeCache = createRouteCache({
+  enabled: ROUTE_CACHE_ENABLED,
+  getVersion: () => mapGraphVersion,
+});
+const BaseNavigationModel = createNavigationModel({
   state,
   getNodes: () => nodes,
   getAdjacency: () => adjacency,
   shipSpeedById: SHIP_SPEED_BY_ID,
   commandNodeId,
 });
+const NavigationModel = routeCache.wrapNavigationModel(BaseNavigationModel);
 
 function fmtTime(total) {
   const m = String(Math.floor(total / 60)).padStart(2, "0");
@@ -887,7 +754,7 @@ function pickLine(characterName, bucket) {
   const actor = state.dialogueDb[characterName];
   const choices = actor?.dialogue?.[bucket];
   if (!choices?.length) return null;
-  return choices[Math.floor(Math.random() * choices.length)];
+  return choices[Math.floor(randomProvider.number() * choices.length)];
 }
 
 function playerShipIndex(shipOrId) {
@@ -1012,7 +879,10 @@ function isContactPresent(name) {
 }
 
 function activeCommsContacts() {
-  return Object.keys(state.dialogueDb).filter((name) => name !== BASIL_NAME && name !== BUDDE_NAME && isContactPresent(name));
+  return selectActiveCommsContacts(state, {
+    excluded: [BASIL_NAME, BUDDE_NAME],
+    isContactPresent,
+  });
 }
 
 function characterRegistryCategory(name) {
@@ -1080,185 +950,47 @@ let PlayerHailFlow;
 
 async function loadReferenceData() {
   try {
-    const noCache = { cache: "no-store" };
-    const [loreResponse, dialogueResponse, mapResponse, buddeResponse, scenarioResponse, almanacResponse, shipRegistryResponse, nameRegistryResponse, conflictOutcomesResponse] = await Promise.all([
-      fetch("./bluFreight%20text%20RTS.txt", noCache),
-      fetch("./indigo_dialogue_characters.json", noCache),
-      fetch("./map.json", noCache),
-      fetch("./budde.json", noCache),
-      fetch(SCENARIO_PATH, noCache),
-      fetch(ALMANAC_PATH, noCache),
-      fetch("./ship_registry.json", noCache),
-      fetch("./character_name_registry.json", noCache),
-      fetch(CONFLICT_OUTCOMES_PATH, noCache),
-    ]);
+    const referenceData = await loadGameReferenceData({
+      paths: {
+        scenario: SCENARIO_PATH,
+        almanac: ALMANAC_PATH,
+        conflictOutcomes: CONFLICT_OUTCOMES_PATH,
+      },
+    });
 
-    if (loreResponse.ok) {
-      const loreText = await loreResponse.text();
-      const condensed = loreText.replace(/\s+/g, " ").trim();
-      if (condensed.length) state.loreSummary = condensed.slice(0, 340);
-    }
+    if (referenceData.loreSummary) state.loreSummary = referenceData.loreSummary;
+    if (referenceData.dialogueDb) state.dialogueDb = referenceData.dialogueDb;
+    state.playerRequestDialogue = referenceData.playerRequestDialogue || {};
+    state.ambientNeutralConversation = referenceData.ambientNeutralConversation || [];
+    state.ambientDialoguePools = referenceData.ambientDialoguePools || {};
 
-    if (dialogueResponse.ok) {
-      const dialogueData = await dialogueResponse.json();
-      state.dialogueDb = dialogueData?.characters || dialogueData;
-      state.playerRequestDialogue = dialogueData?.hailResponses || {};
-      state.ambientNeutralConversation = Array.isArray(dialogueData?.ambientNeutralConversation?.lines)
-        ? dialogueData.ambientNeutralConversation.lines
-        : [];
-      state.ambientDialoguePools = dialogueData?.ambientDialoguePools || {};
-    }
-
-    if (mapResponse.ok) {
-      state.mapData = await mapResponse.json();
+    if (referenceData.mapData) {
+      state.mapData = referenceData.mapData;
       const loaded = buildCanonicalTutorialMap(state.mapData);
-      if (!loaded) logLine("Map load warning: tutorial layer unavailable. Using fallback graph.", "error");
+      if (!loaded) gameEvents.emit("data:warning", { message: "Map tutorial layer unavailable. Using fallback graph." });
       syncShipLocationsToActiveMap();
     }
 
-    if (buddeResponse.ok) {
-      state.buddeData = await buddeResponse.json();
-    }
+    if (referenceData.buddeData) state.buddeData = referenceData.buddeData;
+    if (referenceData.scenarioDialogue) state.scenarioDialogue = referenceData.scenarioDialogue;
+    state.scenario2Dialogue = referenceData.scenario2Dialogue;
+    state.scenario3Dialogue = referenceData.scenario3Dialogue;
+    state.scenario4Dialogue = referenceData.scenario4Dialogue;
+    state.almanacEntries = referenceData.almanacEntries;
+    state.shipRegistry = referenceData.shipRegistry;
+    state.characterNameRegistry = referenceData.characterNameRegistry;
+    state.conflictOutcomes = referenceData.conflictOutcomes;
 
-    if (scenarioResponse.ok) {
-      const scenario = await scenarioResponse.json();
-      const basilScenario = scenario?.basil_scenario_dialogue || {};
-      state.scenarioDialogue = {
-        intro_welcome: basilScenario.intro_welcome?.text || null,
-        intro_information_integrity: basilScenario.intro_information_integrity?.text || null,
-        intro_tutorial_scenario: basilScenario.intro_tutorial_scenario?.text || null,
-        order_delay_acknowledgements: Array.isArray(basilScenario.order_delay_acknowledgements)
-          ? basilScenario.order_delay_acknowledgements.map((entry) => entry?.text).filter(Boolean)
-          : [],
-        report_staleness_acknowledgements: Array.isArray(basilScenario.report_staleness_acknowledgements)
-          ? basilScenario.report_staleness_acknowledgements.map((entry) => entry?.text).filter(Boolean)
-          : [],
-        tutorial_complete: basilScenario.tutorial_complete?.text || null,
-        budde_intro: scenario?.budde_scenario_dialogue?.intro?.text || null,
-      };
-      state.scenario2Dialogue = scenario?.scenario2_dialogue || null;
-      state.scenario3Dialogue = scenario?.scenario3_dialogue || null;
-      state.scenario4Dialogue = scenario?.scenario4_dialogue || null;
-    }
-
-
-    if (almanacResponse.ok) {
-      const parsedAlmanac = await almanacResponse.json();
-      state.almanacEntries = parsedAlmanac?.almanac_entries || null;
-    }
-    if (shipRegistryResponse.ok) {
-      state.shipRegistry = await shipRegistryResponse.json();
-    }
-    if (nameRegistryResponse.ok) {
-      state.characterNameRegistry = await nameRegistryResponse.json();
-    }
-    if (conflictOutcomesResponse.ok) {
-      state.conflictOutcomes = await conflictOutcomesResponse.json();
-    }
+    (referenceData.warnings || []).forEach((message) => gameEvents.emit("data:warning", { message }));
+    gameEvents.emit("data:loaded", { referenceData });
   } catch (err) {
     logLine(`Reference load fallback active (${err?.message || "unknown error"}).`, "sys");
+    gameEvents.emit("data:error", { error: err });
   }
 }
 
 function renderAlmanac() {
-  if (!ui.almanacRoot) return;
-  ui.almanacRoot.innerHTML = "";
-  const entries = state.almanacEntries;
-  if (!entries || typeof entries !== "object") {
-    const empty = document.createElement("p");
-    empty.textContent = "Almanac data unavailable.";
-    ui.almanacRoot.appendChild(empty);
-    return;
-  }
-
-  const normalizedEntries = buildAlmanacViewModel(entries);
-  Object.entries(normalizedEntries).forEach(([categoryName, categoryPayload]) => {
-    const categoryNode = document.createElement("details");
-    categoryNode.className = "almanac-category";
-
-    const categorySummary = document.createElement("summary");
-    categorySummary.textContent = categoryName.replaceAll("_", " ");
-    categoryNode.appendChild(categorySummary);
-
-    if (Array.isArray(categoryPayload)) {
-      addAlmanacItems(categoryNode, null, categoryPayload);
-    } else if (categoryPayload && typeof categoryPayload === "object") {
-      Object.entries(categoryPayload).forEach(([groupName, groupEntries]) => {
-        addAlmanacItems(categoryNode, groupName, groupEntries);
-      });
-    }
-    ui.almanacRoot.appendChild(categoryNode);
-  });
-}
-
-function buildAlmanacViewModel(entries) {
-  const locations = entries?.locations || {};
-  const organizations = entries?.organizations || {};
-  const indigoSystemEntries = Array.isArray(locations?.["Indigo System"]) ? locations["Indigo System"] : [];
-  const transferLaneEntries = Array.isArray(locations?.["Transfer Lanes"]) ? locations["Transfer Lanes"] : [];
-  const moonEntries = Array.isArray(locations?.Moons) ? locations.Moons : [];
-  const stationEntries = Array.isArray(locations?.["Stations, Outposts, and Facilities"])
-    ? locations["Stations, Outposts, and Facilities"]
-    : [];
-  const organizationEntries = Array.isArray(organizations)
-    ? organizations
-    : [
-        ...(Array.isArray(organizations?.["Factions and Institutions"]) ? organizations["Factions and Institutions"] : []),
-        ...(Array.isArray(organizations?.Clients) ? organizations.Clients : []),
-      ];
-
-  const orbitBandsEntry = indigoSystemEntries.find((entry) => entry?.name === "Orbit Bands");
-  const orbitBandChildren = indigoSystemEntries.filter((entry) => (
-    ["Low Orbit", "Ring Orbit", "High Orbit", "Outer Orbit"].includes(entry?.name)
-  ));
-  const indigoSystemCoreEntries = indigoSystemEntries.filter((entry) => (
-    !["Low Orbit", "Ring Orbit", "High Orbit", "Outer Orbit", "Orbit Bands"].includes(entry?.name)
-  ));
-  const orbitBandsGroup = [];
-  if (orbitBandsEntry) orbitBandsGroup.push(orbitBandsEntry);
-  orbitBandsGroup.push(...orbitBandChildren);
-
-  return {
-    "Indigo System": {
-      Overview: indigoSystemCoreEntries,
-      "Orbit Bands": orbitBandsGroup,
-      Moons: moonEntries,
-      "Stations, Outposts, and Facilities": stationEntries,
-      "Transfer Lanes": transferLaneEntries,
-    },
-    Organizations: organizationEntries,
-    "Ships and Classes": Array.isArray(entries?.ships_and_classes) ? entries.ships_and_classes : [],
-    "Cargo Types": Array.isArray(entries?.cargo_types) ? entries.cargo_types : [],
-  };
-}
-
-function addAlmanacItems(parentNode, groupName, entries) {
-  if (!Array.isArray(entries) || !entries.length) return;
-  const containerNode = groupName ? document.createElement("details") : parentNode;
-  if (groupName) {
-    containerNode.className = "almanac-group";
-
-    const groupSummary = document.createElement("summary");
-    groupSummary.textContent = groupName;
-    containerNode.appendChild(groupSummary);
-  }
-
-  entries.forEach((entry) => {
-    const itemNode = document.createElement("details");
-    itemNode.className = "almanac-entry";
-
-    const itemSummary = document.createElement("summary");
-    itemSummary.textContent = entry?.name || "Unnamed entry";
-    itemNode.appendChild(itemSummary);
-
-    const description = document.createElement("p");
-    description.className = "almanac-entry-description";
-    description.textContent = entry?.description || "No description available.";
-    itemNode.appendChild(description);
-    containerNode.appendChild(itemNode);
-  });
-
-  if (groupName) parentNode.appendChild(containerNode);
+  renderAlmanacView({ root: ui.almanacRoot, entries: state.almanacEntries });
 }
 
 function playScenarioIntro() {
@@ -1404,7 +1136,7 @@ function maybePromptScenario3AssignedTowSupport(ship, contract, uplink) {
 function pickScenarioArrayLine(key) {
   const lines = state.scenarioDialogue?.[key];
   if (!Array.isArray(lines) || !lines.length) return null;
-  return lines[Math.floor(Math.random() * lines.length)];
+  return lines[Math.floor(randomProvider.number() * lines.length)];
 }
 
 function maybeIntroduceBudde() {
@@ -1416,7 +1148,12 @@ function maybeIntroduceBudde() {
 }
 
 function candidateDestinationsForShip(shipId) {
-  return findCandidateDestinations(shipId, state, nodes, state.mapData);
+  const ship = state.ships.find((entry) => entry.id === shipId);
+  return routeCache.candidateDestinationsForShip(
+    shipId,
+    ship?.at,
+    () => findCandidateDestinations(shipId, state, nodes, state.mapData),
+  );
 }
 
 const routeDistance = (...args) => NavigationModel.routeDistance(...args);
@@ -1492,6 +1229,7 @@ const NpcController = createNpcController({
   },
   onShipArrivedAtLocation: recordDockArrival,
   onShipDepartedFromLocation: recordDockDeparture,
+  randomProvider,
 });
 
 function moonForNode(nodeId) {
@@ -1622,16 +1360,17 @@ const contractTools = createContractTools({
   shipCapacityById: SHIP_CAPACITY_BY_ID,
   cargoGenerationRules: CARGO_GENERATION_RULES,
   isTransferLaneNode: (nodeId) => isTransferLaneMapNode(nodeId, nodes),
+  randomProvider,
 });
 
 const generateContract = (...args) => contractTools.generateContract(...args);
 
 function openContracts() {
-  return state.contracts.filter((c) => c.status === "open");
+  return selectOpenContracts(state);
 }
 
 function playerControlledShipCount() {
-  return Array.isArray(state.ships) ? state.ships.filter((ship) => !shipDestroyed(ship)).length : 0;
+  return selectPlayerControlledShipCount(state);
 }
 
 function visibleContractCount() {
@@ -1639,7 +1378,7 @@ function visibleContractCount() {
 }
 
 function visibleOpenContracts() {
-  return openContracts().slice(0, visibleContractCount());
+  return selectVisibleOpenContracts(state);
 }
 
 function contractClientClass(contract) {
@@ -1680,7 +1419,7 @@ function fillContractBoard({ forceNewTarget = false } = {}) {
 }
 
 function shipDestroyed(ship) {
-  return ship?.status === "destroyed" || ship?.combatStatus === "killed";
+  return isShipDestroyed(ship);
 }
 
 function shipActionAvailable(ship) {
@@ -1748,57 +1487,76 @@ function contractNumber(contractId) {
   return m ? Number(m[1]) : null;
 }
 
+function promptShipToken(ship) {
+  return playerShipDisplayId(ship) || ship?.id || "ship";
+}
+
+function promptShipMenuActions(ship) {
+  if (!ship) return ["fleet"];
+  const actions = [];
+  if (shipCanQueueWork(ship)) {
+    if (!ship.utility) actions.push("queue");
+    actions.push("information", "manage");
+  } else if (ship.utility && ship.status === "docked") {
+    actions.push("undock", "manage");
+  } else if (ship.utility) {
+    actions.push("dock", "send", "information", "manage");
+  } else {
+    actions.push("assign", "send", "information", "manage");
+  }
+  if (shipRecallAvailable(ship)) actions.push("recall");
+  return actions;
+}
+
+function promptListLabel(prefix, options, fallback = prefix) {
+  const visibleOptions = options.filter(Boolean);
+  return visibleOptions.length ? `<${prefix}: ${visibleOptions.join(", ")}>` : `<${fallback}>`;
+}
+
 function commandPromptLabel() {
   const pending = state.selection?.pending;
   const selectedShipId = state.selection?.selectedShipId;
-  if (pending === "await_sensor_option") return `<${playerShipLabelById(selectedShipId)} sensors>`;
-  if (pending === "await_route_from") return "<Navigation: from>";
-  if (pending === "await_route_to") return "<Navigation: to>";
-  if (pending === "await_ship" || !selectedShipId) return "<Select a ship>";
-  if (pending === "await_contract") return `<${playerShipLabelById(selectedShipId)} contracts>`;
-  if (pending === "await_queue_contract") return `<${playerShipLabelById(selectedShipId)} queued contracts>`;
-  if (pending === "await_destination") return `<${playerShipLabelById(selectedShipId)} destinations>`;
-  if (pending === "await_dock_target") return `<${playerShipLabelById(selectedShipId)} dock target>`;
-  return `<${playerShipLabelById(selectedShipId)} actions: M Manage sensors>`;
+  const selectedShip = state.ships.find((ship) => ship.id === selectedShipId);
+  if (pending === "await_sensor_option") return "<sensors: 1 mute, 2 instruments, 3 comms, 4 default>";
+  if (pending === "await_route_from") return promptListLabel("navigation from", state.selection.routeSelectableNodeIds || [], "navigation from");
+  if (pending === "await_route_to") {
+    const options = (state.selection.routeSelectableNodeIds || []).filter((nodeId) => nodeId !== state.selection.routeFromNodeId);
+    return promptListLabel("navigation to", options, "navigation to");
+  }
+  if (pending === "await_ship" || !selectedShipId) {
+    return promptListLabel("select", state.ships.filter((ship) => !shipDestroyed(ship)).map(promptShipToken), "select a ship");
+  }
+  if (pending === "await_contract") {
+    return promptListLabel("contracts", visibleOpenContracts().map((contract) => contract.id), `${promptShipToken(selectedShip)} contracts`);
+  }
+  if (pending === "await_queue_contract") {
+    return promptListLabel("queue", visibleOpenContracts().map((contract) => contract.id), `${promptShipToken(selectedShip)} queue`);
+  }
+  if (pending === "await_destination") {
+    return promptListLabel("destinations", state.selection.allowedDestinationIds.map((nodeId) => nodeLabel(nodeId)), `${promptShipToken(selectedShip)} destinations`);
+  }
+  if (pending === "await_dock_target") {
+    const targetLabels = state.selection.dockableShipIds
+      .map((shipId) => state.ships.find((ship) => ship.id === shipId))
+      .map(promptShipToken);
+    return promptListLabel("dock target", targetLabels, `${promptShipToken(selectedShip)} dock target`);
+  }
+  return `<ship actions: ${promptShipMenuActions(selectedShip).join(", ")}>`;
 }
 
 function render() {
-  if (ui.cmdInput) ui.cmdInput.placeholder = commandPromptLabel();
-  ui.clock.textContent = fmtTime(state.tick);
-  ui.cash.textContent = String(state.cash);
-  ui.rep.textContent = String(state.rep);
-  ui.risk.textContent = String(state.risk);
-  ui.escort.textContent = state.escort ? "On" : "Off";
-
-  ui.contracts.innerHTML = "";
-  visibleOpenContracts().forEach((c, idx) => {
-    const li = document.createElement("li");
-    li.className = contractClientClass(c);
-    const displayNumber = contractNumber(c.id) || (idx + 1);
-    const cargoRequirementLabel = state.currentScenario >= 3 && Number.isInteger(c.cargoRequirement)
-      ? ` | cargo ${c.cargoRequirement}T`
-      : "";
-    const scenarioFlavor = state.currentScenario >= 2 && c.client && c.cargoType
-      ? ` | ${c.client} | ${c.cargoType}${cargoRequirementLabel}`
-      : "";
-    li.textContent = `${displayNumber}. ${c.id} ${nodeLabel(c.from)} → ${nodeLabel(c.to)}${scenarioFlavor} | +$${c.payout}`;
-    ui.contracts.appendChild(li);
-  });
-  if (!ui.contracts.children.length) {
-    const li = document.createElement("li");
-    li.textContent = state.tutorialDone ? "Tutorial complete. No required contracts left." : "No open contracts.";
-    ui.contracts.appendChild(li);
-  }
-
-  ui.fleet.innerHTML = "";
-  state.ships.forEach((s, idx) => {
-    const li = document.createElement("li");
-    const capacityLabel = state.currentScenario >= 3 && !s.utility
-      ? ` | ${currentShipCargoCapacity(s)}T cap`
-      : "";
-    const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
-    li.textContent = `${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${playerShipDisplayId(s) || s.id}${capacityLabel}`;
-    ui.fleet.appendChild(li);
+  renderDashboardView({
+    ui,
+    state,
+    visibleContracts: visibleOpenContracts(),
+    commandPromptLabel,
+    formatTime: fmtTime,
+    contractClientClass,
+    contractNumber,
+    nodeLabel,
+    currentShipCargoCapacity,
+    formatPlayerShipIdentity,
+    playerShipDisplayId,
   });
   if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
   renderNews();
@@ -1924,12 +1682,12 @@ function chooseCampaignAggressor(defenderFaction) {
     const weight = Math.max(1, Math.round(1 + heat / 20));
     for (let i = 0; i < weight; i += 1) weighted.push(faction);
   });
-  return weighted[Math.floor(Math.random() * weighted.length)] || candidates[0];
+  return weighted[Math.floor(randomProvider.number() * weighted.length)] || candidates[0];
 }
 
 function pickCampaignDurationSeconds() {
   return FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS
-    + Math.floor(Math.random() * (FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS - FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS + 1));
+    + Math.floor(randomProvider.number() * (FACTION_HEAT_CAMPAIGN_MAX_DURATION_SECONDS - FACTION_HEAT_CAMPAIGN_MIN_DURATION_SECONDS + 1));
 }
 
 function campaignHomeBaseCandidates(defenderFaction) {
@@ -1940,7 +1698,7 @@ function campaignHomeBaseCandidates(defenderFaction) {
 
 function chooseCampaignLocation(defenderFaction) {
   const candidates = campaignHomeBaseCandidates(defenderFaction);
-  if (candidates.length) return candidates[Math.floor(Math.random() * candidates.length)];
+  if (candidates.length) return candidates[Math.floor(randomProvider.number() * candidates.length)];
   if (nodes[CAMPAIGN_FALLBACK_LOCATION_NODE_ID]) return CAMPAIGN_FALLBACK_LOCATION_NODE_ID;
   return Object.keys(nodes)[0] || CAMPAIGN_FALLBACK_LOCATION_NODE_ID;
 }
@@ -1951,7 +1709,7 @@ function postCampaignNewsCard(campaign) {
     const location = nodeLabel(campaign.locationNodeId) || "Baron's Market";
     const aggressorName = factionDisplayName(campaign.aggressorFaction);
     const defenderName = factionDisplayName(campaign.defenderFaction);
-    const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(Math.random() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
+    const defenderResponse = CAMPAIGN_DEFENDER_RESPONSE_LINES[Math.floor(randomProvider.number() * CAMPAIGN_DEFENDER_RESPONSE_LINES.length)];
     const item = {
       id: campaign.id,
       headline: `${aggressorName} attacks ${defenderName} at ${location}`,
@@ -2007,7 +1765,7 @@ function evaluateFactionCampaignTriggers() {
     if (activeCampaignAgainst(faction)) return;
     const heat = Number(state.factionHeat?.[faction] || 0);
     const probability = campaignTriggerProbability(heat, activeFactionCampaignCount());
-    if (probability > 0 && Math.random() < probability) startFactionCampaign(faction);
+    if (probability > 0 && randomProvider.chance(probability)) startFactionCampaign(faction);
   });
 }
 
@@ -2567,7 +2325,7 @@ PlayerHailFlow = createPlayerHailFlow({
   logLine,
   speakerContext,
   speakerMessageType,
-  pickResponse: (targetName, action) => pickHailResponse(state, targetName, action),
+  pickResponse: (targetName, action) => pickHailResponse(state, targetName, action, randomProvider),
 });
 
 function showDestinationsForSelectedShip() {
@@ -3100,6 +2858,7 @@ function finalizeContractDelivery(contractId) {
   if (countsForProgress) state.completedContracts += 1;
   const deliveryShip = state.ships.find((ship) => ship.activeContractId === contractId) || state.ships.find((ship) => ship.id === contract.assignedShipId);
   if (deliveryShip) {
+    gameEvents.emit("contract:completed", { contract, ship: deliveryShip, netProceeds, tick: state.tick });
     const plan = deliveryShip.travelPlan || {};
     postTripReportToInbox(deliveryShip, {
       outcome: "Delivery completed",
@@ -3120,8 +2879,11 @@ function finalizeContractDelivery(contractId) {
   checkScenarioCompletion();
 }
 
-function updateSimulation() {
+function tickDocks() {
   updateDockMaintenanceRecovery();
+}
+
+function tickEconomy() {
   if (state.tick > 0 && state.tick % OPERATING_COST_INTERVAL_SECONDS === 0) {
     const operatingCost = Math.round((state.ships.length || 0) * OPERATING_COST_PER_SHIP_PER_INTERVAL);
     if (operatingCost > 0) {
@@ -3132,9 +2894,18 @@ function updateSimulation() {
   if (state.tick > 0 && state.tick % OPERATING_COST_REPORT_INTERVAL_SECONDS === 0) {
     postOperatingExpenseReport();
   }
+}
+
+function tickNpcTraffic() {
   NpcController.update();
+}
+
+function tickFactionHeat() {
   updateFactionCampaigns();
   evaluateFactionCampaignTriggers();
+}
+
+function tickShips() {
   state.ships.forEach((ship) => {
     if (ship.utility && ship.status === "docked" && ship.dockedTo) {
       const host = state.ships.find((entry) => entry.id === ship.dockedTo);
@@ -3239,7 +3010,7 @@ function updateSimulation() {
         return;
       }
       ship.trafficHoldNotified = false;
-      if (!isStationNode(arrivalNodeId) && Math.random() < (1 / 3)) {
+      if (!isStationNode(arrivalNodeId) && randomProvider.chance(1 / 3)) {
         ship.travelPlan = ship.travelPlan || {};
         ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
         ship.travelPlan.hazards.push("Minor transit damage from local fire-zone traffic");
@@ -3272,7 +3043,9 @@ function updateSimulation() {
       }, "sys");
     }
   });
+}
 
+function tickDelayedMessages() {
   const due = state.delayedMessages.filter((m) => m.at <= state.tick);
   due.forEach((m) => {
     const text = typeof m.text === "function" ? m.text() : m.text;
@@ -3280,20 +3053,26 @@ function updateSimulation() {
     logLine(text, m.type);
   });
   state.delayedMessages = state.delayedMessages.filter((m) => m.at > state.tick);
+}
 
+function tickContracts() {
   fillContractBoard();
+}
 
+function tickRisk() {
   if (state.tick % 30 === 0) {
-    state.risk += Math.random() < 0.5 ? 1 : -1;
+    state.risk += randomProvider.chance(0.5) ? 1 : -1;
     state.risk = Math.max(8, Math.min(70, state.risk));
   }
+}
 
+function tickAmbientComms() {
   const ambientRollWindowReached = state.tick % 120 === 0;
   const ambientSafetyWindowExceeded = state.tick - state.lastAmbientChatterTick >= 360;
-  if (ambientRollWindowReached && (Math.random() < 0.35 || ambientSafetyWindowExceeded)) {
+  if (ambientRollWindowReached && (randomProvider.chance(0.35) || ambientSafetyWindowExceeded)) {
     const ambient = ["Cmdr. Elias Thorne", "Capt. Hadrik Venn", "Port Marshal Celia Wren"].filter(isContactPresent);
     if (ambient.length) {
-      const speaker = ambient[Math.floor(Math.random() * ambient.length)];
+      const speaker = ambient[Math.floor(randomProvider.number() * ambient.length)];
       const tone = state.risk >= 35 ? "negative" : "neutral";
       const line = pickLine(speaker, tone) || "Traffic conditions noted.";
       if (line !== state.lastAmbientLine) {
@@ -3303,11 +3082,31 @@ function updateSimulation() {
       }
     }
   }
+}
 
+function tickBankruptcy() {
   if (isPlayerBankrupt()) {
     logLine("bluFreight insolvency event. Simulation halted.", "alert");
     state.running = false;
   }
+}
+
+const SimulationTicker = createSimulationTicker({
+  tickDocks,
+  tickEconomy,
+  tickNpcTraffic,
+  tickFactionHeat,
+  tickShips,
+  tickDelayedMessages,
+  tickContracts,
+  tickRisk,
+  tickAmbientComms,
+  tickBankruptcy,
+  performanceMonitor,
+});
+
+function updateSimulation() {
+  SimulationTicker.update();
 }
 
 function consoleTranscriptText() {
@@ -3399,60 +3198,45 @@ commandRuntime = createCommandRuntime({
   launchFactionCampaign: debugLaunchFactionCampaign,
   debugKillPlayerShip,
   debugKillNpc: (npcId) => NpcController.debugKillNpc(npcId),
+  performanceMonitor,
 });
 NpcController.bootstrap();
 
-ui.cmdForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (PlayerHailFlow.isAwaitingChoice()) {
-    PlayerHailFlow.submitSelection(ui.hailAction?.value || "request");
-  } else {
-    handleCommand(ui.cmdInput.value);
-    ui.cmdInput.value = "";
-  }
-  render();
-});
-
-ui.copyConsole?.addEventListener("click", (event) => {
-  event.preventDefault();
-  copyConsoleToClipboard();
-});
-
-ui.tabButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    activateTab(button.dataset.tab || "contracts");
-  });
-});
-
-async function init() {
-  await loadReferenceData();
-  renderAlmanac();
-  PlayerHailFlow.disable();
-  if (!Object.keys(nodes).length) {
-    nodes = {
-      anchor_station: { label: "Anchor Station", moonName: "Cat's Eye", approach: 2 },
-      refinery: { label: "Refinery", moonName: "Oxblood", approach: 3 },
-      indigo_station: { label: "Indigo Station", moonName: "Sulphide", approach: 4 },
-    };
-    edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
-    adjacency = buildGraph(nodes, edges);
-    syncDockConditionsToActiveLocations();
-  }
+// LEGACY FALLBACK MAP: retained only as a startup safety net when external map data fails.
+// Remove once map loading/validation can provide a canonical in-module fallback model.
+function installFallbackMap() {
+  nodes = {
+    anchor_station: { label: "Anchor Station", moonName: "Cat's Eye", approach: 2 },
+    refinery: { label: "Refinery", moonName: "Oxblood", approach: 3 },
+    indigo_station: { label: "Indigo Station", moonName: "Sulphide", approach: 4 },
+  };
+  edges = [["anchor_station", "refinery", 6], ["refinery", "indigo_station", 7], ["anchor_station", "indigo_station", 8]];
+  adjacency = buildGraph(nodes, edges);
+  mapGraphVersion += 1;
+  routeCache?.invalidate();
   syncDockConditionsToActiveLocations();
-  fillContractBoard({ forceNewTarget: true });
-  state.selection.pending = "await_ship";
-  basilInform("Dispatch online. I've sent operating instructions to your inbox because management has asked me to stop spamming the console with monologues.", "basil");
-  playScenarioIntro();
-  logLine("Tutorial online. Select ship by typing its number or ID.", "sys");
-  showShipsList();
-  render();
-
-  setInterval(() => {
-    if (!state.running) return;
-    state.tick += 1;
-    updateSimulation();
-    render();
-  }, 1000);
 }
 
-init();
+const GameBootstrap = createGameBootstrap({
+  state,
+  ui,
+  loadReferenceData,
+  renderAlmanac,
+  playerHailFlow: PlayerHailFlow,
+  handleCommand,
+  render,
+  activateTab,
+  copyConsoleToClipboard,
+  hasActiveNodes: () => Object.keys(nodes).length > 0,
+  installFallbackMap,
+  syncDockConditionsToActiveLocations,
+  fillContractBoard,
+  basilInform,
+  playScenarioIntro,
+  logLine,
+  showShipsList,
+  updateSimulation,
+  performanceMonitor,
+});
+
+GameBootstrap.init();
