@@ -1,3 +1,5 @@
+let randomNumber = () => globalThis.Math.random();
+
 const CONTRACT_PAYOUT_VARIABILITY = 240;
 const CONTRACT_PAYOUT_BASE = 260;
 const CONTRACT_CLIENT_PAYOUT_ADJUSTMENTS = {
@@ -13,18 +15,18 @@ function normalizedClientKey(client) {
 function contractPayoutForClient(client) {
   const clientKey = normalizedClientKey(client);
   const clientAdjustment = CONTRACT_CLIENT_PAYOUT_ADJUSTMENTS[clientKey] ?? 0;
-  return CONTRACT_PAYOUT_BASE + clientAdjustment + Math.floor(Math.random() * CONTRACT_PAYOUT_VARIABILITY);
+  return CONTRACT_PAYOUT_BASE + clientAdjustment + Math.floor(randomNumber() * CONTRACT_PAYOUT_VARIABILITY);
 }
 
 export function randomInt(min, max) {
   const low = Math.ceil(min);
   const high = Math.floor(max);
-  return Math.floor(Math.random() * (high - low + 1)) + low;
+  return Math.floor(randomNumber() * (high - low + 1)) + low;
 }
 
 export function randomFrom(pool) {
   if (!Array.isArray(pool) || !pool.length) return null;
-  return pool[Math.floor(Math.random() * pool.length)];
+  return pool[Math.floor(randomNumber() * pool.length)];
 }
 
 function idsForLocationNames(names = [], labelToId = {}) {
@@ -50,7 +52,9 @@ export function createContractTools({
   shipCapacityById,
   cargoGenerationRules,
   isTransferLaneNode,
+  randomProvider = null,
 }) {
+  randomNumber = typeof randomProvider?.number === "function" ? () => randomProvider.number() : randomNumber;
   function generateCargoContractData() {
     const nodes = getNodes();
     const labelToId = Object.fromEntries(Object.entries(nodes).map(([nodeId, node]) => [node.label, nodeId]));
@@ -129,7 +133,7 @@ export function createContractTools({
     const nodes = getNodes();
     const origins = Object.keys(nodes);
     if (origins.length < 2) return null;
-    let from = origins[Math.floor(Math.random() * origins.length)];
+    let from = origins[Math.floor(randomNumber() * origins.length)];
     let to = from;
     let client = null;
     let cargoType = null;
@@ -144,15 +148,15 @@ export function createContractTools({
         cargoType = generated.cargoType;
         cargoRequirement = generated.cargoRequirement;
       } else {
-        while (to === from) to = origins[Math.floor(Math.random() * origins.length)];
+        while (to === from) to = origins[Math.floor(randomNumber() * origins.length)];
         const scenario2Fields = state.scenario2Dialogue?.metadata?.contractFields || {};
         const clients = Array.isArray(scenario2Fields.client) ? scenario2Fields.client : [];
         const cargoTypes = Array.isArray(scenario2Fields.cargoType) ? scenario2Fields.cargoType : [];
-        client = clients.length ? clients[Math.floor(Math.random() * clients.length)] : null;
-        cargoType = cargoTypes.length ? cargoTypes[Math.floor(Math.random() * cargoTypes.length)] : null;
+        client = clients.length ? clients[Math.floor(randomNumber() * clients.length)] : null;
+        cargoType = cargoTypes.length ? cargoTypes[Math.floor(randomNumber() * cargoTypes.length)] : null;
       }
     } else {
-      while (to === from) to = origins[Math.floor(Math.random() * origins.length)];
+      while (to === from) to = origins[Math.floor(randomNumber() * origins.length)];
     }
 
     const isScenario4DeuteriumExclusive = state.currentScenario >= 4
