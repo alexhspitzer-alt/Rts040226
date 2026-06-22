@@ -691,6 +691,25 @@ export function createCommandRuntime({
       return true;
     }
 
+
+    if (command === "dbhelp") {
+      [
+        "Debug commands (hidden):",
+        "dbHelp — list this debug command reference.",
+        "dbData — dump copyable performance samples; dbData clear resets samples.",
+        "dbNPC — list currently tracked NPC ships and positions.",
+        "dbConflict — list active NPC conflict pairs and stress state.",
+        "dbStress <number> — add stress to a dbConflict pair by list number.",
+        "dbDock — list dock condition, maintenance status, and hazard risks.",
+        "dbHeat — list faction heat values and campaign probabilities.",
+        "dbWarm <faction> [amount] — add heat to UFP, Arcworks, or Blister.",
+        "dbCamp — force-launch a campaign against the hottest faction.",
+        "dbKill <ship|npc> — destroy a player ship or NPC after confirmation.",
+        "cheat — force current scenario completion for progression testing.",
+      ].forEach((line) => logLine(line, "sys"));
+      return true;
+    }
+
     if (command === "dbstress") {
       const index = Number(parts[1]);
       if (!Number.isInteger(index) || index <= 0) return logLine('Usage: dbStress [dbConflict pair number]', "error");
