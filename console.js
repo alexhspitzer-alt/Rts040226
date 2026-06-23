@@ -6,9 +6,12 @@ export function createConsoleLogger({
   messageGapMs,
   dotsDelayMs,
   revealDelayMs,
+  responseBatchRevealMs = 1000,
 }) {
   let followConsole = true;
   const FOLLOW_THRESHOLD_PX = 24;
+  const pendingResponseLines = [];
+  let responseFlushQueued = false;
 
   function feedIsNearBottom() {
     if (!ui.feed) return true;
@@ -74,20 +77,45 @@ export function createConsoleLogger({
     return runAt;
   }
 
+  function flushPendingResponseLines() {
+    responseFlushQueued = false;
+    const entries = pendingResponseLines.splice(0);
+    if (!entries.length) return;
+
+    const inputAt = Date.now();
+    const placeholderAt = Math.max(state.consoleReadyAtMs, inputAt + dotsDelayMs);
+    const revealStartAt = Math.max(inputAt + revealDelayMs, placeholderAt + messageGapMs);
+    const revealStepMs = entries.length > 1 ? responseBatchRevealMs / (entries.length - 1) : 0;
+    const batchEndAt = revealStartAt + (entries.length > 1 ? responseBatchRevealMs : 0);
+
+    entries.forEach((entry, index) => {
+      let bodyNode = null;
+      setTimeout(() => {
+        bodyNode = appendLine(". . .", entry.type, entry.queuedTick);
+      }, Math.max(0, placeholderAt - Date.now()));
+
+      const revealAt = revealStartAt + revealStepMs * index;
+      setTimeout(() => {
+        if (!bodyNode) return;
+        bodyNode.innerHTML = ` ${stylizeConsoleText(entry.text)}`;
+        pinFeedToBottom();
+      }, Math.max(0, revealAt - Date.now()));
+    });
+
+    state.consoleReadyAtMs = Math.max(state.consoleReadyAtMs, batchEndAt + messageGapMs);
+  }
+
+  function queueResponseLine(text, type, queuedTick) {
+    pendingResponseLines.push({ text, type, queuedTick });
+    if (responseFlushQueued) return;
+    responseFlushQueued = true;
+    Promise.resolve().then(flushPendingResponseLines);
+  }
+
   function logLine(text, type = "sys") {
     const queuedTick = state.tick;
     if (state.respondingToCommand && type !== "cmd") {
-      const inputAt = Date.now();
-      let bodyNode = null;
-      const placeholderAt = queueConsoleTask(() => {
-        bodyNode = appendLine(". . .", type, queuedTick);
-      }, inputAt + dotsDelayMs);
-      const revealAt = Math.max(inputAt + revealDelayMs, placeholderAt + messageGapMs);
-      setTimeout(() => {
-        if (!bodyNode) return;
-        bodyNode.innerHTML = ` ${stylizeConsoleText(text)}`;
-        pinFeedToBottom();
-      }, Math.max(0, revealAt - Date.now()));
+      queueResponseLine(text, type, queuedTick);
       return;
     }
 

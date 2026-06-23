@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createConsoleLogger } from '../console.js';
 import { parseCommandInput, parseConfirmationResponse } from '../modules/game-command-parser.js';
 import { createSeededRandom } from '../modules/game-random.js';
 import { createPerformanceMonitor, isPerformanceSamplingEnabledByUrl } from '../modules/game-performance.js';
@@ -56,6 +57,38 @@ assert.equal(perf.report()[0].totalMs, 5);
 assert.equal(isPerformanceSamplingEnabledByUrl({ pathname: '/ops/perf' }), true);
 assert.equal(isPerformanceSamplingEnabledByUrl({ pathname: '/ops/play', search: '?perf' }), true);
 assert.equal(isPerformanceSamplingEnabledByUrl({ pathname: '/ops/play' }), false);
+
+const originalSetTimeout = globalThis.setTimeout;
+const originalDateNow = Date.now;
+try {
+  const scheduledDelays = [];
+  globalThis.setTimeout = (callback, delay) => {
+    scheduledDelays.push(delay);
+    return scheduledDelays.length;
+  };
+  Date.now = () => 0;
+  const loggerState = { tick: 0, respondingToCommand: true, consoleReadyAtMs: 0 };
+  const logger = createConsoleLogger({
+    state: loggerState,
+    ui: {
+      feed: { addEventListener() {}, scrollTop: 0, clientHeight: 0, scrollHeight: 0, appendChild() {} },
+      consoleFollowToggle: null,
+    },
+    fmtTime: () => '00:00',
+    stylizeConsoleText: (text) => text,
+    messageGapMs: 300,
+    dotsDelayMs: 100,
+    revealDelayMs: 500,
+    responseBatchRevealMs: 1000,
+  });
+  logger.logLine('first', 'sys');
+  logger.logLine('second', 'sys');
+  await Promise.resolve();
+  assert.deepEqual(scheduledDelays, [100, 500, 100, 1500]);
+} finally {
+  globalThis.setTimeout = originalSetTimeout;
+  Date.now = originalDateNow;
+}
 
 const almanac = buildAlmanacViewModel({
   locations: { 'Indigo System': [{ name: 'Orbit Bands' }, { name: 'Low Orbit' }] },
