@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
-import { createConsoleLogger } from '../console.js';
+import {
+  CONSOLE_MESSAGE_IMPORTANCE,
+  classifyConsoleMessage,
+  createConsoleLogger,
+  shouldThrottleConsoleMessage,
+} from '../console.js';
 import { parseCommandInput, parseConfirmationResponse } from '../modules/game-command-parser.js';
 import { createSeededRandom } from '../modules/game-random.js';
 import { createPerformanceMonitor, isPerformanceSamplingEnabledByUrl } from '../modules/game-performance.js';
@@ -57,6 +62,15 @@ assert.equal(perf.report()[0].totalMs, 5);
 assert.equal(isPerformanceSamplingEnabledByUrl({ pathname: '/ops/perf' }), true);
 assert.equal(isPerformanceSamplingEnabledByUrl({ pathname: '/ops/play', search: '?perf' }), true);
 assert.equal(isPerformanceSamplingEnabledByUrl({ pathname: '/ops/play' }), false);
+
+assert.equal(classifyConsoleMessage({ type: 'sys', respondingToCommand: true }), CONSOLE_MESSAGE_IMPORTANCE.PLAYER_TRIGGERED);
+assert.equal(classifyConsoleMessage({ type: 'alert' }), CONSOLE_MESSAGE_IMPORTANCE.ENVIRONMENT_AFFECTING_PLAYER);
+assert.equal(classifyConsoleMessage({ type: 'sys' }), CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_GAME_STATE);
+assert.equal(classifyConsoleMessage({ type: 'comms-blister' }), CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_FLAVOR);
+assert.equal(shouldThrottleConsoleMessage({ importance: CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_FLAVOR, recentCount: 8 }), true);
+assert.equal(shouldThrottleConsoleMessage({ importance: CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_GAME_STATE, recentCount: 8 }), false);
+assert.equal(shouldThrottleConsoleMessage({ importance: CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_GAME_STATE, recentCount: 14 }), true);
+assert.equal(shouldThrottleConsoleMessage({ importance: CONSOLE_MESSAGE_IMPORTANCE.ENVIRONMENT_AFFECTING_PLAYER, recentCount: 22 }), false);
 
 const originalSetTimeout = globalThis.setTimeout;
 const originalDateNow = Date.now;
