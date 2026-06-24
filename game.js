@@ -606,7 +606,8 @@ function recordPlayerDockHazard(ship, nodeId, phase, hazardOverride = null, effe
   ship.travelPlan.hazards = Array.isArray(ship.travelPlan.hazards) ? ship.travelPlan.hazards : [];
   ship.travelPlan.hazards.push(text);
   const authorityName = portAuthorityForNode(nodeId);
-  const lineType = hazard.severity >= 3 ? "alert" : authorityName ? speakerMessageType(authorityName) : "sys";
+  const affectsPlayer = effect.delaySeconds > 0 || effect.damage !== "none" || effect.cargoLost || effect.disablesShip;
+  const lineType = affectsPlayer || hazard.severity >= 3 ? "alert" : authorityName ? speakerMessageType(authorityName) : "sys";
   const announcement = portAuthorityHazardAnnouncement(ship, nodeId, phase, hazard, effect);
   const message = authorityName
     ? `${authorityName} ${speakerContext(authorityName)}: ${announcement}`
@@ -1198,6 +1199,27 @@ function shipHazardDelaySeconds(ship, seconds) {
   if (!value) return 0;
   return ship?.sensorMode === "comms" ? Math.ceil(value * 1.5) : value;
 }
+
+function playerCombatAlertEffect(outcome) {
+  if (outcome === "kill") return "destroyed";
+  if (outcome === "major_damage") return "major damage; ship disabled";
+  if (outcome === "minor_damage") return "minor damage";
+  return "fire ineffective";
+}
+
+function schedulePlayerCombatAlert({ delay = 0, ship, nodeId, result, prefix = "Fire" } = {}) {
+  if (!ship || !result || result.outcome === "no_effect") return;
+  const attacker = result.attacker?.callsign || "unknown contact";
+  const location = nodeLabel(nodeId || ship.at || ship.destination || PLAYER_NODE);
+  const effect = playerCombatAlertEffect(result.outcome);
+  const combatLabel = prefix === "Collateral" ? "collateral fire" : String(prefix || "fire").toLowerCase();
+  scheduleMessage(
+    Math.max(0, delay),
+    `Combat alert: ${formatShipId(ship.id)} took ${combatLabel} from ${attacker} at ${location}; effect: ${effect}.`,
+    "alert"
+  );
+}
+
 const NpcController = createNpcController({
   state,
   getNodes: () => nodes,
@@ -1215,6 +1237,7 @@ const NpcController = createNpcController({
   onPlayerShipDestroyed: destroyPlayerShip,
   playerShipDisplayId,
   playerShipCaptainById: (shipId) => SHIP_CAPTAINS[shipId] || null,
+  schedulePlayerCombatAlert,
   onConflictStage: ({ stage, nodeId, aggressorFaction, responderFaction }) => {
     applyConflictHeatStage(stage, aggressorFaction, responderFaction);
     if (stage === "fire") {
@@ -3009,7 +3032,7 @@ function tickShips() {
           const message = authorityName
             ? `${authorityName} ${speakerContext(authorityName)}: Negative, ${portAuthorityShipCallsign(ship)}. Hold pattern for ${holdSeconds}s. Debris removal is active in the final docking corridor. Stand by for clearance.`
             : `Port Control [${nodeLabel(arrivalNodeId)}]: ${formatShipId(ship.id)}, hold short of final docking corridor. Delay in effect for approximately ${holdSeconds}s while traffic hazards are cleared.`;
-          scheduleMessage(returnSignal, message, authorityName ? "alert" : "comms");
+          scheduleMessage(returnSignal, message, "alert");
           ship.trafficHoldNotified = true;
         }
         ship.busyUntil += 1;
