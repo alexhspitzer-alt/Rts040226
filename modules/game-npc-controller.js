@@ -441,6 +441,8 @@ const AMBIENT_AUTOPILOT_CAPTAIN_NAME = "Capt. AUTOPILOTv6.9";
 const CONFLICT_DECAY_PER_HEARTBEAT_BASE = 0.09;
 const CONFLICT_GAIN_BASE = 0.12;
 const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
+const CONFLICT_ESCALATION_COOLDOWN_MIN_SECONDS = 25;
+const CONFLICT_ESCALATION_COOLDOWN_MAX_SECONDS = 70;
 const COLLATERAL_REPRISAL_CHANCE_NO_EFFECT = 0.03;
 const COLLATERAL_REPRISAL_CHANCE_MINOR_DAMAGE = 0.35;
 const CAMPAIGN_ATTACK_WINDOW_SECONDS = 60;
@@ -794,6 +796,7 @@ export function createNpcController({
   randomNumber = typeof randomProvider?.number === "function" ? () => randomProvider.number() : randomNumber;
   const recentNpcLineHistory = [];
   const conflictEncounters = new Map();
+  const conflictEscalationCooldowns = new Map();
   let lastConflictHeartbeatTick = -Infinity;
 
   let nextAmbientLocationSpawnTick = 0;
@@ -1928,6 +1931,30 @@ export function createNpcController({
     }
   }
 
+  function activeEscalationCooldown(aggressorId) {
+    const cooldown = conflictEscalationCooldowns.get(aggressorId);
+    if (!cooldown) return null;
+    if (cooldown.until <= state.tick) {
+      conflictEscalationCooldowns.delete(aggressorId);
+      return null;
+    }
+    return cooldown;
+  }
+
+  function startEscalationCooldown(aggressorId, responderId) {
+    if (!aggressorId) return null;
+    const duration = randomInt(CONFLICT_ESCALATION_COOLDOWN_MIN_SECONDS, CONFLICT_ESCALATION_COOLDOWN_MAX_SECONDS);
+    const cooldown = { targetId: responderId, until: state.tick + duration };
+    conflictEscalationCooldowns.set(aggressorId, cooldown);
+    return cooldown;
+  }
+
+  function conflictCooldownLabel(aggressorId) {
+    const cooldown = activeEscalationCooldown(aggressorId);
+    if (!cooldown) return "";
+    return ` | cooldown=${Math.max(0, cooldown.until - state.tick)}s target=${cooldown.targetId || "n/a"}`;
+  }
+
   function updateConflictEncounters(npcs) {
     if (state.tick - lastConflictHeartbeatTick < CONFLICT_HEARTBEAT_SECONDS) return;
     lastConflictHeartbeatTick = state.tick;
@@ -1982,10 +2009,13 @@ export function createNpcController({
           encounter.lastSeenTick = state.tick;
           encounter.aggressorId = pairing.aggressor.id;
           encounter.responderId = pairing.responder.id;
+          const cooldown = activeEscalationCooldown(pairing.aggressor.id);
+          if (cooldown && cooldown.targetId !== pairing.responder.id) continue;
           encounter.stress = Math.min(1, encounter.stress + (CONFLICT_GAIN_BASE * hostility * riskFactor));
           const nextStage = capStageForAggressor(conflictStageForStress(encounter.stress), pairing.aggressor);
-          if (nextStage !== encounter.stage && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
+          if (nextStage !== encounter.stage && !cooldown && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
             encounter.stage = nextStage;
+            startEscalationCooldown(pairing.aggressor.id, pairing.responder.id);
             transitions += 1;
             if (typeof onConflictStage === "function") onConflictStage({
               stage: encounter.stage,
@@ -2178,7 +2208,7 @@ export function createNpcController({
   }
 
   function formatConflictDebugEntry(entry, idx) {
-    return `${idx + 1}. ${entry.aggressorId} -> ${entry.responderId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}`;
+    return `${idx + 1}. ${entry.aggressorId} -> ${entry.responderId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}${conflictCooldownLabel(entry.aggressorId)}`;
   }
 
   function bumpConflictStress(index, amount = 0.4) {
@@ -2195,6 +2225,7 @@ export function createNpcController({
     const nextStage = capStageForAggressor(conflictStageForStress(entry.stress), aggressor);
     if (nextStage !== entry.stage) {
       entry.stage = nextStage;
+      startEscalationCooldown(entry.aggressorId, entry.responderId);
       if (typeof onConflictStage === "function") onConflictStage({
         stage: entry.stage,
         nodeId: entry.nodeId,
