@@ -1319,6 +1319,13 @@ export function createNpcController({
     return `[${prefix}] ${result.attacker.callsign} -> ${result.defender.callsign}: ${outcomeLabel(result.outcome)}.`;
   }
 
+  function appendCombatEffect(line, result) {
+    const unableToReturnFire = result.outcome === "major_damage" || result.outcome === "kill"
+      ? ` ${result.defender.callsign} cannot return fire.`
+      : "";
+    return `${line} Effect: ${result.defender.callsign} ${outcomeLabel(result.outcome)}.${unableToReturnFire}`.trim();
+  }
+
   function collateralDamageResults(results) {
     return results.filter((result) => result.outcome !== "no_effect");
   }
@@ -1483,10 +1490,11 @@ export function createNpcController({
     scheduleNpcConflictMessage(
       initialDelay,
       exchange.direct.attacker,
-      campaignAttackLine(exchange.direct.attacker, exchange.direct.defender, nodeId, directPrefix),
+      appendCombatEffect(campaignAttackLine(exchange.direct.attacker, exchange.direct.defender, nodeId, directPrefix), exchange.direct),
       "interdicting",
       "comms"
     );
+    schedulePlayerCombatResultAlert(exchange.direct, nodeId, initialDelay, directPrefix);
     scheduleNpcConflictMessage(
       initialDelay + 1,
       exchange.direct.defender,
@@ -1494,27 +1502,20 @@ export function createNpcController({
       "evading",
       "comms"
     );
-    scheduleNpcConflictMessage(
-      initialDelay + 2,
-      exchange.direct.attacker,
-      `${formatCombatResultLine(exchange.direct, directPrefix)} ${exchange.direct.outcome === "major_damage" || exchange.direct.outcome === "kill" ? `${exchange.direct.defender.callsign} cannot return fire.` : ""}`.trim(),
-      "interdicting",
-      "comms"
-    );
-    schedulePlayerCombatResultAlert(exchange.direct, nodeId, initialDelay + 2, directPrefix);
     exchange.collateral.forEach((result, idx) => {
-      scheduleNpcConflictMessage(initialDelay + 3 + idx, result.defender, formatCombatResultLine(result, "Collateral"), "damaged", "comms");
-      schedulePlayerCombatResultAlert(result, nodeId, initialDelay + 3 + idx, "Collateral");
+      scheduleNpcConflictMessage(initialDelay + 2 + idx, result.defender, formatCombatResultLine(result, "Collateral"), "damaged", "comms");
+      schedulePlayerCombatResultAlert(result, nodeId, initialDelay + 2 + idx, "Collateral");
     });
     if (exchange.returnFire) {
-      const delay = initialDelay + 3 + exchange.collateral.length;
+      const delay = initialDelay + 2 + exchange.collateral.length;
       scheduleNpcConflictMessage(
         delay,
         exchange.returnFire.attacker,
-        campaignAttackLine(exchange.returnFire.attacker, exchange.returnFire.defender, nodeId, "Return fire"),
-        "returning fire",
+        appendCombatEffect(campaignAttackLine(exchange.returnFire.attacker, exchange.returnFire.defender, nodeId, "Return fire"), exchange.returnFire),
+        exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
         "comms"
       );
+      schedulePlayerCombatResultAlert(exchange.returnFire, nodeId, delay, "Return fire");
       scheduleNpcConflictMessage(
         delay + 1,
         exchange.returnFire.defender,
@@ -1522,17 +1523,9 @@ export function createNpcController({
         "evading",
         "comms"
       );
-      scheduleNpcConflictMessage(
-        delay + 2,
-        exchange.returnFire.attacker,
-        formatCombatResultLine(exchange.returnFire, "Return fire"),
-        exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
-        "comms"
-      );
-      schedulePlayerCombatResultAlert(exchange.returnFire, nodeId, delay + 2, "Return fire");
       exchange.returnCollateral.forEach((result, idx) => {
-        scheduleNpcConflictMessage(delay + 3 + idx, result.defender, formatCombatResultLine(result, "Collateral"), "damaged", "comms");
-        schedulePlayerCombatResultAlert(result, nodeId, delay + 3 + idx, "Collateral");
+        scheduleNpcConflictMessage(delay + 2 + idx, result.defender, formatCombatResultLine(result, "Collateral"), "damaged", "comms");
+        schedulePlayerCombatResultAlert(result, nodeId, delay + 2 + idx, "Collateral");
       });
     }
   }
@@ -1845,48 +1838,40 @@ export function createNpcController({
       fire: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.fire)}`,
       resolved: `[Resolved] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.resolved)}`,
     };
-    scheduleNpcConflictMessage(
-      1,
-      aggressor,
-      aggressorLinesByStage[encounter.stage] || aggressorLinesByStage.notice,
-      encounter.stage === "fire" ? "interdicting" : "arriving",
-      "comms"
-    );
-    scheduleNpcConflictMessage(
-      2,
-      responder,
-      responderLinesByStage[encounter.stage] || responderLinesByStage.notice,
-      encounter.stage === "fire" ? "evading" : "arriving",
-      "comms"
-    );
-
     if (encounter.stage === "fire") {
       const exchange = resolveCombatExchange(aggressor, responder, encounter.nodeId);
       notifyCombatExchangeHeat(exchange, encounter.nodeId);
       scheduleNpcConflictMessage(
-        3,
+        1,
         aggressor,
-        `${formatCombatResultLine(exchange.direct)} ${exchange.direct.outcome === "major_damage" || exchange.direct.outcome === "kill" ? `${responder.callsign} cannot return fire.` : ""}`.trim(),
+        appendCombatEffect(aggressorLinesByStage.fire, exchange.direct),
         "interdicting",
         "comms"
       );
-      schedulePlayerCombatResultAlert(exchange.direct, encounter.nodeId, 3);
+      schedulePlayerCombatResultAlert(exchange.direct, encounter.nodeId, 1);
+      scheduleNpcConflictMessage(
+        2,
+        responder,
+        responderLinesByStage.fire,
+        "evading",
+        "comms"
+      );
       exchange.collateral.forEach((result, idx) => {
         scheduleNpcConflictMessage(
-          4 + idx,
+          3 + idx,
           result.defender,
           formatCombatResultLine(result, "Collateral"),
           "damaged",
           "comms"
         );
-        schedulePlayerCombatResultAlert(result, encounter.nodeId, 4 + idx, "Collateral");
+        schedulePlayerCombatResultAlert(result, encounter.nodeId, 3 + idx, "Collateral");
       });
       if (exchange.returnFire) {
-        const delay = 4 + exchange.collateral.length;
+        const delay = 3 + exchange.collateral.length;
         scheduleNpcConflictMessage(
           delay,
           responder,
-          formatCombatResultLine(exchange.returnFire),
+          appendCombatEffect(responderLinesByStage.fire, exchange.returnFire),
           exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
           "comms"
         );
@@ -1902,7 +1887,7 @@ export function createNpcController({
           schedulePlayerCombatResultAlert(result, encounter.nodeId, delay + 1 + idx, "Collateral");
         });
       }
-      let reprisalDelay = 4 + exchange.collateral.length;
+      let reprisalDelay = 3 + exchange.collateral.length;
       if (exchange.returnFire) reprisalDelay += 1 + exchange.returnCollateral.length;
       const scheduleReprisal = (event) => {
         scheduleNpcConflictMessage(
@@ -1928,7 +1913,23 @@ export function createNpcController({
       };
       exchange.collateralReprisals.forEach(scheduleReprisal);
       exchange.returnCollateralReprisals.forEach(scheduleReprisal);
+      return;
     }
+
+    scheduleNpcConflictMessage(
+      1,
+      aggressor,
+      aggressorLinesByStage[encounter.stage] || aggressorLinesByStage.notice,
+      "arriving",
+      "comms"
+    );
+    scheduleNpcConflictMessage(
+      2,
+      responder,
+      responderLinesByStage[encounter.stage] || responderLinesByStage.notice,
+      "arriving",
+      "comms"
+    );
   }
 
   function activeEscalationCooldown(aggressorId) {
