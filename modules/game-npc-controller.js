@@ -1808,7 +1808,7 @@ export function createNpcController({
 
 
   function scheduleNpcConflictMessage(delay, npc, message, status, type, nodeId = null) {
-    if (npc?.mutedFromChatter) return;
+    if (npc?.mutedFromChatter && !mutedNpcActiveForConflict(npc)) return;
     const localNodeId = nodeId || npc?.at || null;
     scheduleCharacterMessage(
       delay,
