@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   CONSOLE_MESSAGE_IMPORTANCE,
   classifyConsoleMessage,
+  consoleMessageThrottleWeight,
   createConsoleLogger,
   shouldThrottleConsoleMessage,
 } from '../console.js';
@@ -71,6 +72,9 @@ assert.equal(shouldThrottleConsoleMessage({ importance: CONSOLE_MESSAGE_IMPORTAN
 assert.equal(shouldThrottleConsoleMessage({ importance: CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_GAME_STATE, recentCount: 8 }), false);
 assert.equal(shouldThrottleConsoleMessage({ importance: CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_GAME_STATE, recentCount: 14 }), true);
 assert.equal(shouldThrottleConsoleMessage({ importance: CONSOLE_MESSAGE_IMPORTANCE.ENVIRONMENT_AFFECTING_PLAYER, recentCount: 22 }), false);
+assert.equal(consoleMessageThrottleWeight({ type: 'sys', respondingToCommand: true }), 0.5);
+assert.equal(consoleMessageThrottleWeight({ type: 'cmd', respondingToCommand: true }), 1);
+assert.equal(consoleMessageThrottleWeight({ type: 'comms' }), 1);
 
 const originalSetTimeout = globalThis.setTimeout;
 const originalDateNow = Date.now;

@@ -46,6 +46,12 @@ export function shouldThrottleConsoleMessage({
   return false;
 }
 
+export function consoleMessageThrottleWeight({ type = "sys", respondingToCommand = false } = {}) {
+  const normalizedType = String(type || "sys").toLowerCase();
+  if (respondingToCommand && normalizedType !== "cmd") return 0.5;
+  return 1;
+}
+
 export function createConsoleLogger({
   state,
   ui,
@@ -134,10 +140,15 @@ export function createConsoleLogger({
       recentConsoleMessages.shift();
     }
     const importance = classifyConsoleMessage({ type, respondingToCommand });
-    if (shouldThrottleConsoleMessage({ importance, recentCount: recentConsoleMessages.length, thresholds: throttleThresholds })) {
+    const recentLoad = recentConsoleMessages.reduce((sum, message) => sum + message.weight, 0);
+    if (shouldThrottleConsoleMessage({ importance, recentCount: recentLoad, thresholds: throttleThresholds })) {
       return false;
     }
-    recentConsoleMessages.push({ at: now, importance });
+    recentConsoleMessages.push({
+      at: now,
+      importance,
+      weight: consoleMessageThrottleWeight({ type, respondingToCommand }),
+    });
     return true;
   }
 
