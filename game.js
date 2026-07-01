@@ -203,6 +203,14 @@ function currentShipCargoCapacity(ship) {
   if (!ship) return 0;
   return Number.isFinite(ship.cargoCapacity) ? ship.cargoCapacity : originalShipCargoCapacity(ship);
 }
+
+function shipCapacityLabel(ship) {
+  if (!ship || ship.utility) return "";
+  const current = currentShipCargoCapacity(ship);
+  const original = originalShipCargoCapacity(ship);
+  if (original > 0 && current < original) return ` | ${current}/${original}T cap`;
+  return state.currentScenario >= 3 ? ` | ${current}T cap` : "";
+}
 const CARGO_GENERATION_RULES = {
   locationSets: {
     stations: [
@@ -1445,8 +1453,27 @@ function shipDestroyed(ship) {
   return isShipDestroyed(ship);
 }
 
+function shipDisabled(ship) {
+  return ship?.status === "disabled" || ship?.combatStatus === "major_damage";
+}
+
 function shipActionAvailable(ship) {
   return ship && !shipDestroyed(ship);
+}
+
+function dockedUtilityForShip(ship) {
+  if (!ship?.utilityDockedBy) return null;
+  return state.ships.find((entry) => entry.id === ship.utilityDockedBy) || null;
+}
+
+function utilityCanPushShip(utility) {
+  return Boolean(utility?.utility && !shipDestroyed(utility) && !shipDisabled(utility));
+}
+
+function shipReadyForMovementOrder(ship) {
+  if (!shipActionAvailable(ship)) return false;
+  if (ship.status === "idle") return true;
+  return shipDisabled(ship) && utilityCanPushShip(dockedUtilityForShip(ship));
 }
 
 function idleShip(shipId) {
@@ -1524,8 +1551,12 @@ function promptShipMenuActions(ship) {
     actions.push("undock", "manage");
   } else if (ship.utility) {
     actions.push("dock", "send", "information", "manage");
-  } else {
+  } else if (ship.status === "idle") {
     actions.push("assign", "send", "information", "manage");
+  } else if (shipReadyForMovementOrder(ship)) {
+    actions.push("send", "information", "manage");
+  } else {
+    actions.push("information", "manage");
   }
   if (shipRecallAvailable(ship)) actions.push("recall");
   return actions;
@@ -1578,6 +1609,7 @@ function render() {
     contractNumber,
     nodeLabel,
     currentShipCargoCapacity,
+    shipCapacityLabel,
     formatPlayerShipIdentity,
     playerShipDisplayId,
   });
@@ -2057,9 +2089,7 @@ function showShipsList() {
   state.ships.forEach((s, idx) => {
     const displayStatus = s.status === "arrived_pending_report" ? "enroute" : s.status;
     const dockedSuffix = s.dockedTo ? ` | docked to ${formatShipId(s.dockedTo)}` : s.utilityDockedBy ? ` | utility ${formatShipId(s.utilityDockedBy)}` : "";
-    const capacityLabel = state.currentScenario >= 3 && !s.utility
-      ? ` | ${currentShipCargoCapacity(s)}T cap`
-      : "";
+    const capacityLabel = shipCapacityLabel(s);
     logLine(`${idx + 1}. ${formatPlayerShipIdentity(s, displayStatus)} | id ${playerShipDisplayId(s) || s.id}${dockedSuffix}${capacityLabel}`, "sys");
   });
   logLine("Select ship by typing its number or ID.", "sys");
@@ -2167,6 +2197,10 @@ function showShipMenu(shipId) {
     menuOptions = "U undock, M Manage sensors. Global: F fleet, C contracts, N Navigation, H help.";
   } else if (ship.utility) {
     menuOptions = `D dock, S send, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`;
+  } else if (ship.status !== "idle" && shipReadyForMovementOrder(ship)) {
+    menuOptions = `S send, I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`;
+  } else if (ship.status !== "idle") {
+    menuOptions = `I information, M Manage sensors${recallOption}. Global: F fleet, C contracts, N Navigation, H help.`;
   }
   logLine(`${formatShipId(shipId)} selected (submenu mode). Valid inputs: ${menuOptions}`, "sys");
 }
@@ -2352,6 +2386,12 @@ PlayerHailFlow = createPlayerHailFlow({
 });
 
 function showDestinationsForSelectedShip() {
+  const ship = state.ships.find((entry) => entry.id === state.selection.selectedShipId);
+  if (!shipReadyForMovementOrder(ship)) {
+    logLine(`${formatShipId(state.selection.selectedShipId)} is not ready to move.`, "error");
+    state.selection.pending = "ship_menu";
+    return;
+  }
   const destinationOptions = candidateDestinationsForShip(state.selection.selectedShipId);
   state.selection.allowedDestinationIds = destinationOptions;
   logLine(`Send ${state.selection.selectedShipId} to what destination?`, "sys");
@@ -2496,7 +2536,7 @@ function sendShip(shipId, destination) {
   if (shipDestroyed(ship)) return logLine(`${formatShipId(ship.id)} is destroyed and unavailable.`, "error");
   if (!normalizedDestination) return logLine(`Unknown destination: ${destination}.`, "error");
   if (ship.utility && ship.status === "docked") return logLine(`${formatShipId(ship.id)} is docked. Undock before moving independently.`, "error");
-  if (ship.status !== "idle") return logLine(`${formatShipId(ship.id)} is busy.`, "error");
+  if (!shipReadyForMovementOrder(ship)) return logLine(`${formatShipId(ship.id)} is busy.`, "error");
   const driveShipId = effectiveDriveShipId(ship.id);
   const uplink = oneWaySignalToShip(ship);
   const routeSpan = safeRouteDistance(ship.at, normalizedDestination);
@@ -2531,6 +2571,7 @@ function sendShip(shipId, destination) {
     destination: normalizedDestination,
     routeSpan,
     hazards: [],
+    restoreStatusOnArrival: shipDisabled(ship) ? "disabled" : null,
     currentLegFrom: ship.at,
     currentLegTo: normalizedDestination,
   };
@@ -2936,12 +2977,22 @@ function tickFactionHeat() {
 
 function tickShips() {
   state.ships.forEach((ship) => {
-    if (ship.utility && ship.status === "docked" && ship.dockedTo) {
+    if (ship.utility && ship.dockedTo) {
       const host = state.ships.find((entry) => entry.id === ship.dockedTo);
       if (!host) {
         ship.status = "idle";
         ship.dockedTo = null;
-      } else {
+      } else if (shipDisabled(ship) && host.status === "idle") {
+        delete host.utilityDockedBy;
+        ship.dockedTo = null;
+        ship.destination = undefined;
+        ship.departAt = 0;
+        ship.busyUntil = 0;
+        ship.at = host.at;
+        ship.lastKnownAt = ship.at;
+        ship.lastContactTick = state.tick;
+        logLine(`${formatShipId(ship.id)} undocked automatically; utility drive is disabled while ${formatShipId(host.id)} is idle.`, "alert");
+      } else if (ship.status === "docked") {
         if (host.utilityDockedBy !== ship.id) host.utilityDockedBy = ship.id;
         ship.at = host.at;
         ship.lastKnownAt = host.lastKnownAt || host.at;
@@ -3063,7 +3114,7 @@ function tickShips() {
         if (shipDestroyed(ship)) return null;
         ship.destination = undefined;
         ship.activeContractId = undefined;
-        ship.status = "idle";
+        ship.status = ship.travelPlan?.restoreStatusOnArrival || "idle";
         ship.lastKnownAt = ship.at;
         ship.lastContactTick = state.tick;
         ship.travelPlan = null;

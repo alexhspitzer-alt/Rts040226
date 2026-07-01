@@ -8,6 +8,7 @@ export function renderDashboardView({
   contractNumber,
   nodeLabel,
   currentShipCargoCapacity,
+  shipCapacityLabel,
   formatPlayerShipIdentity,
   playerShipDisplayId,
   doc = document,
@@ -42,9 +43,11 @@ export function renderDashboardView({
   ui.fleet.innerHTML = "";
   state.ships.forEach((ship, idx) => {
     const li = doc.createElement("li");
-    const capacityLabel = state.currentScenario >= 3 && !ship.utility
-      ? ` | ${currentShipCargoCapacity(ship)}T cap`
-      : "";
+    const capacityLabel = typeof shipCapacityLabel === "function"
+      ? shipCapacityLabel(ship)
+      : state.currentScenario >= 3 && !ship.utility
+        ? ` | ${currentShipCargoCapacity(ship)}T cap`
+        : "";
     const displayStatus = ship.status === "arrived_pending_report" ? "enroute" : ship.status;
     li.textContent = `${idx + 1}. ${formatPlayerShipIdentity(ship, displayStatus)} | id ${playerShipDisplayId(ship) || ship.id}${capacityLabel}`;
     ui.fleet.appendChild(li);
