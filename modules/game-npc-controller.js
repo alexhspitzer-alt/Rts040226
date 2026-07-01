@@ -1,3 +1,5 @@
+let randomNumber = () => globalThis.Math.random();
+
 const NPC_LOITER_MIN = 40;
 const NPC_LOITER_MAX = 360;
 const NPC_LOITER_MODE = 200;
@@ -299,7 +301,7 @@ function makeStationQuestion(category = null, opts = {}) {
   const location = randomPick(bank.locations);
   const tagChance = opts.tagChance ?? 0.72;
   const mixChance = opts.mixChance ?? 0.24;
-  const tag = Math.random() < tagChance ? ` ${randomPick(bank.tags)}` : "";
+  const tag = randomNumber() < tagChance ? ` ${randomPick(bank.tags)}` : "";
   const templates = [
     `${opener} ${need} ${location}?${tag}`,
     `${opener} ${need}?${tag}`,
@@ -308,7 +310,7 @@ function makeStationQuestion(category = null, opts = {}) {
   ];
   let line = randomPick(templates);
 
-  if (Math.random() < mixChance) {
+  if (randomNumber() < mixChance) {
     line += ` ${randomPick(QUESTION_MIX_INS[primary])}`;
   }
 
@@ -439,6 +441,8 @@ const AMBIENT_AUTOPILOT_CAPTAIN_NAME = "Capt. AUTOPILOTv6.9";
 const CONFLICT_DECAY_PER_HEARTBEAT_BASE = 0.09;
 const CONFLICT_GAIN_BASE = 0.12;
 const CONFLICT_MAX_STAGE_PER_HEARTBEAT = 3;
+const CONFLICT_ESCALATION_COOLDOWN_MIN_SECONDS = 25;
+const CONFLICT_ESCALATION_COOLDOWN_MAX_SECONDS = 45;
 const COLLATERAL_REPRISAL_CHANCE_NO_EFFECT = 0.03;
 const COLLATERAL_REPRISAL_CHANCE_MINOR_DAMAGE = 0.35;
 const CAMPAIGN_ATTACK_WINDOW_SECONDS = 60;
@@ -496,12 +500,12 @@ const CAMPAIGN_MIN_SHIPS = 7;
 const CAMPAIGN_MAX_SHIPS = 11;
 
 function randomInt(min, max) {
-  return min + Math.floor(Math.random() * (max - min + 1));
+  return min + Math.floor(randomNumber() * (max - min + 1));
 }
 
 function randomPick(list) {
   if (!Array.isArray(list) || !list.length) return null;
-  return list[Math.floor(Math.random() * list.length)];
+  return list[Math.floor(randomNumber() * list.length)];
 }
 
 function clamp(min, max, value) {
@@ -512,7 +516,7 @@ function randomLoiterSeconds() {
   const min = NPC_LOITER_MIN;
   const max = NPC_LOITER_MAX;
   const mode = NPC_LOITER_MODE;
-  const u = Math.random();
+  const u = randomNumber();
   const split = (mode - min) / (max - min);
   if (u < split) {
     return Math.round(min + Math.sqrt(u * (max - min) * (mode - min)));
@@ -782,13 +786,17 @@ export function createNpcController({
   playerShipCallsign,
   onPlayerShipDestroyed,
   playerShipCaptainById,
+  schedulePlayerCombatAlert,
   onConflictStage,
   onConflictFire,
   onShipArrivedAtLocation,
   onShipDepartedFromLocation,
+  randomProvider = null,
 }) {
+  randomNumber = typeof randomProvider?.number === "function" ? () => randomProvider.number() : randomNumber;
   const recentNpcLineHistory = [];
   const conflictEncounters = new Map();
+  const conflictEscalationCooldowns = new Map();
   let lastConflictHeartbeatTick = -Infinity;
 
   let nextAmbientLocationSpawnTick = 0;
@@ -806,7 +814,7 @@ export function createNpcController({
   function weightedPick(entries) {
     const total = entries.reduce((sum, entry) => sum + Math.max(0, entry.weight || 0), 0);
     if (total <= 0) return randomPick(entries);
-    let roll = Math.random() * total;
+    let roll = randomNumber() * total;
     for (const entry of entries) {
       roll -= Math.max(0, entry.weight || 0);
       if (roll <= 0) return entry;
@@ -892,7 +900,7 @@ export function createNpcController({
 
     const homeFactions = homeBaseFactionsForNode(nodeId);
     const needsHomeFaction = homeFactions.some((faction) => countAmbientNpcsAtByFaction(nodeId, faction) < AMBIENT_HOME_BASE_MIN_FACTION_SHIPS);
-    if (homeFactions.length && needsHomeFaction && Math.random() < AMBIENT_HOME_BASE_FACTION_SHIP_CHANCE) {
+    if (homeFactions.length && needsHomeFaction && randomNumber() < AMBIENT_HOME_BASE_FACTION_SHIP_CHANCE) {
       const homeFactionShips = ships.filter((ship) => homeFactions.includes(factionForShipType(ship)));
       if (homeFactionShips.length) return weightedPick(homeFactionShips);
     }
@@ -963,7 +971,7 @@ export function createNpcController({
   }
 
   function scheduleAmbientNeutralLine(npc) {
-    const chatterRoll = Math.random();
+    const chatterRoll = randomNumber();
     const line = chatterRoll < OBSERVATION_CHATTER_CHANCE
       ? makeObservation()
       : chatterRoll < OBSERVATION_CHATTER_CHANCE + QUESTION_CHATTER_CHANCE
@@ -1031,7 +1039,7 @@ export function createNpcController({
       if (countAmbientNpcsAt(nodeId) >= ambientCapForNode(nodeId)) return false;
       return state.tick >= (ambientLocationSpawnCooldowns.get(nodeId) || 0);
     });
-    if (!candidates.length || Math.random() > AMBIENT_LOCATION_SPAWN_CHANCE) return;
+    if (!candidates.length || randomNumber() > AMBIENT_LOCATION_SPAWN_CHANCE) return;
     spawnAmbientLocationShip(randomPick(candidates));
   }
 
@@ -1049,7 +1057,7 @@ export function createNpcController({
   function updateAmbientLocationRemovals() {
     if (state.tick < nextAmbientLocationRemoveTick) return;
     nextAmbientLocationRemoveTick = state.tick + AMBIENT_LOCATION_REMOVE_INTERVAL;
-    if (Math.random() > AMBIENT_LOCATION_REMOVE_CHANCE) return;
+    if (randomNumber() > AMBIENT_LOCATION_REMOVE_CHANCE) return;
     const removable = ambientNpcs().filter((npc) => {
       const oldEnough = state.tick - (npc.spawnedAtTick || 0) >= AMBIENT_LOCATION_MIN_AGE_BEFORE_REMOVE;
       const dialogueSafe = state.tick - (npc.lastDialogueTick ?? -Infinity) >= AMBIENT_LOCATION_REMOVE_DIALOGUE_GRACE;
@@ -1174,7 +1182,7 @@ export function createNpcController({
     const entries = Object.entries(weights).filter(([, probability]) => probability > 0);
     if (!entries.length) return "no_effect";
     const total = entries.reduce((sum, [, probability]) => sum + probability, 0);
-    let roll = Math.random() * total;
+    let roll = randomNumber() * total;
     for (const [outcome, probability] of entries) {
       roll -= probability;
       if (roll <= 0) return outcome;
@@ -1311,6 +1319,13 @@ export function createNpcController({
     return `[${prefix}] ${result.attacker.callsign} -> ${result.defender.callsign}: ${outcomeLabel(result.outcome)}.`;
   }
 
+  function appendCombatEffect(line, result) {
+    const unableToReturnFire = result.outcome === "major_damage" || result.outcome === "kill"
+      ? ` ${result.defender.callsign} cannot return fire.`
+      : "";
+    return `${line} Effect: ${result.defender.callsign} ${outcomeLabel(result.outcome)}.${unableToReturnFire}`.trim();
+  }
+
   function collateralDamageResults(results) {
     return results.filter((result) => result.outcome !== "no_effect");
   }
@@ -1332,7 +1347,7 @@ export function createNpcController({
       && combatCapable(target)
       && hasGuns(result.defender)
       && !sameFactionReprisalBlocked(result.defender, target)
-      && Math.random() < collateralReprisalChance(result.outcome);
+      && randomNumber() < collateralReprisalChance(result.outcome);
   }
 
   function resolveCollateralVolley(attacker, primaryTarget, nodeId, excludedIds = new Set()) {
@@ -1452,6 +1467,19 @@ export function createNpcController({
     return Boolean(result?.attacker?.playerShip || result?.defender?.playerShip);
   }
 
+  function playerShipFromCombatResult(result) {
+    if (result?.defender?.playerShip) return result.defender.sourceShip || result.defender;
+    if (result?.attacker?.playerShip) return result.attacker.sourceShip || result.attacker;
+    return null;
+  }
+
+  function schedulePlayerCombatResultAlert(result, nodeId, delay, prefix = "Fire") {
+    if (result?.outcome === "no_effect") return;
+    const ship = playerShipFromCombatResult(result);
+    if (!ship || typeof schedulePlayerCombatAlert !== "function") return;
+    schedulePlayerCombatAlert({ delay, ship, nodeId, result, prefix });
+  }
+
   function combatExchangeInvolvesPlayerShip(exchange) {
     if (!exchange) return false;
     if (combatResultInvolvesPlayerShip(exchange.direct) || combatResultInvolvesPlayerShip(exchange.returnFire)) return true;
@@ -1462,10 +1490,11 @@ export function createNpcController({
     scheduleNpcConflictMessage(
       initialDelay,
       exchange.direct.attacker,
-      campaignAttackLine(exchange.direct.attacker, exchange.direct.defender, nodeId, directPrefix),
+      appendCombatEffect(campaignAttackLine(exchange.direct.attacker, exchange.direct.defender, nodeId, directPrefix), exchange.direct),
       "interdicting",
       "comms"
     );
+    schedulePlayerCombatResultAlert(exchange.direct, nodeId, initialDelay, directPrefix);
     scheduleNpcConflictMessage(
       initialDelay + 1,
       exchange.direct.defender,
@@ -1473,25 +1502,20 @@ export function createNpcController({
       "evading",
       "comms"
     );
-    scheduleNpcConflictMessage(
-      initialDelay + 2,
-      exchange.direct.attacker,
-      `${formatCombatResultLine(exchange.direct, directPrefix)} ${exchange.direct.outcome === "major_damage" || exchange.direct.outcome === "kill" ? `${exchange.direct.defender.callsign} cannot return fire.` : ""}`.trim(),
-      "interdicting",
-      "comms"
-    );
     exchange.collateral.forEach((result, idx) => {
-      scheduleNpcConflictMessage(initialDelay + 3 + idx, result.defender, formatCombatResultLine(result, "Collateral"), "damaged", "comms");
+      scheduleNpcConflictMessage(initialDelay + 2 + idx, result.defender, formatCombatResultLine(result, "Collateral"), "damaged", "comms");
+      schedulePlayerCombatResultAlert(result, nodeId, initialDelay + 2 + idx, "Collateral");
     });
     if (exchange.returnFire) {
-      const delay = initialDelay + 3 + exchange.collateral.length;
+      const delay = initialDelay + 2 + exchange.collateral.length;
       scheduleNpcConflictMessage(
         delay,
         exchange.returnFire.attacker,
-        campaignAttackLine(exchange.returnFire.attacker, exchange.returnFire.defender, nodeId, "Return fire"),
-        "returning fire",
+        appendCombatEffect(campaignAttackLine(exchange.returnFire.attacker, exchange.returnFire.defender, nodeId, "Return fire"), exchange.returnFire),
+        exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
         "comms"
       );
+      schedulePlayerCombatResultAlert(exchange.returnFire, nodeId, delay, "Return fire");
       scheduleNpcConflictMessage(
         delay + 1,
         exchange.returnFire.defender,
@@ -1499,15 +1523,9 @@ export function createNpcController({
         "evading",
         "comms"
       );
-      scheduleNpcConflictMessage(
-        delay + 2,
-        exchange.returnFire.attacker,
-        formatCombatResultLine(exchange.returnFire, "Return fire"),
-        exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
-        "comms"
-      );
       exchange.returnCollateral.forEach((result, idx) => {
-        scheduleNpcConflictMessage(delay + 3 + idx, result.defender, formatCombatResultLine(result, "Collateral"), "damaged", "comms");
+        scheduleNpcConflictMessage(delay + 2 + idx, result.defender, formatCombatResultLine(result, "Collateral"), "damaged", "comms");
+        schedulePlayerCombatResultAlert(result, nodeId, delay + 2 + idx, "Collateral");
       });
     }
   }
@@ -1786,7 +1804,7 @@ export function createNpcController({
 
 
   function scheduleNpcConflictMessage(delay, npc, message, status, type, nodeId = null) {
-    if (npc?.mutedFromChatter) return;
+    if (npc?.mutedFromChatter && !mutedNpcActiveForConflict(npc)) return;
     const localNodeId = nodeId || npc?.at || null;
     scheduleCharacterMessage(
       delay,
@@ -1820,49 +1838,44 @@ export function createNpcController({
       fire: `[${stageLabel}] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.fire)}`,
       resolved: `[Resolved] to ${aggressor.callsign} @ ${location}: ${pickConflictBark(CONFLICT_RESPONDER_LINES.resolved)}`,
     };
-    scheduleNpcConflictMessage(
-      1,
-      aggressor,
-      aggressorLinesByStage[encounter.stage] || aggressorLinesByStage.notice,
-      encounter.stage === "fire" ? "interdicting" : "arriving",
-      "comms"
-    );
-    scheduleNpcConflictMessage(
-      2,
-      responder,
-      responderLinesByStage[encounter.stage] || responderLinesByStage.notice,
-      encounter.stage === "fire" ? "evading" : "arriving",
-      "comms"
-    );
-
     if (encounter.stage === "fire") {
       const exchange = resolveCombatExchange(aggressor, responder, encounter.nodeId);
       notifyCombatExchangeHeat(exchange, encounter.nodeId);
       scheduleNpcConflictMessage(
-        3,
+        1,
         aggressor,
-        `${formatCombatResultLine(exchange.direct)} ${exchange.direct.outcome === "major_damage" || exchange.direct.outcome === "kill" ? `${responder.callsign} cannot return fire.` : ""}`.trim(),
+        appendCombatEffect(aggressorLinesByStage.fire, exchange.direct),
         "interdicting",
+        "comms"
+      );
+      schedulePlayerCombatResultAlert(exchange.direct, encounter.nodeId, 1);
+      scheduleNpcConflictMessage(
+        2,
+        responder,
+        responderLinesByStage.fire,
+        "evading",
         "comms"
       );
       exchange.collateral.forEach((result, idx) => {
         scheduleNpcConflictMessage(
-          4 + idx,
+          3 + idx,
           result.defender,
           formatCombatResultLine(result, "Collateral"),
           "damaged",
           "comms"
         );
+        schedulePlayerCombatResultAlert(result, encounter.nodeId, 3 + idx, "Collateral");
       });
       if (exchange.returnFire) {
-        const delay = 4 + exchange.collateral.length;
+        const delay = 3 + exchange.collateral.length;
         scheduleNpcConflictMessage(
           delay,
           responder,
-          formatCombatResultLine(exchange.returnFire),
+          appendCombatEffect(responderLinesByStage.fire, exchange.returnFire),
           exchange.returnFire.outcome === "major_damage" || exchange.returnFire.outcome === "kill" ? "interdicting" : "returning fire",
           "comms"
         );
+        schedulePlayerCombatResultAlert(exchange.returnFire, encounter.nodeId, delay, "Return fire");
         exchange.returnCollateral.forEach((result, idx) => {
           scheduleNpcConflictMessage(
             delay + 1 + idx,
@@ -1871,9 +1884,10 @@ export function createNpcController({
             "damaged",
             "comms"
           );
+          schedulePlayerCombatResultAlert(result, encounter.nodeId, delay + 1 + idx, "Collateral");
         });
       }
-      let reprisalDelay = 4 + exchange.collateral.length;
+      let reprisalDelay = 3 + exchange.collateral.length;
       if (exchange.returnFire) reprisalDelay += 1 + exchange.returnCollateral.length;
       const scheduleReprisal = (event) => {
         scheduleNpcConflictMessage(
@@ -1883,6 +1897,7 @@ export function createNpcController({
           event.direct.outcome === "major_damage" || event.direct.outcome === "kill" ? "interdicting" : "returning fire",
           "comms"
         );
+        schedulePlayerCombatResultAlert(event.direct, encounter.nodeId, reprisalDelay, "Reprisal");
         reprisalDelay += 1;
         event.collateral.forEach((result) => {
           scheduleNpcConflictMessage(
@@ -1892,12 +1907,53 @@ export function createNpcController({
             "damaged",
             "comms"
           );
+          schedulePlayerCombatResultAlert(result, encounter.nodeId, reprisalDelay, "Collateral");
           reprisalDelay += 1;
         });
       };
       exchange.collateralReprisals.forEach(scheduleReprisal);
       exchange.returnCollateralReprisals.forEach(scheduleReprisal);
+      return;
     }
+
+    scheduleNpcConflictMessage(
+      1,
+      aggressor,
+      aggressorLinesByStage[encounter.stage] || aggressorLinesByStage.notice,
+      "arriving",
+      "comms"
+    );
+    scheduleNpcConflictMessage(
+      2,
+      responder,
+      responderLinesByStage[encounter.stage] || responderLinesByStage.notice,
+      "arriving",
+      "comms"
+    );
+  }
+
+  function activeEscalationCooldown(aggressorId) {
+    const cooldown = conflictEscalationCooldowns.get(aggressorId);
+    if (!cooldown) return null;
+    if (cooldown.until <= state.tick) {
+      conflictEscalationCooldowns.delete(aggressorId);
+      return null;
+    }
+    return cooldown;
+  }
+
+  function startEscalationCooldown(aggressorId, responderId) {
+    if (!aggressorId) return null;
+    const duration = randomInt(CONFLICT_ESCALATION_COOLDOWN_MIN_SECONDS, CONFLICT_ESCALATION_COOLDOWN_MAX_SECONDS);
+    const cooldown = { targetId: responderId, until: state.tick + duration };
+    conflictEscalationCooldowns.set(aggressorId, cooldown);
+    return cooldown;
+  }
+
+  function conflictCooldownLabel(aggressorId) {
+    const cooldown = activeEscalationCooldown(aggressorId);
+    if (!cooldown) return "";
+    return ` | cooldown=${Math.max(0, cooldown.until - state.tick)}s target=${cooldown.targetId || "n/a"}`;
   }
 
   function updateConflictEncounters(npcs) {
@@ -1954,10 +2010,13 @@ export function createNpcController({
           encounter.lastSeenTick = state.tick;
           encounter.aggressorId = pairing.aggressor.id;
           encounter.responderId = pairing.responder.id;
+          const cooldown = activeEscalationCooldown(pairing.aggressor.id);
+          if (cooldown && cooldown.targetId !== pairing.responder.id) continue;
           encounter.stress = Math.min(1, encounter.stress + (CONFLICT_GAIN_BASE * hostility * riskFactor));
           const nextStage = capStageForAggressor(conflictStageForStress(encounter.stress), pairing.aggressor);
-          if (nextStage !== encounter.stage && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
+          if (nextStage !== encounter.stage && !cooldown && transitions < CONFLICT_MAX_STAGE_PER_HEARTBEAT) {
             encounter.stage = nextStage;
+            startEscalationCooldown(pairing.aggressor.id, pairing.responder.id);
             transitions += 1;
             if (typeof onConflictStage === "function") onConflictStage({
               stage: encounter.stage,
@@ -2150,7 +2209,7 @@ export function createNpcController({
   }
 
   function formatConflictDebugEntry(entry, idx) {
-    return `${idx + 1}. ${entry.aggressorId} -> ${entry.responderId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}`;
+    return `${idx + 1}. ${entry.aggressorId} -> ${entry.responderId} @ ${entry.nodeId} | stage=${entry.stage} | stress=${entry.stress.toFixed(2)} | seen=${entry.lastSeenTick}${conflictCooldownLabel(entry.aggressorId)}`;
   }
 
   function bumpConflictStress(index, amount = 0.4) {
@@ -2167,6 +2226,7 @@ export function createNpcController({
     const nextStage = capStageForAggressor(conflictStageForStress(entry.stress), aggressor);
     if (nextStage !== entry.stage) {
       entry.stage = nextStage;
+      startEscalationCooldown(entry.aggressorId, entry.responderId);
       if (typeof onConflictStage === "function") onConflictStage({
         stage: entry.stage,
         nodeId: entry.nodeId,

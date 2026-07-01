@@ -23,6 +23,10 @@ Open in browser:
 
 - http://localhost:8080
 
+## Architecture and extension points
+
+The current module ownership map lives in [`docs/architecture.md`](docs/architecture.md). Use it when adding new gameplay rules, command flows, UI views, data assets, or instrumentation so `game.js` remains a composition layer rather than growing back into a monolith.
+
 ## Input options
 
 You can use either **short interactive input** (recommended) or **long-form commands**.

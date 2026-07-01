@@ -1,3 +1,57 @@
+export const CONSOLE_MESSAGE_IMPORTANCE = {
+  PLAYER_TRIGGERED: 1,
+  ENVIRONMENT_AFFECTING_PLAYER: 2,
+  AMBIENT_GAME_STATE: 3,
+  AMBIENT_FLAVOR: 4,
+};
+
+export const DEFAULT_CONSOLE_THROTTLE_THRESHOLDS = {
+  ambientFlavor: 8,
+  ambientGameState: 14,
+  essentialOnly: 22,
+};
+
+export function classifyConsoleMessage({ type = "sys", respondingToCommand = false } = {}) {
+  const normalizedType = String(type || "sys").toLowerCase();
+  if (respondingToCommand || normalizedType === "cmd" || normalizedType === "dispatch" || normalizedType === "error") {
+    return CONSOLE_MESSAGE_IMPORTANCE.PLAYER_TRIGGERED;
+  }
+  if (normalizedType === "alert" || normalizedType === "report") {
+    return CONSOLE_MESSAGE_IMPORTANCE.ENVIRONMENT_AFFECTING_PLAYER;
+  }
+  if (normalizedType.startsWith("comms-")) {
+    return CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_FLAVOR;
+  }
+  if (normalizedType === "comms") {
+    return CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_FLAVOR;
+  }
+  return CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_GAME_STATE;
+}
+
+export function shouldThrottleConsoleMessage({
+  importance,
+  recentCount,
+  thresholds = DEFAULT_CONSOLE_THROTTLE_THRESHOLDS,
+} = {}) {
+  if (importance <= CONSOLE_MESSAGE_IMPORTANCE.PLAYER_TRIGGERED) return false;
+  if (recentCount >= thresholds.essentialOnly) {
+    return importance > CONSOLE_MESSAGE_IMPORTANCE.ENVIRONMENT_AFFECTING_PLAYER;
+  }
+  if (recentCount >= thresholds.ambientGameState) {
+    return importance >= CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_GAME_STATE;
+  }
+  if (recentCount >= thresholds.ambientFlavor) {
+    return importance >= CONSOLE_MESSAGE_IMPORTANCE.AMBIENT_FLAVOR;
+  }
+  return false;
+}
+
+export function consoleMessageThrottleWeight({ type = "sys", respondingToCommand = false } = {}) {
+  const normalizedType = String(type || "sys").toLowerCase();
+  if (respondingToCommand && normalizedType !== "cmd") return 0.5;
+  return 1;
+}
+
 export function createConsoleLogger({
   state,
   ui,
@@ -6,9 +60,15 @@ export function createConsoleLogger({
   messageGapMs,
   dotsDelayMs,
   revealDelayMs,
+  responseBatchRevealMs = 1000,
+  messageRateWindowMs = 10000,
+  throttleThresholds = DEFAULT_CONSOLE_THROTTLE_THRESHOLDS,
 }) {
   let followConsole = true;
   const FOLLOW_THRESHOLD_PX = 24;
+  const pendingResponseLines = [];
+  const recentConsoleMessages = [];
+  let responseFlushQueued = false;
 
   function feedIsNearBottom() {
     if (!ui.feed) return true;
@@ -74,20 +134,65 @@ export function createConsoleLogger({
     return runAt;
   }
 
-  function logLine(text, type = "sys") {
-    const queuedTick = state.tick;
-    if (state.respondingToCommand && type !== "cmd") {
-      const inputAt = Date.now();
+  function recordAndCheckThrottle(type, respondingToCommand = state.respondingToCommand) {
+    const now = Date.now();
+    while (recentConsoleMessages.length && now - recentConsoleMessages[0].at > messageRateWindowMs) {
+      recentConsoleMessages.shift();
+    }
+    const importance = classifyConsoleMessage({ type, respondingToCommand });
+    const recentLoad = recentConsoleMessages.reduce((sum, message) => sum + message.weight, 0);
+    if (shouldThrottleConsoleMessage({ importance, recentCount: recentLoad, thresholds: throttleThresholds })) {
+      return false;
+    }
+    recentConsoleMessages.push({
+      at: now,
+      importance,
+      weight: consoleMessageThrottleWeight({ type, respondingToCommand }),
+    });
+    return true;
+  }
+
+  function flushPendingResponseLines() {
+    responseFlushQueued = false;
+    const entries = pendingResponseLines.splice(0);
+    if (!entries.length) return;
+
+    const inputAt = Date.now();
+    const placeholderAt = Math.max(state.consoleReadyAtMs, inputAt + dotsDelayMs);
+    const revealStartAt = Math.max(inputAt + revealDelayMs, placeholderAt + messageGapMs);
+    const revealStepMs = entries.length > 1 ? responseBatchRevealMs / (entries.length - 1) : 0;
+    const batchEndAt = revealStartAt + (entries.length > 1 ? responseBatchRevealMs : 0);
+
+    entries.forEach((entry, index) => {
       let bodyNode = null;
-      const placeholderAt = queueConsoleTask(() => {
-        bodyNode = appendLine(". . .", type, queuedTick);
-      }, inputAt + dotsDelayMs);
-      const revealAt = Math.max(inputAt + revealDelayMs, placeholderAt + messageGapMs);
+      setTimeout(() => {
+        bodyNode = appendLine(". . .", entry.type, entry.queuedTick);
+      }, Math.max(0, placeholderAt - Date.now()));
+
+      const revealAt = revealStartAt + revealStepMs * index;
       setTimeout(() => {
         if (!bodyNode) return;
-        bodyNode.innerHTML = ` ${stylizeConsoleText(text)}`;
+        bodyNode.innerHTML = ` ${stylizeConsoleText(entry.text)}`;
         pinFeedToBottom();
       }, Math.max(0, revealAt - Date.now()));
+    });
+
+    state.consoleReadyAtMs = Math.max(state.consoleReadyAtMs, batchEndAt + messageGapMs);
+  }
+
+  function queueResponseLine(text, type, queuedTick) {
+    pendingResponseLines.push({ text, type, queuedTick });
+    if (responseFlushQueued) return;
+    responseFlushQueued = true;
+    Promise.resolve().then(flushPendingResponseLines);
+  }
+
+  function logLine(text, type = "sys") {
+    const queuedTick = state.tick;
+    if (!recordAndCheckThrottle(type)) return;
+
+    if (state.respondingToCommand && type !== "cmd") {
+      queueResponseLine(text, type, queuedTick);
       return;
     }
 
