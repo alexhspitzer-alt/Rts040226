@@ -110,7 +110,6 @@ export function collectHandbookEncounterText({ state, nodes, nodeLabel, consoleT
 
   (state?.contracts || []).forEach((contract) => {
     appendObjectText(parts, contract.client);
-    appendObjectText(parts, contract.cargoType);
     [contract.from, contract.to].filter(Boolean).forEach((nodeId) => encounteredNodeIds.add(nodeId));
   });
 
@@ -126,14 +125,17 @@ export function collectHandbookEncounterText({ state, nodes, nodeLabel, consoleT
   return parts.filter(Boolean);
 }
 
-export function discoverHandbookEntries(entries, priorDiscoveries = [], encounterText = [], locationDiscovery = null) {
+export function discoverHandbookEntries(entries, priorDiscoveries = [], encounterText = [], discoveryContext = null) {
   const discovered = new Set(priorDiscoveries);
   const corpus = normalizedText(Array.isArray(encounterText) ? encounterText.join(" ") : encounterText);
   const physicalLocationNames = new Set(
-    (locationDiscovery?.physicalNames || []).map((name) => normalizedText(name)),
+    (discoveryContext?.physicalNames || []).map((name) => normalizedText(name)),
   );
   const confirmedLocationNames = new Set(
-    (locationDiscovery?.confirmedNames || []).map((name) => normalizedText(name)),
+    (discoveryContext?.confirmedNames || []).map((name) => normalizedText(name)),
+  );
+  const encounteredCargoTypes = new Set(
+    (discoveryContext?.encounteredCargoTypes || []).map((name) => normalizedText(name)),
   );
 
   Object.entries(entries || {}).forEach(([categoryName, category]) => {
@@ -149,6 +151,10 @@ export function discoverHandbookEntries(entries, priorDiscoveries = [], encounte
           if (confirmedLocationNames.has(normalizedName)) discovered.add(name);
           return;
         }
+        if (categoryName === "cargo_types" && Array.isArray(discoveryContext?.encounteredCargoTypes)) {
+          if (encounteredCargoTypes.has(normalizedName)) discovered.add(name);
+          return;
+        }
         const aliases = ENTRY_ALIASES[normalizedText(name)] || [];
         if ([name, ...aliases].some((term) => containsTerm(corpus, term))) discovered.add(name);
       });
@@ -160,6 +166,14 @@ export function discoverHandbookEntries(entries, priorDiscoveries = [], encounte
   });
 
   return [...discovered].sort((a, b) => a.localeCompare(b));
+}
+
+export function rememberEncounteredCargoType(cargoTypes = [], cargoType = "") {
+  const knownCargoTypes = Array.isArray(cargoTypes) ? cargoTypes : [];
+  const normalizedCargoType = normalizedText(cargoType);
+  if (!normalizedCargoType) return [...knownCargoTypes];
+  if (knownCargoTypes.some((name) => normalizedText(name) === normalizedCargoType)) return [...knownCargoTypes];
+  return [...knownCargoTypes, cargoType].sort((a, b) => a.localeCompare(b));
 }
 
 export function filterHandbookEntries(entries, discoveries = []) {

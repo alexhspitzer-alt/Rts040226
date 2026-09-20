@@ -33,6 +33,7 @@ import {
   collectHandbookLocationDiscovery,
   discoverHandbookEntries,
   filterHandbookEntries,
+  rememberEncounteredCargoType,
 } from "./modules/handbook-discovery.js";
 import { renderDashboardView } from "./modules/views/game-dashboard-view.js";
 import { createRandomProvider } from "./modules/game-random.js";
@@ -1030,12 +1031,15 @@ function renderHandbook() {
     nodeLabel,
     consoleText: consoleTranscriptText(),
   });
-  const locationDiscovery = collectHandbookLocationDiscovery({ state, nodes });
+  const discoveryContext = {
+    ...collectHandbookLocationDiscovery({ state, nodes }),
+    encounteredCargoTypes: state.encounteredCargoTypes,
+  };
   state.discoveredHandbookEntries = discoverHandbookEntries(
     state.almanacEntries,
     state.discoveredHandbookEntries,
     encounterText,
-    locationDiscovery,
+    discoveryContext,
   );
   if (state.handbookUnreadTrackingActive) {
     const unread = new Set(state.unreadHandbookEntries);
@@ -3046,6 +3050,20 @@ function tickFactionHeat() {
   evaluateFactionCampaignTriggers();
 }
 
+function markContractCargoLoaded(ship) {
+  if (!ship?.activeContractId || ship.travelPlan?.cargoLoaded) return false;
+  const contract = state.contracts.find((entry) => entry.id === ship.activeContractId);
+  if (!contract || contract.status !== "assigned") return false;
+  if (ship.travelPlan) ship.travelPlan.cargoLoaded = true;
+  contract.cargoLoaded = true;
+  if (!Number.isFinite(contract.cargoLoadedAtTick)) contract.cargoLoadedAtTick = state.tick;
+  state.encounteredCargoTypes = rememberEncounteredCargoType(
+    state.encounteredCargoTypes,
+    contract.cargoType,
+  );
+  return true;
+}
+
 function tickShips() {
   state.ships.forEach((ship) => {
     if (ship.utility && ship.dockedTo) {
@@ -3116,6 +3134,9 @@ function tickShips() {
       const departureEffect = recordPlayerDockDeparture(ship, ship.at, departureHazard, departureHazardEffect, { announceDelay: oneWaySignalToNode(ship.at) });
       if (departureEffect?.disablesShip) return;
       ship.status = "enroute";
+      if (ship.travelPlan?.mode === "contract" && ship.travelPlan.firstLegFrom === ship.travelPlan.firstLegTo) {
+        markContractCargoLoaded(ship);
+      }
     }
     if (ship.status === "enroute" && ship.travelPlan?.mode === "contract" && !ship.travelPlan.firstLegDockRecorded) {
       const firstLegTransit = Number.isFinite(ship.travelPlan.firstLegTransit) ? ship.travelPlan.firstLegTransit : 0;
@@ -3123,6 +3144,7 @@ function tickShips() {
       if (ship.travelPlan.firstLegTo && ship.travelPlan.firstLegFrom !== ship.travelPlan.firstLegTo && state.tick >= firstLegArrivalTick && firstLegArrivalTick < ship.busyUntil) {
         const midLegArrivalEffect = recordPlayerDockArrival(ship, ship.travelPlan.firstLegTo, { announceDelay: oneWaySignalToNode(ship.travelPlan.firstLegTo) });
         if (midLegArrivalEffect?.disablesShip) return;
+        markContractCargoLoaded(ship);
         const midLegDepartureEffect = (ship.travelPlan.secondLegTransit || 0) > 0 ? recordPlayerDockDeparture(ship, ship.travelPlan.firstLegTo, null, null, { announceDelay: oneWaySignalToNode(ship.travelPlan.firstLegTo) }) : null;
         if (midLegDepartureEffect?.disablesShip) return;
         ship.travelPlan.firstLegDockRecorded = true;

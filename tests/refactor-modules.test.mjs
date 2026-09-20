@@ -18,6 +18,7 @@ import {
   collectHandbookLocationDiscovery,
   discoverHandbookEntries,
   filterHandbookEntries,
+  rememberEncounteredCargoType,
 } from '../modules/handbook-discovery.js';
 
 const parsed = parseCommandInput('H Capt. Venn');
@@ -138,7 +139,7 @@ const handbookEntries = {
   },
   organizations: [{ name: 'Union of Free Planets' }],
   ships_and_classes: [{ name: 'Hauler' }, { name: 'Tug' }],
-  cargo_types: [{ name: 'Deuterium' }],
+  cargo_types: [{ name: 'Deuterium' }, { name: 'Medical Supplies' }],
 };
 const handbookMapData = {
   layer0: {
@@ -167,8 +168,8 @@ const encounterText = collectHandbookEncounterText({
       lastKnownAt: 'anchor_station',
       destination: 'ufp_science_station',
     }],
-    contracts: [{ from: 'anchor_station', to: 'ufp_science_station' }],
-    inbox: [{ body: "UFP traffic control confirms UFP Science Station and Baron's Market are visible; approach value remains uncertain." }],
+    contracts: [{ from: 'anchor_station', to: 'ufp_science_station', cargoType: 'Deuterium' }],
+    inbox: [{ body: "UFP traffic control confirms UFP Science Station and Baron's Market are visible; Deuterium and Medical Supplies are listed; approach value remains uncertain." }],
     news: [],
     mapData: handbookMapData,
   },
@@ -192,7 +193,8 @@ const handbookNodes = {
   ufp_science_station: { label: 'UFP Science Station', moon: 'end_of_day', moonName: 'End-of-Day' },
 };
 const locationDiscovery = collectHandbookLocationDiscovery({ state: locationState, nodes: handbookNodes });
-const discoveredHandbook = discoverHandbookEntries(handbookEntries, [], encounterText, locationDiscovery);
+const discoveryContext = { ...locationDiscovery, encounteredCargoTypes: [] };
+const discoveredHandbook = discoverHandbookEntries(handbookEntries, [], encounterText, discoveryContext);
 assert.deepEqual(discoveredHandbook, [
   'Anchor Station',
   'Approach Variability',
@@ -207,6 +209,19 @@ assert.equal(discoveredHandbook.includes('UFP Science Station'), false);
 assert.equal(discoveredHandbook.includes("Baron's Market"), false);
 assert.equal(discoveredHandbook.includes('End-of-Day'), false);
 assert.equal(discoveredHandbook.includes('Outer Orbit'), false);
+assert.equal(discoveredHandbook.includes('Deuterium'), false);
+assert.equal(discoveredHandbook.includes('Medical Supplies'), false);
+
+const encounteredCargoTypes = rememberEncounteredCargoType([], 'Deuterium');
+assert.deepEqual(rememberEncounteredCargoType(encounteredCargoTypes, 'deuterium'), ['Deuterium']);
+const afterCargoLoaded = discoverHandbookEntries(
+  handbookEntries,
+  discoveredHandbook,
+  encounterText,
+  { ...discoveryContext, encounteredCargoTypes },
+);
+assert.equal(afterCargoLoaded.includes('Deuterium'), true);
+assert.equal(afterCargoLoaded.includes('Medical Supplies'), false);
 
 locationState.ships[0].lastKnownAt = 'ufp_science_station';
 const confirmedArrivalDiscovery = collectHandbookLocationDiscovery({ state: locationState, nodes: handbookNodes });
@@ -214,7 +229,7 @@ const afterArrivalReport = discoverHandbookEntries(
   handbookEntries,
   discoveredHandbook,
   encounterText,
-  confirmedArrivalDiscovery,
+  { ...confirmedArrivalDiscovery, encounteredCargoTypes: [] },
 );
 assert.equal(afterArrivalReport.includes('UFP Science Station'), true);
 assert.equal(afterArrivalReport.includes('End-of-Day'), true);
