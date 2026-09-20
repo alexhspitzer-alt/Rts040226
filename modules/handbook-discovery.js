@@ -30,21 +30,6 @@ function containsTerm(corpus, term) {
   return ` ${corpus} `.includes(` ${normalizedTerm} `);
 }
 
-function handbookEntryLists(entries) {
-  const lists = [];
-  Object.values(entries || {}).forEach((category) => {
-    if (Array.isArray(category)) {
-      lists.push(category);
-      return;
-    }
-    if (!category || typeof category !== "object") return;
-    Object.values(category).forEach((group) => {
-      if (Array.isArray(group)) lists.push(group);
-    });
-  });
-  return lists;
-}
-
 function appendObjectText(parts, value) {
   if (value === null || value === undefined) return;
   if (typeof value === "string" || typeof value === "number") {
@@ -65,6 +50,53 @@ function orbitLabelForNode(nodeId, nodes, mapData) {
   const orbit = moonId ? mapData?.layer0?.moons?.[moonId]?.orbit : null;
   if (!orbit) return null;
   return `${orbit.charAt(0).toUpperCase()}${orbit.slice(1)} Orbit`;
+}
+
+function addLocationNames(target, nodeId, nodes, mapData) {
+  const node = nodes?.[nodeId];
+  if (!node) return;
+  [node.label, node.moonName, orbitLabelForNode(nodeId, nodes, mapData)]
+    .filter(Boolean)
+    .forEach((name) => target.add(name));
+}
+
+function addMapLocationNames(target, mapData) {
+  Object.values(mapData?.layer0?.moons || {}).forEach((moon) => {
+    if (moon?.name) target.add(moon.name);
+    if (moon?.orbit) {
+      target.add(`${moon.orbit.charAt(0).toUpperCase()}${moon.orbit.slice(1)} Orbit`);
+    }
+  });
+
+  const visit = (value) => {
+    if (!value || typeof value !== "object") return;
+    if (!Array.isArray(value) && value.locations && typeof value.locations === "object") {
+      Object.values(value.locations).forEach((location) => {
+        if (location?.name) target.add(location.name);
+      });
+    }
+    Object.values(value).forEach(visit);
+  };
+  visit(mapData);
+}
+
+export function collectHandbookLocationDiscovery({ state, nodes } = {}) {
+  const physicalNames = new Set(["Indigo"]);
+  const confirmedNames = new Set(["Indigo"]);
+
+  addMapLocationNames(physicalNames, state?.mapData);
+  Object.keys(nodes || {}).forEach((nodeId) => {
+    addLocationNames(physicalNames, nodeId, nodes, state?.mapData);
+  });
+
+  (state?.ships || []).forEach((ship) => {
+    addLocationNames(confirmedNames, ship?.lastKnownAt, nodes, state?.mapData);
+  });
+
+  return {
+    physicalNames: [...physicalNames],
+    confirmedNames: [...confirmedNames],
+  };
 }
 
 export function collectHandbookEncounterText({ state, nodes, nodeLabel, consoleText = "" } = {}) {
@@ -94,16 +126,32 @@ export function collectHandbookEncounterText({ state, nodes, nodeLabel, consoleT
   return parts.filter(Boolean);
 }
 
-export function discoverHandbookEntries(entries, priorDiscoveries = [], encounterText = []) {
+export function discoverHandbookEntries(entries, priorDiscoveries = [], encounterText = [], locationDiscovery = null) {
   const discovered = new Set(priorDiscoveries);
   const corpus = normalizedText(Array.isArray(encounterText) ? encounterText.join(" ") : encounterText);
+  const physicalLocationNames = new Set(
+    (locationDiscovery?.physicalNames || []).map((name) => normalizedText(name)),
+  );
+  const confirmedLocationNames = new Set(
+    (locationDiscovery?.confirmedNames || []).map((name) => normalizedText(name)),
+  );
 
-  handbookEntryLists(entries).forEach((list) => {
-    list.forEach((entry) => {
-      const name = entry?.name;
-      if (!name) return;
-      const aliases = ENTRY_ALIASES[normalizedText(name)] || [];
-      if ([name, ...aliases].some((term) => containsTerm(corpus, term))) discovered.add(name);
+  Object.entries(entries || {}).forEach(([categoryName, category]) => {
+    const lists = Array.isArray(category)
+      ? [category]
+      : Object.values(category || {}).filter((group) => Array.isArray(group));
+    lists.forEach((list) => {
+      list.forEach((entry) => {
+        const name = entry?.name;
+        if (!name) return;
+        const normalizedName = normalizedText(name);
+        if (categoryName === "locations" && physicalLocationNames.has(normalizedName)) {
+          if (confirmedLocationNames.has(normalizedName)) discovered.add(name);
+          return;
+        }
+        const aliases = ENTRY_ALIASES[normalizedText(name)] || [];
+        if ([name, ...aliases].some((term) => containsTerm(corpus, term))) discovered.add(name);
+      });
     });
   });
 

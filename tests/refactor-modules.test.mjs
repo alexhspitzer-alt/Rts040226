@@ -15,6 +15,7 @@ import { createSimulationTicker } from '../modules/game-ticks.js';
 import { buildAlmanacViewModel } from '../modules/views/almanac-view.js';
 import {
   collectHandbookEncounterText,
+  collectHandbookLocationDiscovery,
   discoverHandbookEntries,
   filterHandbookEntries,
 } from '../modules/handbook-discovery.js';
@@ -121,26 +122,103 @@ assert.equal(almanac['Indigo System']['Orbit Bands'].length, 2);
 
 const handbookEntries = {
   locations: {
-    'Indigo System': [{ name: 'Indigo' }, { name: 'Orbit Bands' }, { name: 'Low Orbit' }, { name: 'Outer Orbit' }],
-    'Stations, Outposts, and Facilities': [{ name: 'Anchor Station' }, { name: "Baron's Market" }],
+    'Indigo System': [
+      { name: 'Indigo' },
+      { name: 'Orbit Bands' },
+      { name: 'High Orbit' },
+      { name: 'Outer Orbit' },
+      { name: 'Approach Variability' },
+    ],
+    Moons: [{ name: "Cat's Eye" }, { name: 'End-of-Day' }],
+    'Stations, Outposts, and Facilities': [
+      { name: 'Anchor Station' },
+      { name: 'UFP Science Station' },
+      { name: "Baron's Market" },
+    ],
   },
   organizations: [{ name: 'Union of Free Planets' }],
   ships_and_classes: [{ name: 'Hauler' }, { name: 'Tug' }],
   cargo_types: [{ name: 'Deuterium' }],
 };
+const handbookMapData = {
+  layer0: {
+    moons: {
+      cats_eye: { name: "Cat's Eye", orbit: 'high' },
+      end_of_day: { name: 'End-of-Day', orbit: 'outer' },
+      peltier: { name: 'Peltier', orbit: 'high' },
+    },
+  },
+  layer2: {
+    scenario2: {
+      activeMoons: {
+        peltier: {
+          name: 'Peltier',
+          locations: { barons_market: { name: "Baron's Market" } },
+        },
+      },
+    },
+  },
+};
 const encounterText = collectHandbookEncounterText({
   state: {
-    ships: [{ id: 'hauler-1', at: 'anchor_station', lastKnownAt: 'anchor_station' }],
-    contracts: [],
-    inbox: [{ body: 'UFP traffic control is monitoring the lane.' }],
+    ships: [{
+      id: 'hauler-1',
+      at: 'ufp_science_station',
+      lastKnownAt: 'anchor_station',
+      destination: 'ufp_science_station',
+    }],
+    contracts: [{ from: 'anchor_station', to: 'ufp_science_station' }],
+    inbox: [{ body: "UFP traffic control confirms UFP Science Station and Baron's Market are visible; approach value remains uncertain." }],
     news: [],
-    mapData: { layer0: { moons: { cats_eye: { orbit: 'low' } } } },
+    mapData: handbookMapData,
   },
-  nodes: { anchor_station: { label: 'Anchor Station', moon: 'cats_eye', moonName: "Cat's Eye" } },
-  nodeLabel: () => "Anchor Station (Cat's Eye)",
+  nodes: {
+    anchor_station: { label: 'Anchor Station', moon: 'cats_eye', moonName: "Cat's Eye" },
+    ufp_science_station: { label: 'UFP Science Station', moon: 'end_of_day', moonName: 'End-of-Day' },
+  },
+  nodeLabel: (nodeId) => nodeId === 'anchor_station' ? "Anchor Station (Cat's Eye)" : 'UFP Science Station (End-of-Day)',
 });
-const discoveredHandbook = discoverHandbookEntries(handbookEntries, [], encounterText);
-assert.deepEqual(discoveredHandbook, ['Anchor Station', 'Hauler', 'Indigo', 'Low Orbit', 'Orbit Bands', 'Union of Free Planets']);
+const locationState = {
+  ships: [{
+    id: 'hauler-1',
+    at: 'ufp_science_station',
+    lastKnownAt: 'anchor_station',
+    destination: 'ufp_science_station',
+  }],
+  mapData: handbookMapData,
+};
+const handbookNodes = {
+  anchor_station: { label: 'Anchor Station', moon: 'cats_eye', moonName: "Cat's Eye" },
+  ufp_science_station: { label: 'UFP Science Station', moon: 'end_of_day', moonName: 'End-of-Day' },
+};
+const locationDiscovery = collectHandbookLocationDiscovery({ state: locationState, nodes: handbookNodes });
+const discoveredHandbook = discoverHandbookEntries(handbookEntries, [], encounterText, locationDiscovery);
+assert.deepEqual(discoveredHandbook, [
+  'Anchor Station',
+  'Approach Variability',
+  "Cat's Eye",
+  'Hauler',
+  'High Orbit',
+  'Indigo',
+  'Orbit Bands',
+  'Union of Free Planets',
+]);
+assert.equal(discoveredHandbook.includes('UFP Science Station'), false);
+assert.equal(discoveredHandbook.includes("Baron's Market"), false);
+assert.equal(discoveredHandbook.includes('End-of-Day'), false);
+assert.equal(discoveredHandbook.includes('Outer Orbit'), false);
+
+locationState.ships[0].lastKnownAt = 'ufp_science_station';
+const confirmedArrivalDiscovery = collectHandbookLocationDiscovery({ state: locationState, nodes: handbookNodes });
+const afterArrivalReport = discoverHandbookEntries(
+  handbookEntries,
+  discoveredHandbook,
+  encounterText,
+  confirmedArrivalDiscovery,
+);
+assert.equal(afterArrivalReport.includes('UFP Science Station'), true);
+assert.equal(afterArrivalReport.includes('End-of-Day'), true);
+assert.equal(afterArrivalReport.includes('Outer Orbit'), true);
 const retainedHandbook = discoverHandbookEntries(handbookEntries, discoveredHandbook, []);
 assert.deepEqual(retainedHandbook, discoveredHandbook);
 const filteredHandbook = filterHandbookEntries(handbookEntries, retainedHandbook);

@@ -30,6 +30,7 @@ import { createSimulationTicker } from "./modules/game-ticks.js";
 import { renderAlmanacView } from "./modules/views/almanac-view.js";
 import {
   collectHandbookEncounterText,
+  collectHandbookLocationDiscovery,
   discoverHandbookEntries,
   filterHandbookEntries,
 } from "./modules/handbook-discovery.js";
@@ -1029,10 +1030,12 @@ function renderHandbook() {
     nodeLabel,
     consoleText: consoleTranscriptText(),
   });
+  const locationDiscovery = collectHandbookLocationDiscovery({ state, nodes });
   state.discoveredHandbookEntries = discoverHandbookEntries(
     state.almanacEntries,
     state.discoveredHandbookEntries,
     encounterText,
+    locationDiscovery,
   );
   if (state.handbookUnreadTrackingActive) {
     const unread = new Set(state.unreadHandbookEntries);

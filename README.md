@@ -66,7 +66,8 @@ This repo includes a Pages workflow at `.github/workflows/pages.yml` that deploy
 2. Open **Handbook** tab:
    - verify entries for the starting fleet, contracts, and briefing are present,
    - verify the unread counter starts at `0`,
-   - verify later-scenario ships, locations, and cargo remain hidden until encountered.
+   - verify later-scenario ships and cargo remain hidden until encountered,
+   - verify a visible contract destination stays hidden until a ship's arrival there is confirmed.
    - advance a scenario, verify newly discovered entries are marked unread, and open one to decrement the counter.
 3. Open **Inbox** and verify each new message keeps its **NEW** marker until that message is opened.
 4. Run `fleet`, select a ship, and issue `send`:
