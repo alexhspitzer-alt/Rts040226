@@ -13,6 +13,11 @@ import { createRouteCache } from '../modules/game-route-cache.js';
 import { selectVisibleOpenContracts } from '../modules/game-selectors.js';
 import { createSimulationTicker } from '../modules/game-ticks.js';
 import { buildAlmanacViewModel } from '../modules/views/almanac-view.js';
+import {
+  collectHandbookEncounterText,
+  discoverHandbookEntries,
+  filterHandbookEntries,
+} from '../modules/handbook-discovery.js';
 
 const parsed = parseCommandInput('H Capt. Venn');
 assert.equal(parsed.command, 'hail');
@@ -113,3 +118,32 @@ const almanac = buildAlmanacViewModel({
   organizations: [],
 });
 assert.equal(almanac['Indigo System']['Orbit Bands'].length, 2);
+
+const handbookEntries = {
+  locations: {
+    'Indigo System': [{ name: 'Indigo' }, { name: 'Orbit Bands' }, { name: 'Low Orbit' }, { name: 'Outer Orbit' }],
+    'Stations, Outposts, and Facilities': [{ name: 'Anchor Station' }, { name: "Baron's Market" }],
+  },
+  organizations: [{ name: 'Union of Free Planets' }],
+  ships_and_classes: [{ name: 'Hauler' }, { name: 'Tug' }],
+  cargo_types: [{ name: 'Deuterium' }],
+};
+const encounterText = collectHandbookEncounterText({
+  state: {
+    ships: [{ id: 'hauler-1', at: 'anchor_station', lastKnownAt: 'anchor_station' }],
+    contracts: [],
+    inbox: [{ body: 'UFP traffic control is monitoring the lane.' }],
+    news: [],
+    mapData: { layer0: { moons: { cats_eye: { orbit: 'low' } } } },
+  },
+  nodes: { anchor_station: { label: 'Anchor Station', moon: 'cats_eye', moonName: "Cat's Eye" } },
+  nodeLabel: () => "Anchor Station (Cat's Eye)",
+});
+const discoveredHandbook = discoverHandbookEntries(handbookEntries, [], encounterText);
+assert.deepEqual(discoveredHandbook, ['Anchor Station', 'Hauler', 'Indigo', 'Low Orbit', 'Orbit Bands', 'Union of Free Planets']);
+const retainedHandbook = discoverHandbookEntries(handbookEntries, discoveredHandbook, []);
+assert.deepEqual(retainedHandbook, discoveredHandbook);
+const filteredHandbook = filterHandbookEntries(handbookEntries, retainedHandbook);
+assert.deepEqual(filteredHandbook.ships_and_classes.map((entry) => entry.name), ['Hauler']);
+assert.equal(filteredHandbook.locations['Stations, Outposts, and Facilities'][0].name, 'Anchor Station');
+assert.equal(filteredHandbook.cargo_types, undefined);

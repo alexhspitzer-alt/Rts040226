@@ -63,9 +63,9 @@ This repo includes a Pages workflow at `.github/workflows/pages.yml` that deploy
 ## Quick smoke test after merges
 
 1. Open the deployed page and confirm the footer `last updated` timestamp is recent.
-2. Open **Almanac** tab:
-   - verify Indigo System category expands,
-   - verify Orbit Bands contains Low/Ring/High/Outer entries.
+2. Open **Handbook** tab:
+   - verify entries for the starting fleet, contracts, and briefing are present,
+   - verify later-scenario ships, locations, and cargo remain hidden until encountered.
 3. Run `fleet`, select a ship, and issue `send`:
    - captain should send two departure messages,
    - first message contains acknowledgement + destination + action,

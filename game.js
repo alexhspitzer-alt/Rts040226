@@ -28,6 +28,11 @@ import { createEventBus } from "./modules/game-events.js";
 import { createRouteCache } from "./modules/game-route-cache.js";
 import { createSimulationTicker } from "./modules/game-ticks.js";
 import { renderAlmanacView } from "./modules/views/almanac-view.js";
+import {
+  collectHandbookEncounterText,
+  discoverHandbookEntries,
+  filterHandbookEntries,
+} from "./modules/handbook-discovery.js";
 import { renderDashboardView } from "./modules/views/game-dashboard-view.js";
 import { createRandomProvider } from "./modules/game-random.js";
 import { createPerformanceMonitor, isPerformanceSamplingEnabledByUrl } from "./modules/game-performance.js";
@@ -999,8 +1004,27 @@ async function loadReferenceData() {
   }
 }
 
-function renderAlmanac() {
-  renderAlmanacView({ root: ui.almanacRoot, entries: state.almanacEntries });
+let handbookRenderSignature = null;
+
+function renderHandbook() {
+  const encounterText = collectHandbookEncounterText({
+    state,
+    nodes,
+    nodeLabel,
+    consoleText: consoleTranscriptText(),
+  });
+  state.discoveredHandbookEntries = discoverHandbookEntries(
+    state.almanacEntries,
+    state.discoveredHandbookEntries,
+    encounterText,
+  );
+  const signature = state.discoveredHandbookEntries.join("|");
+  if (signature === handbookRenderSignature && ui.almanacRoot?.children.length) return;
+  handbookRenderSignature = signature;
+  renderAlmanacView({
+    root: ui.almanacRoot,
+    entries: filterHandbookEntries(state.almanacEntries, state.discoveredHandbookEntries),
+  });
 }
 
 function playScenarioIntro() {
@@ -1615,6 +1639,7 @@ function render() {
   });
   if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
   renderNews();
+  renderHandbook();
   const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
   if (inboxActive) renderInbox();
 }
@@ -3301,7 +3326,7 @@ const GameBootstrap = createGameBootstrap({
   state,
   ui,
   loadReferenceData,
-  renderAlmanac,
+  renderAlmanac: renderHandbook,
   playerHailFlow: PlayerHailFlow,
   handleCommand,
   render,

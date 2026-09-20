@@ -81,14 +81,14 @@ export async function loadGameReferenceData({ fetchImpl = fetch, paths = {}, cac
   const mapData = await readJson(responseByKey.map, "Map", warnings);
   const buddeData = await readJson(responseByKey.budde, "BUDDE", warnings);
   const scenario = await readJson(responseByKey.scenario, "Scenario", warnings);
-  const almanac = await readJson(responseByKey.almanac, "Almanac", warnings);
+  const almanac = await readJson(responseByKey.almanac, "Handbook", warnings);
   const shipRegistry = await readJson(responseByKey.shipRegistry, "Ship registry", warnings);
   const characterNameRegistry = await readJson(responseByKey.characterNameRegistry, "Character name registry", warnings);
   const conflictOutcomes = await readJson(responseByKey.conflictOutcomes, "Conflict outcomes", warnings);
 
   if (dialogueData) validateObject(dialogueData?.characters || dialogueData, "Dialogue character", warnings);
   if (mapData) validateObject(mapData, "Map", warnings);
-  if (almanac) validateObject(almanac?.almanac_entries, "Almanac entries", warnings);
+  if (almanac) validateObject(almanac?.almanac_entries, "Handbook entries", warnings);
   if (shipRegistry) validateObject(shipRegistry, "Ship registry", warnings);
   if (characterNameRegistry) validateObject(characterNameRegistry, "Character name registry", warnings);
   if (conflictOutcomes) validateObject(conflictOutcomes, "Conflict outcomes", warnings);

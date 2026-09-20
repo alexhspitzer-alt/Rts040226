@@ -29,7 +29,7 @@
           <button type="button" class="tab-btn is-active" role="tab" aria-selected="true" aria-controls="metrics-contracts" id="tab-contracts" data-tab="contracts">Contracts</button>
           <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-fleet" id="tab-fleet" data-tab="fleet">Fleet</button>
           <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-news" id="tab-news" data-tab="news">News</button>
-          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-almanac" id="tab-almanac" data-tab="almanac">Almanac</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-almanac" id="tab-almanac" data-tab="almanac">Handbook</button>
           <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="metrics-inbox" id="tab-inbox" data-tab="inbox">Inbox(<span id="inbox-unread">0</span>)</button>
         </div>
         <section id="metrics-contracts" class="tab-panel is-active" role="tabpanel" aria-labelledby="tab-contracts">
@@ -45,7 +45,7 @@
           <ul id="news-list" class="list"></ul>
         </section>
         <section id="metrics-almanac" class="tab-panel" role="tabpanel" aria-labelledby="tab-almanac" hidden>
-          <h3>Almanac</h3>
+          <h3>Handbook</h3>
           <div id="almanac-root" class="almanac-root"></div>
         </section>
         <section id="metrics-inbox" class="tab-panel" role="tabpanel" aria-labelledby="tab-inbox" hidden>
@@ -109,6 +109,6 @@
       button.addEventListener("click", () => setTab(button.dataset.tab));
     });
   </script>
-  <script type="module" src="game.js?v=navigation-sensors-20260620"></script>
+  <script type="module" src="game.js?v=handbook-discovery-20260920"></script>
 </body>
 </html>

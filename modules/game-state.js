@@ -81,6 +81,7 @@ export function createInitialGameState({ shipCapacityById, defaultLoreSummary, n
     scenario4Dialogue: null,
     playerRequestDialogue: null,
     almanacEntries: null,
+    discoveredHandbookEntries: [],
     tugIntroPlayed: false,
     buddeIntroduced: false,
     scenario3CapacityBriefed: false,

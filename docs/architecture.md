@@ -26,8 +26,9 @@ This document is the durable ownership map for the modular runtime. It replaces 
 - `modules/game-command-parser.js` owns command tokenization, aliases, and confirmation parsing. Add syntax changes here before wiring command effects.
 - `modules/game-command-runtime.js` owns command side effects and menu-state transitions. It should call parser and selector helpers rather than duplicating lookup logic.
 - `modules/game-selectors.js` owns pure, read-only derived-state helpers used by commands, rendering, and tests.
+- `modules/handbook-discovery.js` owns Handbook encounter matching and filtering.
 - `modules/views/` owns DOM rendering helpers and view-model shaping:
-  - `almanac-view.js` renders almanac content.
+  - `almanac-view.js` renders Handbook content.
   - `game-dashboard-view.js` renders the dashboard, contracts, and fleet summaries.
 
 ## Data, events, and instrumentation

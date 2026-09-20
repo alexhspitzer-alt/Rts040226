@@ -73,13 +73,18 @@ export function renderAlmanacView({ root, entries, doc = document }) {
   root.innerHTML = "";
   if (!entries || typeof entries !== "object") {
     const empty = doc.createElement("p");
-    empty.textContent = "Almanac data unavailable.";
+    empty.textContent = "Handbook data unavailable.";
     root.appendChild(empty);
     return;
   }
 
   const normalizedEntries = buildAlmanacViewModel(entries);
+  let renderedCategoryCount = 0;
   Object.entries(normalizedEntries).forEach(([categoryName, categoryPayload]) => {
+    const hasEntries = Array.isArray(categoryPayload)
+      ? categoryPayload.length > 0
+      : Object.values(categoryPayload || {}).some((groupEntries) => Array.isArray(groupEntries) && groupEntries.length > 0);
+    if (!hasEntries) return;
     const categoryNode = doc.createElement("details");
     categoryNode.className = "almanac-category";
 
@@ -95,5 +100,11 @@ export function renderAlmanacView({ root, entries, doc = document }) {
       });
     }
     root.appendChild(categoryNode);
+    renderedCategoryCount += 1;
   });
+  if (!renderedCategoryCount) {
+    const empty = doc.createElement("p");
+    empty.textContent = "Entries appear here as you encounter them.";
+    root.appendChild(empty);
+  }
 }
