@@ -68,8 +68,9 @@ This repo includes a Pages workflow at `.github/workflows/pages.yml` that deploy
    - verify the unread counter starts at `0`,
    - verify later-scenario ships, locations, and cargo remain hidden until encountered.
    - advance a scenario, verify newly discovered entries are marked unread, and open one to decrement the counter.
-3. Run `fleet`, select a ship, and issue `send`:
+3. Open **Inbox** and verify each new message keeps its **NEW** marker until that message is opened.
+4. Run `fleet`, select a ship, and issue `send`:
    - captain should send two departure messages,
    - first message contains acknowledgement + destination + action,
    - second message contains route callout in future tense (`will ...`).
-4. Assign a contract and confirm first departure action line says pickup or delivery as appropriate.
+5. Assign a contract and confirm first departure action line says pickup or delivery as appropriate.

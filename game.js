@@ -1948,7 +1948,9 @@ function renderNews() {
 }
 
 function renderInbox() {
-  if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
+  const unreadSet = new Set(state.unreadInboxIndexes || []);
+  state.unreadInboxCount = unreadSet.size;
+  if (ui.inboxUnread) ui.inboxUnread.textContent = String(unreadSet.size);
   if (!ui.inboxList) return;
   const openSet = new Set(state.inboxOpenIndexes || []);
   ui.inboxList.innerHTML = "";
@@ -1958,15 +1960,10 @@ function renderInbox() {
     const li = document.createElement("li");
     const messageType = inboxDisplayMessageType(msg);
     li.className = `inbox-item ${inboxMessageClass(messageType)}`;
+    if (unreadSet.has(actualIndex)) li.classList.add("is-unread");
     const details = document.createElement("details");
     details.className = "inbox-mail";
     details.open = openSet.has(actualIndex);
-    details.addEventListener("toggle", () => {
-      const current = new Set(state.inboxOpenIndexes || []);
-      if (details.open) current.add(actualIndex);
-      else current.delete(actualIndex);
-      state.inboxOpenIndexes = [...current].sort((a, b) => a - b);
-    });
 
     const summary = document.createElement("summary");
     summary.className = "inbox-mail-summary";
@@ -1974,7 +1971,27 @@ function renderInbox() {
     const from = msg.from || msg.speaker || "System";
     const stamp = msg.timestamp || fmtTime(msg.tick || state.tick);
     summary.textContent = `${stamp} | From: ${from} | ${subject}`;
+    if (unreadSet.has(actualIndex)) {
+      const marker = document.createElement("span");
+      marker.className = "new-item-marker";
+      marker.textContent = "new";
+      summary.appendChild(marker);
+    }
     details.appendChild(summary);
+
+    details.addEventListener("toggle", () => {
+      const current = new Set(state.inboxOpenIndexes || []);
+      if (details.open) current.add(actualIndex);
+      else current.delete(actualIndex);
+      state.inboxOpenIndexes = [...current].sort((a, b) => a - b);
+      if (details.open && li.classList.contains("is-unread")) {
+        li.classList.remove("is-unread");
+        summary.querySelector(".new-item-marker")?.remove();
+        state.unreadInboxIndexes = (state.unreadInboxIndexes || []).filter((index) => index !== actualIndex);
+        state.unreadInboxCount = state.unreadInboxIndexes.length;
+        if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
+      }
+    });
 
     const body = document.createElement("p");
     body.className = `inbox-mail-body inbox-mail-body-${messageType || "sys"}`;
@@ -1984,6 +2001,17 @@ function renderInbox() {
     li.appendChild(details);
     ui.inboxList.appendChild(li);
   });
+}
+
+function pushInboxMessage(message, { render = true } = {}) {
+  const messageIndex = state.inbox.push(message) - 1;
+  const unread = new Set(state.unreadInboxIndexes || []);
+  unread.add(messageIndex);
+  state.unreadInboxIndexes = [...unread].sort((a, b) => a - b);
+  state.unreadInboxCount = state.unreadInboxIndexes.length;
+  if (ui.inboxUnread) ui.inboxUnread.textContent = String(state.unreadInboxCount);
+  if (render) renderInbox();
+  return messageIndex;
 }
 
 function activateTab(tabName) {
@@ -1998,7 +2026,6 @@ function activateTab(tabName) {
     panel.hidden = !active;
   });
   if (tabName === "inbox") {
-    state.unreadInboxCount = 0;
     renderInbox();
   } else if (tabName === "news") {
     renderNews();
@@ -2013,10 +2040,7 @@ function postTutorialInboxSequence(speaker, lines, consoleNotice) {
   const body = filtered.join("\n\n");
   const subject = `${speaker} Tutorial Briefing`;
   const messageType = speakerMessageType(speaker);
-  state.inbox.push({ speaker, from: speaker, subject, body, messageType, tick: state.tick, timestamp: fmtTime(state.tick) });
-  const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
-  if (!inboxActive) state.unreadInboxCount += 1;
-  renderInbox();
+  pushInboxMessage({ speaker, from: speaker, subject, body, messageType, tick: state.tick, timestamp: fmtTime(state.tick) });
   logLine(consoleNotice, "sys");
 }
 
@@ -2034,7 +2058,7 @@ function postScenarioIntroInboxMessages(entries, consoleNotice) {
   });
   grouped.forEach((group) => {
     const messageType = speakerMessageType(group.speaker);
-    state.inbox.push({
+    pushInboxMessage({
       speaker: group.speaker,
       from: group.speaker,
       cc: grouped.filter((g) => g.speaker !== group.speaker).map((g) => g.speaker),
@@ -2043,10 +2067,8 @@ function postScenarioIntroInboxMessages(entries, consoleNotice) {
       messageType,
       tick: state.tick,
       timestamp: fmtTime(state.tick),
-    });
+    }, { render: false });
   });
-  const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
-  if (!inboxActive) state.unreadInboxCount += grouped.length;
   renderInbox();
   if (consoleNotice) logLine(consoleNotice, "sys");
 }
@@ -2066,7 +2088,7 @@ function postOperatingExpenseReport() {
   const durationLines = shipDurations.length
     ? shipDurations.map((entry) => `- ${formatShipId(entry.id)}: ${entry.secondsControlled}s controlled in-window`).join("\n")
     : "- No ships were under player control during this window.";
-  state.inbox.push({
+  pushInboxMessage({
     speaker: "Gregory Trundle",
     from: "Gregory Trundle",
     subject: "Expense Report",
@@ -2077,11 +2099,9 @@ bluFreight Accounting.`,
     messageType: speakerMessageType("Gregory Trundle"),
     tick: state.tick,
     timestamp: fmtTime(state.tick),
-  });
+  }, { render: false });
   state.operatingExpenseAccrued = 0;
   state.operatingExpenseWindowStartTick = windowEndTick;
-  const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
-  if (!inboxActive) state.unreadInboxCount += 1;
   renderInbox();
   logLine("Operating expense report is available in Inbox.", "sys");
 }
@@ -2122,7 +2142,7 @@ function postTripReportToInbox(ship, report) {
     "",
     `— ${firstMateRanked}, ${playerShipCallsign(ship)}`,
   ].join("\n");
-  state.inbox.push({
+  pushInboxMessage({
     speaker: from,
     from,
     subject: "Post-Trip Report",
@@ -2131,9 +2151,6 @@ function postTripReportToInbox(ship, report) {
     tick: state.tick,
     timestamp: fmtTime(state.tick),
   });
-  const inboxActive = ui.tabButtons.find((btn) => btn.classList.contains("is-active"))?.dataset.tab === "inbox";
-  if (!inboxActive) state.unreadInboxCount += 1;
-  renderInbox();
 }
 
 function showShipsList() {

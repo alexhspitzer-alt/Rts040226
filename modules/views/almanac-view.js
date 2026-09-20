@@ -41,7 +41,7 @@ export function buildAlmanacViewModel(entries) {
 
 function addUnreadMarker(doc, summaryNode, text = "new") {
   const marker = doc.createElement("span");
-  marker.className = "handbook-unread-marker";
+  marker.className = "new-item-marker";
   marker.textContent = text;
   summaryNode.appendChild(marker);
 }
@@ -50,7 +50,7 @@ function refreshUnreadContainer(containerNode) {
   if (!containerNode) return;
   const unreadCount = containerNode.querySelectorAll(".almanac-entry.is-unread").length;
   const summaryNode = containerNode.querySelector(":scope > summary");
-  const marker = summaryNode?.querySelector(".handbook-unread-marker");
+  const marker = summaryNode?.querySelector(".new-item-marker");
   containerNode.classList.toggle("has-unread", unreadCount > 0);
   if (unreadCount > 0 && marker) marker.textContent = `${unreadCount} new`;
   if (unreadCount === 0) marker?.remove();
@@ -89,7 +89,7 @@ function addAlmanacItems(doc, parentNode, groupName, entries, { unreadEntries, o
       itemNode.addEventListener("toggle", () => {
         if (!itemNode.open || !itemNode.classList.contains("is-unread")) return;
         itemNode.classList.remove("is-unread");
-        itemSummary.querySelector(".handbook-unread-marker")?.remove();
+        itemSummary.querySelector(".new-item-marker")?.remove();
         refreshUnreadContainer(itemNode.closest(".almanac-group"));
         refreshUnreadContainer(itemNode.closest(".almanac-category"));
         onEntryOpened?.(entryName);

@@ -187,7 +187,7 @@ h1 {
   font-weight: 700;
 }
 
-.handbook-unread-marker {
+.new-item-marker {
   display: inline-block;
   margin-left: 0.4rem;
   padding: 0.05rem 0.3rem;
@@ -255,6 +255,10 @@ h1 {
   padding: 0;
   overflow: hidden;
   border-color: var(--inbox-message-color, var(--color-border-list));
+}
+
+.inbox-item.is-unread {
+  box-shadow: inset 3px 0 0 var(--color-text-panel-heading);
 }
 
 .inbox-message-basil {

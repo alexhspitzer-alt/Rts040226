@@ -95,6 +95,7 @@ export function createInitialGameState({ shipCapacityById, defaultLoreSummary, n
     respondingToCommand: false,
     inbox: [],
     unreadInboxCount: 0,
+    unreadInboxIndexes: [],
     inboxOpenIndexes: [],
     news: [],
     factionHeatEnabled: false,
