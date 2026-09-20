@@ -65,7 +65,9 @@ This repo includes a Pages workflow at `.github/workflows/pages.yml` that deploy
 1. Open the deployed page and confirm the footer `last updated` timestamp is recent.
 2. Open **Handbook** tab:
    - verify entries for the starting fleet, contracts, and briefing are present,
+   - verify the unread counter starts at `0`,
    - verify later-scenario ships, locations, and cargo remain hidden until encountered.
+   - advance a scenario, verify newly discovered entries are marked unread, and open one to decrement the counter.
 3. Run `fleet`, select a ship, and issue `send`:
    - captain should send two departure messages,
    - first message contains acknowledgement + destination + action,

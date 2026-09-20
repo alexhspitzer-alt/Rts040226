@@ -1006,7 +1006,23 @@ async function loadReferenceData() {
 
 let handbookRenderSignature = null;
 
+function syncHandbookUnreadCount() {
+  if (ui.handbookUnread) ui.handbookUnread.textContent = String(state.unreadHandbookEntries.length);
+}
+
+function markHandbookEntryRead(entryName) {
+  state.unreadHandbookEntries = state.unreadHandbookEntries.filter((name) => name !== entryName);
+  syncHandbookUnreadCount();
+}
+
+function startHandbookUnreadTracking() {
+  state.unreadHandbookEntries = [];
+  state.handbookUnreadTrackingActive = true;
+  syncHandbookUnreadCount();
+}
+
 function renderHandbook() {
+  const previousDiscoveries = new Set(state.discoveredHandbookEntries);
   const encounterText = collectHandbookEncounterText({
     state,
     nodes,
@@ -1018,12 +1034,22 @@ function renderHandbook() {
     state.discoveredHandbookEntries,
     encounterText,
   );
+  if (state.handbookUnreadTrackingActive) {
+    const unread = new Set(state.unreadHandbookEntries);
+    state.discoveredHandbookEntries.forEach((name) => {
+      if (!previousDiscoveries.has(name)) unread.add(name);
+    });
+    state.unreadHandbookEntries = [...unread].sort((a, b) => a.localeCompare(b));
+  }
+  syncHandbookUnreadCount();
   const signature = state.discoveredHandbookEntries.join("|");
   if (signature === handbookRenderSignature && ui.almanacRoot?.children.length) return;
   handbookRenderSignature = signature;
   renderAlmanacView({
     root: ui.almanacRoot,
     entries: filterHandbookEntries(state.almanacEntries, state.discoveredHandbookEntries),
+    unreadEntryNames: state.unreadHandbookEntries,
+    onEntryOpened: markHandbookEntryRead,
   });
 }
 
@@ -3327,6 +3353,7 @@ const GameBootstrap = createGameBootstrap({
   ui,
   loadReferenceData,
   renderAlmanac: renderHandbook,
+  startHandbookUnreadTracking,
   playerHailFlow: PlayerHailFlow,
   handleCommand,
   render,

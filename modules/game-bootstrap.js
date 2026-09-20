@@ -14,6 +14,7 @@ export function createGameUi(doc = document) {
     cmdInput: doc.getElementById("cmd"),
     hailAction: doc.getElementById("hail-action"),
     almanacRoot: doc.getElementById("almanac-root"),
+    handbookUnread: doc.getElementById("handbook-unread"),
     inboxList: doc.getElementById("inbox-list"),
     inboxUnread: doc.getElementById("inbox-unread"),
     newsList: doc.getElementById("news-list"),
@@ -27,6 +28,7 @@ export function createGameBootstrap({
   ui,
   loadReferenceData,
   renderAlmanac,
+  startHandbookUnreadTracking,
   playerHailFlow,
   handleCommand,
   render,
@@ -87,6 +89,7 @@ export function createGameBootstrap({
     showShipsList();
     if (performanceMonitor?.measure) performanceMonitor.measure("render.init", render);
     else render();
+    startHandbookUnreadTracking?.();
 
     setInterval(() => {
       if (!state.running) return;

@@ -181,6 +181,25 @@ h1 {
   list-style: none;
 }
 
+.almanac-category.has-unread > summary,
+.almanac-group.has-unread > summary,
+.almanac-entry.is-unread > summary {
+  font-weight: 700;
+}
+
+.handbook-unread-marker {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: var(--color-text-panel-heading);
+  font-size: 0.62rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+  vertical-align: 0.08rem;
+}
+
 .almanac-category > summary {
   padding: 0.45rem 0.55rem;
   color: var(--color-text-link);

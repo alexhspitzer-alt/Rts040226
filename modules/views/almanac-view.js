@@ -39,24 +39,62 @@ export function buildAlmanacViewModel(entries) {
   };
 }
 
-function addAlmanacItems(doc, parentNode, groupName, entries) {
+function addUnreadMarker(doc, summaryNode, text = "new") {
+  const marker = doc.createElement("span");
+  marker.className = "handbook-unread-marker";
+  marker.textContent = text;
+  summaryNode.appendChild(marker);
+}
+
+function refreshUnreadContainer(containerNode) {
+  if (!containerNode) return;
+  const unreadCount = containerNode.querySelectorAll(".almanac-entry.is-unread").length;
+  const summaryNode = containerNode.querySelector(":scope > summary");
+  const marker = summaryNode?.querySelector(".handbook-unread-marker");
+  containerNode.classList.toggle("has-unread", unreadCount > 0);
+  if (unreadCount > 0 && marker) marker.textContent = `${unreadCount} new`;
+  if (unreadCount === 0) marker?.remove();
+}
+
+function addAlmanacItems(doc, parentNode, groupName, entries, { unreadEntries, onEntryOpened }) {
   if (!Array.isArray(entries) || !entries.length) return;
+  const unreadCount = entries.filter((entry) => unreadEntries.has(entry?.name)).length;
   const containerNode = groupName ? doc.createElement("details") : parentNode;
   if (groupName) {
     containerNode.className = "almanac-group";
+    if (unreadCount) {
+      containerNode.classList.add("has-unread");
+      containerNode.open = true;
+    }
 
     const groupSummary = doc.createElement("summary");
     groupSummary.textContent = groupName;
+    if (unreadCount) addUnreadMarker(doc, groupSummary, `${unreadCount} new`);
     containerNode.appendChild(groupSummary);
   }
 
   entries.forEach((entry) => {
+    const entryName = entry?.name || "Unnamed entry";
+    const isUnread = unreadEntries.has(entryName);
     const itemNode = doc.createElement("details");
     itemNode.className = "almanac-entry";
+    if (isUnread) itemNode.classList.add("is-unread");
 
     const itemSummary = doc.createElement("summary");
-    itemSummary.textContent = entry?.name || "Unnamed entry";
+    itemSummary.textContent = entryName;
+    if (isUnread) addUnreadMarker(doc, itemSummary);
     itemNode.appendChild(itemSummary);
+
+    if (isUnread) {
+      itemNode.addEventListener("toggle", () => {
+        if (!itemNode.open || !itemNode.classList.contains("is-unread")) return;
+        itemNode.classList.remove("is-unread");
+        itemSummary.querySelector(".handbook-unread-marker")?.remove();
+        refreshUnreadContainer(itemNode.closest(".almanac-group"));
+        refreshUnreadContainer(itemNode.closest(".almanac-category"));
+        onEntryOpened?.(entryName);
+      });
+    }
 
     const description = doc.createElement("p");
     description.className = "almanac-entry-description";
@@ -68,7 +106,7 @@ function addAlmanacItems(doc, parentNode, groupName, entries) {
   if (groupName) parentNode.appendChild(containerNode);
 }
 
-export function renderAlmanacView({ root, entries, doc = document }) {
+export function renderAlmanacView({ root, entries, unreadEntryNames = [], onEntryOpened, doc = document }) {
   if (!root) return;
   root.innerHTML = "";
   if (!entries || typeof entries !== "object") {
@@ -79,6 +117,7 @@ export function renderAlmanacView({ root, entries, doc = document }) {
   }
 
   const normalizedEntries = buildAlmanacViewModel(entries);
+  const unreadEntries = new Set(unreadEntryNames);
   let renderedCategoryCount = 0;
   Object.entries(normalizedEntries).forEach(([categoryName, categoryPayload]) => {
     const hasEntries = Array.isArray(categoryPayload)
@@ -87,16 +126,25 @@ export function renderAlmanacView({ root, entries, doc = document }) {
     if (!hasEntries) return;
     const categoryNode = doc.createElement("details");
     categoryNode.className = "almanac-category";
+    const categoryEntries = Array.isArray(categoryPayload)
+      ? categoryPayload
+      : Object.values(categoryPayload || {}).flatMap((groupEntries) => Array.isArray(groupEntries) ? groupEntries : []);
+    const categoryUnreadCount = categoryEntries.filter((entry) => unreadEntries.has(entry?.name)).length;
+    if (categoryUnreadCount) {
+      categoryNode.classList.add("has-unread");
+      categoryNode.open = true;
+    }
 
     const categorySummary = doc.createElement("summary");
     categorySummary.textContent = categoryName.replaceAll("_", " ");
+    if (categoryUnreadCount) addUnreadMarker(doc, categorySummary, `${categoryUnreadCount} new`);
     categoryNode.appendChild(categorySummary);
 
     if (Array.isArray(categoryPayload)) {
-      addAlmanacItems(doc, categoryNode, null, categoryPayload);
+      addAlmanacItems(doc, categoryNode, null, categoryPayload, { unreadEntries, onEntryOpened });
     } else if (categoryPayload && typeof categoryPayload === "object") {
       Object.entries(categoryPayload).forEach(([groupName, groupEntries]) => {
-        addAlmanacItems(doc, categoryNode, groupName, groupEntries);
+        addAlmanacItems(doc, categoryNode, groupName, groupEntries, { unreadEntries, onEntryOpened });
       });
     }
     root.appendChild(categoryNode);
