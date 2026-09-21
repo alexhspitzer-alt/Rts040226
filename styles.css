@@ -89,8 +89,7 @@ body {
   width: 100%;
   height: auto;
   opacity: 0.9;
-  mix-blend-mode: screen;
-  filter: drop-shadow(0 0 18px rgba(82, 101, 255, 0.2));
+  mix-blend-mode: lighten;
 }
 
 .game-header p {
