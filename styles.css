@@ -54,7 +54,7 @@ body {
     radial-gradient(circle at top, var(--color-bg-page-start) 0%, var(--color-bg-page-end) 68%);
   background-position: center, right -4vw top 1.5rem, center;
   background-repeat: no-repeat;
-  background-size: cover, min(76vw, 1080px) auto, cover;
+  background-size: cover, auto max(calc(100vh + 5rem), min(101.3vw, 1440px)), cover;
   background-attachment: fixed;
   color: var(--color-text-page);
   min-height: 100vh;
