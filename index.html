@@ -4,12 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>bluFreight Indigo Ops Prototype</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="preload" as="image" href="assets/indigo-title.webp" type="image/webp" />
+  <link rel="preload" as="image" href="assets/indigo-planet.webp" type="image/webp" />
+  <link rel="stylesheet" href="styles.css?v=indigo-art-20260921" />
 </head>
 <body>
   <main class="layout">
-    <header>
-      <h1>INDIGO</h1>
+    <header class="game-header">
+      <h1 class="game-title">
+        <span class="sr-only">INDIGO</span>
+        <img class="game-title-art" src="assets/indigo-title.webp" width="1200" height="419" alt="" aria-hidden="true" />
+      </h1>
       <p>bluFreight Logistics operations console</p>
     </header>
 

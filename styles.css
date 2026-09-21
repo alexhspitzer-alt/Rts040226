@@ -47,7 +47,15 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at top, var(--color-bg-page-start) 0%, var(--color-bg-page-end) 62%);
+  background-color: var(--color-bg-page-end);
+  background-image:
+    linear-gradient(90deg, rgba(7, 11, 18, 0.98) 0%, rgba(10, 14, 22, 0.9) 48%, rgba(6, 9, 17, 0.54) 100%),
+    url("assets/indigo-planet.webp"),
+    radial-gradient(circle at top, var(--color-bg-page-start) 0%, var(--color-bg-page-end) 68%);
+  background-position: center, right -4vw top 1.5rem, center;
+  background-repeat: no-repeat;
+  background-size: cover, min(76vw, 1080px) auto, cover;
+  background-attachment: fixed;
   color: var(--color-text-page);
   min-height: 100vh;
 }
@@ -62,9 +70,33 @@ body {
   flex-direction: column;
 }
 
-h1 {
-  margin-bottom: 0.25rem;
-  color: var(--color-text-heading);
+.game-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: 0.15rem;
+}
+
+.game-title {
+  width: clamp(300px, 38vw, 520px);
+  margin: 0;
+  line-height: 0;
+}
+
+.game-title-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0.9;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 18px rgba(82, 101, 255, 0.2));
+}
+
+.game-header p {
+  margin: -0.25rem 0 0 0.4rem;
+  color: var(--color-text-hint);
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 8px #000;
 }
 
 .stats {
@@ -77,9 +109,10 @@ h1 {
 .stats div,
 .panel {
   border: 1px solid var(--color-border-panel);
-  background: var(--color-bg-panel);
+  background: rgba(19, 27, 39, 0.96);
   border-radius: 9px;
   padding: 0.75rem;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
 }
 
 .hidden-ui-stat {
@@ -470,6 +503,25 @@ button:hover {
 }
 
 @media (max-width: 800px) {
+  body {
+    background-position: center, center top 5rem, center;
+    background-size: cover, 140vw auto, cover;
+    background-attachment: scroll;
+  }
+
+  .game-header {
+    align-items: center;
+    text-align: center;
+  }
+
+  .game-title {
+    width: min(92vw, 500px);
+  }
+
+  .game-header p {
+    margin-left: 0;
+  }
+
   .grid {
     grid-template-columns: 1fr;
     grid-template-areas:
