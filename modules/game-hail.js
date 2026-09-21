@@ -46,7 +46,7 @@ export function createPlayerHailFlow({
   };
 }
 
-export function pickHailResponse(state, targetName, action) {
+export function pickHailResponse(state, targetName, action, randomProvider = { pick: (pool) => pool[0] }) {
   const dialogue = state.playerRequestDialogue || {};
   const byCharacter = dialogue?.byCharacter?.[targetName]?.[action];
   const byFaction = dialogue?.byFaction?.[String(state.dialogueDb?.[targetName]?.faction || "").toLowerCase()]?.[action];
@@ -66,7 +66,7 @@ export function pickHailResponse(state, targetName, action) {
     || [];
   const pool = modernPool.length ? modernPool : legacyPool;
   if (Array.isArray(pool) && pool.length) {
-    return pool[Math.floor(Math.random() * pool.length)];
+    return randomProvider.pick(pool);
   }
   return `${targetName} acknowledged your ${action.replace("_", " ")}.`;
 }

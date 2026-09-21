@@ -2,7 +2,7 @@ name: Deploy static site to GitHub Pages
 
 on:
   push:
-    branches: ["main", "work"]
+    branches: ["main", "work", "codex/plan-refactor-and-optimize-game-structure-47kv4k"]
   workflow_dispatch:
 
 permissions:
