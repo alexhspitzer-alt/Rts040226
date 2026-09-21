@@ -49,12 +49,13 @@ body {
   margin: 0;
   background-color: var(--color-bg-page-end);
   background-image:
+    linear-gradient(to top, rgba(10, 14, 20, 1) 0%, rgba(10, 14, 20, 0) 4rem),
     linear-gradient(90deg, rgba(7, 11, 18, 0.98) 0%, rgba(10, 14, 22, 0.9) 48%, rgba(6, 9, 17, 0.54) 100%),
     url("assets/indigo-planet.webp"),
     radial-gradient(circle at top, var(--color-bg-page-start) 0%, var(--color-bg-page-end) 68%);
-  background-position: center, right -4vw top 1.5rem, center;
+  background-position: center, center, right -4vw top 1.5rem, center;
   background-repeat: no-repeat;
-  background-size: cover, auto max(calc(100vh + 5rem), min(101.3vw, 1440px)), cover;
+  background-size: cover, cover, min(76vw, 1080px) auto, cover;
   background-attachment: fixed;
   color: var(--color-text-page);
   min-height: 100vh;
@@ -504,6 +505,10 @@ button:hover {
 
 @media (max-width: 800px) {
   body {
+    background-image:
+      linear-gradient(90deg, rgba(7, 11, 18, 0.98) 0%, rgba(10, 14, 22, 0.9) 48%, rgba(6, 9, 17, 0.54) 100%),
+      url("assets/indigo-planet.webp"),
+      radial-gradient(circle at top, var(--color-bg-page-start) 0%, var(--color-bg-page-end) 68%);
     background-position: center, center top 5rem, center;
     background-size: cover, 140vw auto, cover;
     background-attachment: scroll;
