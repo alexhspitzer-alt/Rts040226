@@ -3,7 +3,7 @@ import {
   normalizeConsoleInput,
   normalizeContractIdToken,
   normalizeShipIdToken,
-} from "./console.js?v=location-terminals-20261028b";
+} from "./console.js?v=location-terminals-20261028c";
 import {
   buildGraph,
   buildCanonicalTutorialMap as buildTutorialMapModel,
@@ -18,10 +18,10 @@ import {
 } from "./modules/game-map.js";
 import { createNavigationModel, createBuddeAdvisor } from "./modules/game-navigation.js";
 import { createContractTools } from "./modules/game-contracts.js";
-import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js?v=location-terminals-20261028b";
-import { createCommandRuntime } from "./modules/game-command-runtime.js?v=location-terminals-20261028b";
-import { createNpcController } from "./modules/game-npc-controller.js?v=location-terminals-20261028b";
-import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js?v=location-terminals-20261028b";
+import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js?v=location-terminals-20261028c";
+import { createCommandRuntime } from "./modules/game-command-runtime.js?v=location-terminals-20261028c";
+import { createNpcController } from "./modules/game-npc-controller.js?v=location-terminals-20261028c";
+import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js?v=location-terminals-20261028c";
 import { createInitialGameState } from "./modules/game-state.js";
 import { loadGameReferenceData } from "./modules/game-data-loader.js";
 import { createEventBus } from "./modules/game-events.js";
@@ -36,8 +36,8 @@ import {
   rememberEncounteredCargoType,
 } from "./modules/handbook-discovery.js";
 import { renderDashboardView } from "./modules/views/game-dashboard-view.js";
-import { createLocationTerminals } from "./modules/views/location-terminals-view.js?v=location-terminals-20261028b";
-import { DISPATCH_CHANNEL, resolveMessageChannelKeys } from "./modules/game-channels.js?v=location-terminals-20261028b";
+import { createLocationTerminals } from "./modules/views/location-terminals-view.js?v=location-terminals-20261028c";
+import { DISPATCH_CHANNEL, resolveMessageChannelKeys } from "./modules/game-channels.js?v=location-terminals-20261028c";
 import { createRandomProvider } from "./modules/game-random.js";
 import { createPerformanceMonitor, isPerformanceSamplingEnabledByUrl } from "./modules/game-performance.js";
 import {
@@ -771,6 +771,7 @@ const dispatchLogger = createConsoleLogger({
 
 const locationTerminals = createLocationTerminals({
   state, ui, nodeLabel, fmtTime, stylizeConsoleText,
+  isTransitPosition: (position) => !position.nodeId || isTransferLaneMapNode(position.nodeId, nodes),
   shipLabel: (ship) => `${playerShipDisplayId(ship)} ${playerShipCallsign(ship)}`,
 });
 
@@ -809,10 +810,11 @@ function logLine(text, type = "sys", route = null) {
   const keys = resolved.nodeIds
     ? [...new Set(resolved.nodeIds.flatMap((nodeId) => resolveMessageChannelKeys(state, { nodeId })))]
     : resolveMessageChannelKeys(state, resolved);
+  if (resolved.departureNodeId && !keys.includes(resolved.departureNodeId)) keys.push(resolved.departureNodeId);
   const options = resolved.shipId ? { importance: 2 } : {};
   for (const key of keys) {
     if (key === DISPATCH_CHANNEL) dispatchLogger.logLine(text, type, options);
-    else locationTerminals.logLine(key, text, type, options);
+    else locationTerminals.logLine(key, text, type, { ...options, departureCopy: key === resolved.departureNodeId });
   }
 }
 
@@ -1005,11 +1007,15 @@ function scheduleCharacterMessage(delay, characterName, text, statusOverride = n
   const resolvedType = type === "comms"
     ? (isBluFreightCaptain ? "comms-blufreight" : speakerMessageType(characterName))
     : type;
+  const departingShip = isBluFreightCaptain && statusOverride === "departing"
+    ? state.ships.find((ship) => SHIP_CAPTAINS[ship.id] === characterName) : null;
+  const departureNodeId = departingShip
+    ? (text.startsWith("Cargo loaded.") ? departingShip.travelPlan?.firstLegTo : departingShip.at) : null;
   scheduleMessage(delay, () => {
     if (typeof shouldDeliver === "function" && !shouldDeliver()) return null;
     if (!isContactPresent(characterName)) return null;
     return `${characterName} ${speakerContext(characterName, statusOverride)}: ${text}`;
-  }, resolvedType, route || (() => messageRouteForSpeaker(characterName, statusOverride)));
+  }, resolvedType, route || (() => ({ ...messageRouteForSpeaker(characterName, statusOverride), departureNodeId })));
 }
 
 let PlayerHailFlow;

@@ -146,6 +146,10 @@ try {
   terminals.logLine('refinery', 'Must never enter empty terminal', 'comms');
   flush();
   assert.equal(feed.children.length, 2, 'empty terminals freeze queued and new updates');
+  terminals.logLine('refinery', 'Departure acknowledgement copied to origin', 'comms-blufreight', { departureCopy: true, importance: 2 });
+  assert.equal(feed.children.length, 3, 'explicit departure acknowledgement is retained at the origin');
+  // Restore the fixture count for subsequent lifecycle checks.
+  feed.children.pop();
 
   liveState.ships[1].at = 'refinery';
   terminals.sync();
@@ -181,6 +185,15 @@ try {
   liveState.ships[1].status = 'destroyed';
   terminals.sync();
   assert.equal(ui.inactiveChannels.children.includes(card), true, 'destruction retires ship sensor coverage');
+  liveState.ships[2].status = 'enroute';
+  liveState.ships[2].destination = 'yard';
+  terminals.sync();
+  const routeCard = ui.locationChannels.children.find((entry) => entry.dataset.channel.startsWith('route:'));
+  assert.equal(routeCard.hidden, false);
+  liveState.ships[2].at = 'yard';
+  liveState.ships[2].status = 'idle';
+  terminals.sync();
+  assert.equal(routeCard.hidden, true, 'unoccupied transit routes are hidden even inside signal log');
 } finally {
   globalThis.document = originalDocument;
   globalThis.setTimeout = originalSetTimeout;

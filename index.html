@@ -6,7 +6,7 @@
   <title>bluFreight Indigo Ops Prototype</title>
   <link rel="preload" as="image" href="assets/indigo-title.webp" type="image/webp" />
   <link rel="preload" as="image" href="assets/indigo-planet.webp" type="image/webp" />
-  <link rel="stylesheet" href="styles.css?v=location-terminals-20261028b" />
+  <link rel="stylesheet" href="styles.css?v=location-terminals-20261028c" />
 </head>
 <body>
   <main class="layout">
@@ -94,10 +94,10 @@
         <p class="sensor-bank-hint">Shared by ships at each location. Read only.</p>
         <div id="location-channels" class="location-channels"></div>
         <p id="channels-empty" class="channels-empty" hidden>All fleet ships are at Anchor. Remote channels open when ships leave.</p>
-        <section id="inactive-channels-section" class="inactive-channels-section" aria-labelledby="inactive-channels-title" hidden>
-          <h3 id="inactive-channels-title">Signal history <span id="inactive-channel-count">0</span></h3>
+        <details id="inactive-channels-section" class="inactive-channels-section" aria-labelledby="inactive-channels-title" hidden>
+          <summary id="inactive-channels-title">Signal log <span id="inactive-channel-count">0</span></summary>
           <div id="inactive-channels" class="location-channels"></div>
-        </section>
+        </details>
       </section>
       </section>
     </section>
@@ -133,6 +133,6 @@
       button.addEventListener("click", () => setTab(button.dataset.tab));
     });
   </script>
-  <script type="module" src="game.js?v=location-terminals-20261028b"></script>
+  <script type="module" src="game.js?v=location-terminals-20261028c"></script>
 </body>
 </html>

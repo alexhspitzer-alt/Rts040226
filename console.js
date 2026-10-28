@@ -218,7 +218,7 @@ export function createConsoleLogger({
     responseFlushQueued = false;
   }
 
-  return { logLine, resetDeliveryQueue };
+  return { logLine, resetDeliveryQueue, appendLine };
 }
 
 export function normalizeConsoleInput(raw) {

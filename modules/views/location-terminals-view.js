@@ -1,7 +1,7 @@
-import { createConsoleLogger } from "../../console.js?v=location-terminals-20261028b";
+import { createConsoleLogger } from "../../console.js?v=location-terminals-20261028c";
 import { DISPATCH_CHANNEL, occupiedChannelPositions } from "../game-channels.js";
 
-export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTime, stylizeConsoleText, doc = document }) {
+export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTime, stylizeConsoleText, isTransitPosition = (position) => !position.nodeId, doc = document }) {
   const channels = new Map();
 
   function updateBadge(channel) {
@@ -113,6 +113,7 @@ export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTi
         setMinimized(channel, false);
       }
       channel.position = position;
+      channel.card.hidden = false;
       const label = position.nodeId ? nodeLabel(position.nodeId) : `${nodeLabel(position.from)} → ${nodeLabel(position.to)}`;
       channel.title.textContent = label;
       channel.ships.textContent = `${position.ships.map(shipLabel).join(" · ")} · ${position.nodeId ? "Local sensors" : "In transit"} · Read only`;
@@ -129,11 +130,12 @@ export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTi
       channel.ships.textContent = `No ships · Signal ended ${fmtTime(channel.lastActiveTick)} · History only`;
       channel.card.classList.add("is-inactive");
       setMinimized(channel, true);
+      channel.card.hidden = isTransitPosition(channel.position);
       ui.inactiveChannels.appendChild(channel.card);
       if (!channel.lastLine) channel.preview.textContent = "No transmissions recorded.";
     }
     const liveCount = occupied.size - 1;
-    const inactiveCount = channels.size - liveCount;
+    const inactiveCount = [...channels.values()].filter((channel) => !channel.active && !channel.card.hidden).length;
     if (ui.channelCount) ui.channelCount.textContent = `${liveCount} live`;
     if (ui.inactiveChannelCount) ui.inactiveChannelCount.textContent = String(inactiveCount);
     if (ui.inactiveChannelsSection) ui.inactiveChannelsSection.hidden = inactiveCount === 0;
@@ -147,6 +149,7 @@ export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTi
   function logLine(key, text, type, options) {
     const channel = channels.get(key);
     if (channel?.active) channel.logger.logLine(text, type, options);
+    else if (channel && options?.departureCopy) channel.logger.appendLine(text, type, state.tick);
   }
 
   function transcript() {

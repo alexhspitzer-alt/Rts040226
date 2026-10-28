@@ -660,3 +660,6 @@ button:focus-visible, a:focus-visible { outline: 2px solid #93cdff; outline-offs
   .build-meta-wrap { padding-inline: 0.65rem; gap: 0.5rem; }
   .build-meta { text-align: right; }
 }
+
+.inactive-channels-section > summary { cursor: pointer; color: #a7c4df; font-size: 0.75rem; padding: 0.65rem; border: 1px solid #30475d; border-radius: 6px; background: #111e2c; }
+.inactive-channels-section[open] > summary { margin-bottom: 0.65rem; }
