@@ -17,6 +17,7 @@ assert.deepEqual(resolveMessageChannelKeys(state, { shipId: 'two' }), ['refinery
 assert.deepEqual(resolveMessageChannelKeys(state, { nodeId: 'unoccupied' }), [], 'no remote omniscience');
 assert.deepEqual(resolveMessageChannelKeys(state, { dispatch: true, nodeId: 'refinery' }), [DISPATCH_CHANNEL]);
 assert.deepEqual(sensorChannelKeys(state, 'refinery'), ['refinery'], 'shared sensors do not duplicate chatter');
+assert.deepEqual(sensorChannelKeys({ships:[state.ships[1]]}, 'refinery', 'two'), [], 'approach chatter requires a different listening ship');
 state.ships[1].sensorsMuted = true;
 assert.deepEqual(sensorChannelKeys(state, 'refinery'), ['refinery']);
 state.ships[2].sensorsMuted = true;

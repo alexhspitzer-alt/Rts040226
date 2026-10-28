@@ -33,9 +33,10 @@ export function occupiedChannelPositions(state) {
   return positions;
 }
 
-export function sensorChannelKeys(state, nodeId) {
+export function sensorChannelKeys(state, nodeId, excludeShipId = null) {
   const keys = new Set(nodeId === DISPATCH_CHANNEL ? [DISPATCH_CHANNEL] : []);
   for (const ship of state.ships || []) {
+    if (ship.id === excludeShipId) continue;
     const position = shipChannelPosition(ship, state.ships);
     if (!position || !position.nodeId) continue;
     const localSensors = position.nodeId === nodeId && !ship.sensorsMuted;
@@ -46,13 +47,13 @@ export function sensorChannelKeys(state, nodeId) {
   return [...keys];
 }
 
-export function resolveMessageChannelKeys(state, { shipId, nodeId, dispatch } = {}) {
+export function resolveMessageChannelKeys(state, { shipId, nodeId, dispatch, excludeShipId } = {}) {
   if (dispatch) return [DISPATCH_CHANNEL];
   if (shipId) {
     const ship = state.ships?.find((entry) => entry.id === shipId);
     const position = shipChannelPosition(ship, state.ships);
     return position ? [position.nodeId ? position.key : DISPATCH_CHANNEL] : [];
   }
-  if (nodeId) return sensorChannelKeys(state, nodeId);
+  if (nodeId) return sensorChannelKeys(state, nodeId, excludeShipId);
   return [DISPATCH_CHANNEL];
 }

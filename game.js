@@ -1019,7 +1019,7 @@ function scheduleCharacterMessage(delay, characterName, text, statusOverride = n
     if (departureNodeId) return { nodeIds: [], departureNodeId };
     if (isBluFreightCaptain && statusOverride === "arriving") {
       const ship = state.ships.find((entry) => SHIP_CAPTAINS[entry.id] === characterName);
-      return { nodeId: ship?.destination || ship?.at };
+      return { nodeId: ship?.destination || ship?.at, excludeShipId: ship?.id };
     }
     return messageRouteForSpeaker(characterName, statusOverride);
   }));
