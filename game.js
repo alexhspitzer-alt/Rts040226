@@ -3,7 +3,7 @@ import {
   normalizeConsoleInput,
   normalizeContractIdToken,
   normalizeShipIdToken,
-} from "./console.js";
+} from "./console.js?v=location-terminals-20261028b";
 import {
   buildGraph,
   buildCanonicalTutorialMap as buildTutorialMapModel,
@@ -18,10 +18,10 @@ import {
 } from "./modules/game-map.js";
 import { createNavigationModel, createBuddeAdvisor } from "./modules/game-navigation.js";
 import { createContractTools } from "./modules/game-contracts.js";
-import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js";
-import { createCommandRuntime } from "./modules/game-command-runtime.js";
-import { createNpcController } from "./modules/game-npc-controller.js";
-import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js";
+import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js?v=location-terminals-20261028b";
+import { createCommandRuntime } from "./modules/game-command-runtime.js?v=location-terminals-20261028b";
+import { createNpcController } from "./modules/game-npc-controller.js?v=location-terminals-20261028b";
+import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js?v=location-terminals-20261028b";
 import { createInitialGameState } from "./modules/game-state.js";
 import { loadGameReferenceData } from "./modules/game-data-loader.js";
 import { createEventBus } from "./modules/game-events.js";
@@ -36,8 +36,8 @@ import {
   rememberEncounteredCargoType,
 } from "./modules/handbook-discovery.js";
 import { renderDashboardView } from "./modules/views/game-dashboard-view.js";
-import { createLocationTerminals } from "./modules/views/location-terminals-view.js";
-import { DISPATCH_CHANNEL, resolveMessageChannelKeys } from "./modules/game-channels.js";
+import { createLocationTerminals } from "./modules/views/location-terminals-view.js?v=location-terminals-20261028b";
+import { DISPATCH_CHANNEL, resolveMessageChannelKeys } from "./modules/game-channels.js?v=location-terminals-20261028b";
 import { createRandomProvider } from "./modules/game-random.js";
 import { createPerformanceMonitor, isPerformanceSamplingEnabledByUrl } from "./modules/game-performance.js";
 import {
@@ -807,7 +807,7 @@ function logLine(text, type = "sys", route = null) {
   locationTerminals.sync();
   const resolved = route || inferMessageRoute(text, type);
   const keys = resolved.nodeIds
-    ? [...new Set(resolved.nodeIds.flatMap((nodeId) => resolveMessageChannelKeys(state, { nodeId }))) ]
+    ? [...new Set(resolved.nodeIds.flatMap((nodeId) => resolveMessageChannelKeys(state, { nodeId })))]
     : resolveMessageChannelKeys(state, resolved);
   const options = resolved.shipId ? { importance: 2 } : {};
   for (const key of keys) {

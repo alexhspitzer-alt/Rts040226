@@ -94,8 +94,9 @@ const originalSetTimeout = globalThis.setTimeout;
 const originalNow = Date.now;
 try {
   const tasks = [];
+  const delays = [];
   globalThis.document = { createElement: (tag) => new Element(tag) };
-  globalThis.setTimeout = (fn) => { tasks.push(fn); return tasks.length; };
+  globalThis.setTimeout = (fn, delay) => { tasks.push(fn); delays.push(delay); return tasks.length; };
   Date.now = () => 0;
   const flush = () => { while (tasks.length) tasks.shift()(); };
   const ui = Object.fromEntries([
@@ -158,6 +159,7 @@ try {
   flush();
   assert.equal(feed.children.length, 2, 'old-generation messages cannot leak into reoccupied terminal');
   terminals.logLine('refinery', 'Fresh transmission after return', 'report', { importance: 2 });
+  assert.equal(delays.at(-1), 0, 'reoccupied terminals do not inherit an obsolete delivery backlog');
   flush();
   assert.equal(feed.children.length, 3);
   assert.equal(terminals.transcript().includes('First local transmission'), true);

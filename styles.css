@@ -631,6 +631,7 @@ button:hover {
 .channel-follow { flex: none; margin: 0; padding: 0.35rem 0.5rem; min-height: 36px; }
 .location-feed { height: clamp(155px, 24vh, 255px); margin-top: 0.5rem; font-size: 0.72rem; padding: 0.5rem; border-color: #2c4054; }
 .location-feed:empty::before { content: "Listening for local traffic…"; display: block; color: #8195a8; font-size: 0.7rem; }
+.is-inactive .location-feed:empty::before { content: "No transmissions recorded."; }
 .channel-preview { margin: 0.35rem 0.15rem 0.1rem; color: #8ca1b6; font-size: 0.65rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .inactive-channels-section { margin-top: 1rem; }
 .inactive-channels-section h3 { margin: 0 0 0.6rem; color: #8fa1b4; font-size: 0.7rem; font-weight: 500; }

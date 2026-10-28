@@ -211,7 +211,14 @@ export function createConsoleLogger({
     });
   }
 
-  return { logLine };
+  function resetDeliveryQueue() {
+    state.consoleReadyAtMs = Date.now();
+    recentConsoleMessages.length = 0;
+    pendingResponseLines.length = 0;
+    responseFlushQueued = false;
+  }
+
+  return { logLine, resetDeliveryQueue };
 }
 
 export function normalizeConsoleInput(raw) {

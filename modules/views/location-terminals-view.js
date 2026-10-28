@@ -1,4 +1,4 @@
-import { createConsoleLogger } from "../../console.js";
+import { createConsoleLogger } from "../../console.js?v=location-terminals-20261028b";
 import { DISPATCH_CHANNEL, occupiedChannelPositions } from "../game-channels.js";
 
 export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTime, stylizeConsoleText, doc = document }) {
@@ -109,6 +109,7 @@ export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTi
       if (reactivated) {
         channel.active = true;
         channel.generation += 1;
+        channel.logger.resetDeliveryQueue();
         setMinimized(channel, false);
       }
       channel.position = position;
