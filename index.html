@@ -6,7 +6,7 @@
   <title>bluFreight Indigo Ops Prototype</title>
   <link rel="preload" as="image" href="assets/indigo-title.webp" type="image/webp" />
   <link rel="preload" as="image" href="assets/indigo-planet.webp" type="image/webp" />
-  <link rel="stylesheet" href="styles.css?v=indigo-art-20260921d" />
+  <link rel="stylesheet" href="styles.css?v=location-terminals-20261028" />
 </head>
 <body>
   <main class="layout">
@@ -59,15 +59,20 @@
         </section>
       </article>
 
-      <article class="panel terminal">
+      <section class="communications" aria-label="Operations terminals">
+      <article class="panel terminal dispatch-terminal" aria-labelledby="dispatch-title" data-channel="anchor_station">
         <div class="console-header">
-          <h2>Dispatch Console</h2>
+          <div>
+            <p class="terminal-eyebrow"><span class="signal-dot" aria-hidden="true"></span> DISPATCH · ALWAYS ONLINE</p>
+            <h2 id="dispatch-title">Anchor Station</h2>
+          </div>
           <button id="console-follow-toggle" type="button" class="copy-btn">★</button>
         </div>
-        <div id="feed" class="feed" aria-live="polite"></div>
+        <p id="dispatch-ships" class="dispatch-ships">Connecting fleet…</p>
+        <div id="feed" class="feed" role="log" aria-label="Anchor Station dispatch transmissions" aria-live="polite" tabindex="0"></div>
         <form id="cmd-form" class="cmd-form">
           <label for="cmd" class="sr-only">Command</label>
-          <input id="cmd" autocomplete="off" placeholder="<Select a ship>" />
+          <input id="cmd" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="<Select a ship>" />
           <label for="hail-action" class="sr-only">Hail action</label>
           <select id="hail-action" hidden>
             <option value="request">request</option>
@@ -79,12 +84,26 @@
           </select>
           <button type="submit">Send</button>
         </form>
-        <p class="hint">Type <code>"Help"</code> to see available commands.</p>
+        <p class="hint">All orders go through dispatch. <code>F</code> fleet · <code>C</code> contracts · <code>H</code> help</p>
       </article>
+      <section class="sensor-bank" aria-labelledby="sensor-bank-title">
+        <div class="sensor-bank-header">
+          <div><h2 id="sensor-bank-title">Location channels</h2><span id="channel-count" class="channel-count">Connecting…</span></div>
+          <button id="minimize-channels" type="button" class="quiet-button">Minimize live</button>
+        </div>
+        <p class="sensor-bank-hint">Shared by ships at each location. Read only.</p>
+        <div id="location-channels" class="location-channels"></div>
+        <p id="channels-empty" class="channels-empty" hidden>All fleet ships are at Anchor. Remote channels open when ships leave.</p>
+        <section id="inactive-channels-section" class="inactive-channels-section" aria-labelledby="inactive-channels-title" hidden>
+          <h3 id="inactive-channels-title">Signal history <span id="inactive-channel-count">0</span></h3>
+          <div id="inactive-channels" class="location-channels"></div>
+        </section>
+      </section>
+      </section>
     </section>
   </main>
   <footer class="build-meta-wrap" aria-label="Build metadata">
-    <a id="copy-console-link" class="build-meta-link" href="#">copy console log</a>
+    <a id="copy-console-link" class="build-meta-link" href="#">copy all terminal logs</a>
     <small id="build-meta" class="build-meta">last updated: loading…</small>
   </footer>
 
@@ -114,6 +133,6 @@
       button.addEventListener("click", () => setTab(button.dataset.tab));
     });
   </script>
-  <script type="module" src="game.js?v=loaded-handbook-cargo-20260920"></script>
+  <script type="module" src="game.js?v=location-terminals-20261028"></script>
 </body>
 </html>

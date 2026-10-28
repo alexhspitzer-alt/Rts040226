@@ -24,6 +24,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Test runtime and location channels
+        run: node scripts/run-tests.mjs
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

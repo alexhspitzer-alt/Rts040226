@@ -987,7 +987,8 @@ export function createNpcController({
       line,
       `ambient-npc:${npc.id}`,
       commsTypeForFaction(npc.faction),
-      () => playerLocalToNode(npc.at)
+      () => playerLocalToNode(npc.at),
+      { nodeId: npc.at }
     );
   }
 
@@ -1812,7 +1813,8 @@ export function createNpcController({
       message,
       status,
       type,
-      localNodeId ? () => playerLocalToNode(localNodeId) : null
+      localNodeId ? () => playerLocalToNode(localNodeId) : null,
+      localNodeId ? { nodeId: localNodeId } : null
     );
   }
 
@@ -2185,7 +2187,9 @@ export function createNpcController({
       npc.captainName || npc.callsign,
       buildFactionMessage(npc, destinationNodeId),
       "arriving",
-      "comms"
+      "comms",
+      () => playerLocalToNode(destinationNodeId),
+      { nodeId: destinationNodeId }
     );
   }
 

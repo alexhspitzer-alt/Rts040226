@@ -39,7 +39,7 @@ export function createPlayerHailFlow({
       const targetName = this.activeTarget;
       logLine(`> ${normalized.replace("_", " ")}`, "cmd");
       const responseText = pickResponse(targetName, normalized);
-      logLine(`${targetName} ${speakerContext(targetName)}: ${responseText}`, speakerMessageType(targetName));
+      logLine(`${targetName} ${speakerContext(targetName)}: ${responseText}`, speakerMessageType(targetName), { dispatch: true });
       this.disable();
       return true;
     },

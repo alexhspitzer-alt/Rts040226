@@ -36,6 +36,8 @@ import {
   rememberEncounteredCargoType,
 } from "./modules/handbook-discovery.js";
 import { renderDashboardView } from "./modules/views/game-dashboard-view.js";
+import { createLocationTerminals } from "./modules/views/location-terminals-view.js";
+import { DISPATCH_CHANNEL, resolveMessageChannelKeys } from "./modules/game-channels.js";
 import { createRandomProvider } from "./modules/game-random.js";
 import { createPerformanceMonitor, isPerformanceSamplingEnabledByUrl } from "./modules/game-performance.js";
 import {
@@ -757,7 +759,7 @@ function stylizeConsoleText(text) {
     .replace(/(^|[,:]\s*)([AISRQNMDUFCHaisrqnmdufch])(?=\s+(assign|information|send|queue|[Mm]anage|[Nn]avigation|recall|report|dock|undock|fleet|contracts|help)\b)/g, '$1<span class="choice">$2</span>');
 }
 
-const { logLine } = createConsoleLogger({
+const dispatchLogger = createConsoleLogger({
   state,
   ui,
   fmtTime,
@@ -766,6 +768,53 @@ const { logLine } = createConsoleLogger({
   dotsDelayMs: COMMAND_RESPONSE_DOTS_DELAY_MS,
   revealDelayMs: COMMAND_RESPONSE_REVEAL_DELAY_MS,
 });
+
+const locationTerminals = createLocationTerminals({
+  state, ui, nodeLabel, fmtTime, stylizeConsoleText,
+  shipLabel: (ship) => `${playerShipDisplayId(ship)} ${playerShipCallsign(ship)}`,
+});
+
+function messageRouteForSpeaker(name, statusOverride = null) {
+  if (name === BASIL_NAME || name === BUDDE_NAME) return { dispatch: true };
+  const shipId = Object.keys(SHIP_CAPTAINS).find((id) => SHIP_CAPTAINS[id] === name);
+  if (shipId) return { shipId };
+  const ambientId = /^ambient-npc:(.+)$/i.exec(String(statusOverride || ""))?.[1];
+  const npc = (state.civilianNpcs || []).find((entry) => ambientId ? entry.id === ambientId : entry.captainName === name);
+  if (npc) return { nodeId: npc.status === "enroute" ? npc.destination : npc.at };
+  const moon = portAuthorityMoonForName(name);
+  if (moon) return { nodeIds: Object.keys(nodes).filter((id) => nodes[id].moonName === moon) };
+  if (CONTACT_PROFILES[name]?.nodeId) return { nodeId: CONTACT_PROFILES[name].nodeId };
+  return { dispatch: true };
+}
+
+function inferMessageRoute(text, type) {
+  if (type !== "report" && !type.startsWith("comms")) return { dispatch: true };
+  const captain = Object.values(SHIP_CAPTAINS).find((name) => text.startsWith(`${name} `));
+  if (captain) return messageRouteForSpeaker(captain);
+  const reportedShip = state.ships.find((ship) => {
+    const id = playerShipDisplayId(ship);
+    return text.startsWith(`Report ${id}:`) || text.startsWith(`${id} `) || text.startsWith(`Report ${ship.id}:`);
+  });
+  if (reportedShip) return { shipId: reportedShip.id };
+  // Directory listings and intentional command dialogue stay at dispatch.
+  if (state.respondingToCommand) return { dispatch: true };
+  const names = [...Object.keys(CONTACT_PROFILES), ...Object.keys(SPEAKER_PROFILES), ...(state.civilianNpcs || []).map((npc) => npc.captainName)];
+  const speaker = names.find((name) => name && text.startsWith(`${name} `));
+  return speaker ? messageRouteForSpeaker(speaker) : { dispatch: true };
+}
+
+function logLine(text, type = "sys", route = null) {
+  locationTerminals.sync();
+  const resolved = route || inferMessageRoute(text, type);
+  const keys = resolved.nodeIds
+    ? [...new Set(resolved.nodeIds.flatMap((nodeId) => resolveMessageChannelKeys(state, { nodeId }))) ]
+    : resolveMessageChannelKeys(state, resolved);
+  const options = resolved.shipId ? { importance: 2 } : {};
+  for (const key of keys) {
+    if (key === DISPATCH_CHANNEL) dispatchLogger.logLine(text, type, options);
+    else locationTerminals.logLine(key, text, type, options);
+  }
+}
 
 function pickLine(characterName, bucket) {
   const actor = state.dialogueDb[characterName];
@@ -951,7 +1000,7 @@ function characterSpeak(characterName, bucket, fallback, type = "comms", statusO
   logLine(`${characterName} ${context}: ${text}`, lineType);
 }
 
-function scheduleCharacterMessage(delay, characterName, text, statusOverride = null, type = "comms", shouldDeliver = null) {
+function scheduleCharacterMessage(delay, characterName, text, statusOverride = null, type = "comms", shouldDeliver = null, route = null) {
   const isBluFreightCaptain = Object.values(SHIP_CAPTAINS).includes(characterName);
   const resolvedType = type === "comms"
     ? (isBluFreightCaptain ? "comms-blufreight" : speakerMessageType(characterName))
@@ -960,7 +1009,7 @@ function scheduleCharacterMessage(delay, characterName, text, statusOverride = n
     if (typeof shouldDeliver === "function" && !shouldDeliver()) return null;
     if (!isContactPresent(characterName)) return null;
     return `${characterName} ${speakerContext(characterName, statusOverride)}: ${text}`;
-  }, resolvedType);
+  }, resolvedType, route || (() => messageRouteForSpeaker(characterName, statusOverride)));
 }
 
 let PlayerHailFlow;
@@ -1240,8 +1289,8 @@ const BuddeAdvisor = createBuddeAdvisor({
   buddeSpeak,
 });
 
-function scheduleMessage(delay, textOrFactory, type = "report") {
-  state.delayedMessages.push({ at: state.tick + delay, text: textOrFactory, type });
+function scheduleMessage(delay, textOrFactory, type = "report", route = null) {
+  state.delayedMessages.push({ at: state.tick + delay, text: textOrFactory, type, route });
 }
 
 const oneWaySignalToNode = (...args) => NavigationModel.oneWaySignalToNode(...args);
@@ -1656,6 +1705,7 @@ function commandPromptLabel() {
 }
 
 function render() {
+  locationTerminals.sync();
   renderDashboardView({
     ui,
     state,
@@ -3223,7 +3273,7 @@ function tickDelayedMessages() {
   due.forEach((m) => {
     const text = typeof m.text === "function" ? m.text() : m.text;
     if (!text) return;
-    logLine(text, m.type);
+    logLine(text, m.type, typeof m.route === "function" ? m.route() : m.route);
   });
   state.delayedMessages = state.delayedMessages.filter((m) => m.at > state.tick);
 }
@@ -3283,10 +3333,11 @@ function updateSimulation() {
 }
 
 function consoleTranscriptText() {
-  return Array.from(ui.feed.querySelectorAll(".line"))
+  const dispatchText = Array.from(ui.feed.querySelectorAll(".line"))
     .map((line) => line.textContent?.replace(/\s+/g, " ").trim() || "")
     .filter(Boolean)
     .join("\n");
+  return [`--- Anchor Station · Dispatch ---\n${dispatchText}`, locationTerminals.transcript()].filter(Boolean).join("\n\n");
 }
 
 async function copyConsoleToClipboard() {

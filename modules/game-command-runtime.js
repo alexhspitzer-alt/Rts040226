@@ -606,7 +606,8 @@ export function createCommandRuntime({
             playerHailFlow.enable(query);
             return `${query} ${speakerContext(query)}: ${pickLine(query, "greetings") || "Channel open."} Select a hail response from the dropdown menu.`;
           },
-          speakerMessageType(query)
+          speakerMessageType(query),
+          { dispatch: true }
         );
       } else {
         characterSpeak(query, "greetings", "Channel open.", "comms");

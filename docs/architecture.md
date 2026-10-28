@@ -20,6 +20,7 @@ This document is the durable ownership map for the modular runtime. It replaces 
 - `modules/game-contracts.js` owns contract generation and contract scoring helpers.
 - `modules/game-npc-controller.js` owns NPC traffic, ambient NPCs, conflict simulation, and campaign combat behavior.
 - `modules/game-hail.js` owns player hail channel state and hail response selection.
+- `modules/game-channels.js` derives fleet-occupied positions, route positions, and locally audible sensor destinations. NPC ships contribute chatter but do not open player terminals.
 
 ## Command and UI ownership
 
@@ -30,6 +31,8 @@ This document is the durable ownership map for the modular runtime. It replaces 
 - `modules/views/` owns DOM rendering helpers and view-model shaping:
   - `almanac-view.js` renders Handbook content.
   - `game-dashboard-view.js` renders the dashboard, contracts, and fleet summaries.
+  - `location-terminals-view.js` owns retained terminal DOM, occupancy transitions, minimization, unread counts, and one independent logger per remote location. Generation tokens cancel queued display work across departure/return boundaries. Dispatch cannot be minimized.
+- `console.js` owns a single feed's timing, throttle, follow behavior, and guarded delivery. `game.js` routes messages to dispatch or location feeds, using explicit location metadata from the NPC controller and explicit dispatch metadata for deliberate hails. Existing alert and system messages retain dispatch visibility.
 
 ## Data, events, and instrumentation
 

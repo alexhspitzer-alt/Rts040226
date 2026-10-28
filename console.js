@@ -63,6 +63,9 @@ export function createConsoleLogger({
   responseBatchRevealMs = 1000,
   messageRateWindowMs = 10000,
   throttleThresholds = DEFAULT_CONSOLE_THROTTLE_THRESHOLDS,
+  getDeliveryToken = () => null,
+  canAppend = () => true,
+  onAppend = () => {},
 }) {
   let followConsole = true;
   const FOLLOW_THRESHOLD_PX = 24;
@@ -79,6 +82,9 @@ export function createConsoleLogger({
     if (!ui.consoleFollowToggle) return;
     ui.consoleFollowToggle.textContent = followConsole ? "★" : "↓";
     ui.consoleFollowToggle.classList.toggle("is-off", !followConsole);
+    ui.consoleFollowToggle.setAttribute?.("aria-label", followConsole ? "Pause automatic scrolling" : "Follow latest transmissions");
+    ui.consoleFollowToggle.title = followConsole ? "Pause automatic scrolling" : "Follow latest transmissions";
+    ui.consoleFollowToggle.setAttribute?.("aria-pressed", String(followConsole));
   }
 
   ui.feed?.addEventListener("scroll", () => {
@@ -123,6 +129,7 @@ export function createConsoleLogger({
     div.appendChild(body);
     ui.feed.appendChild(div);
     pinFeedToBottom();
+    onAppend(text, type);
     return body;
   }
 
@@ -134,12 +141,12 @@ export function createConsoleLogger({
     return runAt;
   }
 
-  function recordAndCheckThrottle(type, respondingToCommand = state.respondingToCommand) {
+  function recordAndCheckThrottle(type, respondingToCommand = state.respondingToCommand, importanceOverride = null) {
     const now = Date.now();
     while (recentConsoleMessages.length && now - recentConsoleMessages[0].at > messageRateWindowMs) {
       recentConsoleMessages.shift();
     }
-    const importance = classifyConsoleMessage({ type, respondingToCommand });
+    const importance = importanceOverride ?? classifyConsoleMessage({ type, respondingToCommand });
     const recentLoad = recentConsoleMessages.reduce((sum, message) => sum + message.weight, 0);
     if (shouldThrottleConsoleMessage({ importance, recentCount: recentLoad, thresholds: throttleThresholds })) {
       return false;
@@ -166,12 +173,13 @@ export function createConsoleLogger({
     entries.forEach((entry, index) => {
       let bodyNode = null;
       setTimeout(() => {
+        if (!canAppend(entry.token)) return;
         bodyNode = appendLine(". . .", entry.type, entry.queuedTick);
       }, Math.max(0, placeholderAt - Date.now()));
 
       const revealAt = revealStartAt + revealStepMs * index;
       setTimeout(() => {
-        if (!bodyNode) return;
+        if (!bodyNode || !canAppend(entry.token)) return;
         bodyNode.innerHTML = ` ${stylizeConsoleText(entry.text)}`;
         pinFeedToBottom();
       }, Math.max(0, revealAt - Date.now()));
@@ -180,23 +188,25 @@ export function createConsoleLogger({
     state.consoleReadyAtMs = Math.max(state.consoleReadyAtMs, batchEndAt + messageGapMs);
   }
 
-  function queueResponseLine(text, type, queuedTick) {
-    pendingResponseLines.push({ text, type, queuedTick });
+  function queueResponseLine(text, type, queuedTick, token) {
+    pendingResponseLines.push({ text, type, queuedTick, token });
     if (responseFlushQueued) return;
     responseFlushQueued = true;
     Promise.resolve().then(flushPendingResponseLines);
   }
 
-  function logLine(text, type = "sys") {
+  function logLine(text, type = "sys", { importance = null } = {}) {
     const queuedTick = state.tick;
-    if (!recordAndCheckThrottle(type)) return;
+    const token = getDeliveryToken();
+    if (!canAppend(token) || !recordAndCheckThrottle(type, state.respondingToCommand, importance)) return;
 
     if (state.respondingToCommand && type !== "cmd") {
-      queueResponseLine(text, type, queuedTick);
+      queueResponseLine(text, type, queuedTick, token);
       return;
     }
 
     queueConsoleTask(() => {
+      if (!canAppend(token)) return;
       appendLine(text, type, queuedTick);
     });
   }
