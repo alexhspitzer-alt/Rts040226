@@ -3,7 +3,7 @@ import {
   normalizeConsoleInput,
   normalizeContractIdToken,
   normalizeShipIdToken,
-} from "./console.js?v=location-terminals-20261028c";
+} from "./console.js?v=location-terminals-20261028d";
 import {
   buildGraph,
   buildCanonicalTutorialMap as buildTutorialMapModel,
@@ -18,10 +18,10 @@ import {
 } from "./modules/game-map.js";
 import { createNavigationModel, createBuddeAdvisor } from "./modules/game-navigation.js";
 import { createContractTools } from "./modules/game-contracts.js";
-import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js?v=location-terminals-20261028c";
-import { createCommandRuntime } from "./modules/game-command-runtime.js?v=location-terminals-20261028c";
-import { createNpcController } from "./modules/game-npc-controller.js?v=location-terminals-20261028c";
-import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js?v=location-terminals-20261028c";
+import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js?v=location-terminals-20261028d";
+import { createCommandRuntime } from "./modules/game-command-runtime.js?v=location-terminals-20261028d";
+import { createNpcController } from "./modules/game-npc-controller.js?v=location-terminals-20261028d";
+import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js?v=location-terminals-20261028d";
 import { createInitialGameState } from "./modules/game-state.js";
 import { loadGameReferenceData } from "./modules/game-data-loader.js";
 import { createEventBus } from "./modules/game-events.js";
@@ -35,9 +35,9 @@ import {
   filterHandbookEntries,
   rememberEncounteredCargoType,
 } from "./modules/handbook-discovery.js";
-import { renderDashboardView } from "./modules/views/game-dashboard-view.js";
-import { createLocationTerminals } from "./modules/views/location-terminals-view.js?v=location-terminals-20261028c";
-import { DISPATCH_CHANNEL, resolveMessageChannelKeys } from "./modules/game-channels.js?v=location-terminals-20261028c";
+import { renderDashboardView } from "./modules/views/game-dashboard-view.js?v=location-terminals-20261028d";
+import { createLocationTerminals } from "./modules/views/location-terminals-view.js?v=location-terminals-20261028d";
+import { DISPATCH_CHANNEL, resolveMessageChannelKeys } from "./modules/game-channels.js?v=location-terminals-20261028d";
 import { createRandomProvider } from "./modules/game-random.js";
 import { createPerformanceMonitor, isPerformanceSamplingEnabledByUrl } from "./modules/game-performance.js";
 import {
@@ -789,7 +789,7 @@ function messageRouteForSpeaker(name, statusOverride = null) {
 }
 
 function inferMessageRoute(text, type) {
-  if (type !== "report" && !type.startsWith("comms")) return { dispatch: true };
+  if (type === "report" || !type.startsWith("comms")) return { dispatch: true };
   const captain = Object.values(SHIP_CAPTAINS).find((name) => text.startsWith(`${name} `));
   if (captain) return messageRouteForSpeaker(captain);
   const reportedShip = state.ships.find((ship) => {
@@ -811,7 +811,7 @@ function logLine(text, type = "sys", route = null) {
     ? [...new Set(resolved.nodeIds.flatMap((nodeId) => resolveMessageChannelKeys(state, { nodeId })))]
     : resolveMessageChannelKeys(state, resolved);
   if (resolved.departureNodeId && !keys.includes(resolved.departureNodeId)) keys.push(resolved.departureNodeId);
-  const options = resolved.shipId ? { importance: 2 } : {};
+  const options = resolved.shipId || resolved.departureNodeId ? { importance: 2 } : {};
   for (const key of keys) {
     if (key === DISPATCH_CHANNEL) dispatchLogger.logLine(text, type, options);
     else locationTerminals.logLine(key, text, type, { ...options, departureCopy: key === resolved.departureNodeId });
@@ -1015,7 +1015,14 @@ function scheduleCharacterMessage(delay, characterName, text, statusOverride = n
     if (typeof shouldDeliver === "function" && !shouldDeliver()) return null;
     if (!isContactPresent(characterName)) return null;
     return `${characterName} ${speakerContext(characterName, statusOverride)}: ${text}`;
-  }, resolvedType, route || (() => ({ ...messageRouteForSpeaker(characterName, statusOverride), departureNodeId })));
+  }, resolvedType, route || (() => {
+    if (departureNodeId) return { nodeIds: [], departureNodeId };
+    if (isBluFreightCaptain && statusOverride === "arriving") {
+      const ship = state.ships.find((entry) => SHIP_CAPTAINS[entry.id] === characterName);
+      return { nodeId: ship?.destination || ship?.at };
+    }
+    return messageRouteForSpeaker(characterName, statusOverride);
+  }));
 }
 
 let PlayerHailFlow;

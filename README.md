@@ -33,7 +33,7 @@ The current module ownership map lives in [`docs/architecture.md`](docs/architec
 
 - **Anchor Station dispatch** is always open and is the only place to type orders. BASIL, BUDDE, command menus, deliberate hails, and urgent gameplay alerts stay here alongside Anchor's local chatter. Fleet ships at Anchor are listed below its title.
 - Each other occupied location has one **read-only terminal**, shared by every fleet ship there. Its header lists the ships, and its feed receives their reports and locally audible sensor chatter.
-- In flight, ships use a channel for their current route. Contract pickup and delivery legs use their respective routes; a docked tug follows its host. Boosted instruments still monitor destination traffic through the observing ship's route channel.
+- In-flight ships do not create terminals. Their reports and urgent alerts reach dispatch; Fleet lists status and destination. Routine approach chatter is heard only through ships already listening at the destination.
 - Click a location header to minimize or expand it. Minimized live feeds keep receiving transmissions and show a new-message count. **Minimize live** quiets the whole bank without affecting dispatch.
 - When the last ship leaves a location, its terminal freezes and collapses into the expandable **Signal log**. History remains readable, and returning ships reopen the same terminal. Delayed display callbacks cannot update an unoccupied terminal or leak into a later visit.
 - Every terminal has independent scrolling, follow controls, message pacing, and ambient throttling. Sensor muting affects local chatter while captain reports remain audible. **Copy all terminal logs** includes dispatch, live locations, and retained history.
@@ -88,4 +88,4 @@ This repo includes a Pages workflow at `.github/workflows/pages.yml` that deploy
    - second message contains route callout in future tense (`will ...`).
 5. Assign a contract and confirm first departure action line says pickup or delivery as appropriate.
 
-Inactive transit routes and transfer lanes are hidden. Departure acknowledgements are copied to both the departure location and the ship’s current channel, including when the departure terminal has just become inactive. Other inactive-channel traffic remains frozen.
+Inactive transit routes and transfer lanes are hidden. Departure acknowledgements are copied to the departure location, including when the departure terminal has just become inactive. Other inactive-channel traffic remains frozen.

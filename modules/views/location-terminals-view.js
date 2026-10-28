@@ -1,5 +1,5 @@
-import { createConsoleLogger } from "../../console.js?v=location-terminals-20261028c";
-import { DISPATCH_CHANNEL, occupiedChannelPositions } from "../game-channels.js";
+import { createConsoleLogger } from "../../console.js?v=location-terminals-20261028d";
+import { DISPATCH_CHANNEL, occupiedChannelPositions } from "../game-channels.js?v=location-terminals-20261028d";
 
 export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTime, stylizeConsoleText, isTransitPosition = (position) => !position.nodeId, doc = document }) {
   const channels = new Map();

@@ -26,7 +26,7 @@ export function occupiedChannelPositions(state) {
   const positions = new Map([[DISPATCH_CHANNEL, { key: DISPATCH_CHANNEL, nodeId: DISPATCH_CHANNEL, ships: [] }]]);
   for (const ship of state.ships || []) {
     const position = shipChannelPosition(ship, state.ships);
-    if (!position) continue;
+    if (!position || !position.nodeId) continue;
     if (!positions.has(position.key)) positions.set(position.key, { ...position, ships: [] });
     positions.get(position.key).ships.push(ship);
   }
@@ -37,10 +37,9 @@ export function sensorChannelKeys(state, nodeId) {
   const keys = new Set(nodeId === DISPATCH_CHANNEL ? [DISPATCH_CHANNEL] : []);
   for (const ship of state.ships || []) {
     const position = shipChannelPosition(ship, state.ships);
-    if (!position) continue;
+    if (!position || !position.nodeId) continue;
     const localSensors = position.nodeId === nodeId && !ship.sensorsMuted;
-    const destinationInstruments = position.from && ship.sensorMode === "instruments" && ship.destination === nodeId;
-    if (localSensors || destinationInstruments) {
+    if (localSensors) {
       keys.add(position.key);
     }
   }
@@ -52,7 +51,7 @@ export function resolveMessageChannelKeys(state, { shipId, nodeId, dispatch } = 
   if (shipId) {
     const ship = state.ships?.find((entry) => entry.id === shipId);
     const position = shipChannelPosition(ship, state.ships);
-    return position ? [position.key] : [];
+    return position ? [position.nodeId ? position.key : DISPATCH_CHANNEL] : [];
   }
   if (nodeId) return sensorChannelKeys(state, nodeId);
   return [DISPATCH_CHANNEL];

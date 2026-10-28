@@ -49,7 +49,8 @@ export function renderDashboardView({
         ? ` | ${currentShipCargoCapacity(ship)}T cap`
         : "";
     const displayStatus = ship.status === "arrived_pending_report" ? "enroute" : ship.status;
-    li.textContent = `${idx + 1}. ${formatPlayerShipIdentity(ship, displayStatus)} | id ${playerShipDisplayId(ship) || ship.id}${capacityLabel}`;
+    const destinationLabel = ship.destination ? ` | Destination: ${nodeLabel(ship.destination)}` : "";
+    li.textContent = `${idx + 1}. ${formatPlayerShipIdentity(ship, displayStatus)} | id ${playerShipDisplayId(ship) || ship.id}${capacityLabel}${destinationLabel}`;
     ui.fleet.appendChild(li);
   });
 }

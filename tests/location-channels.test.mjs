@@ -31,7 +31,9 @@ assert.deepEqual(shipChannelPosition(traveler), { key: 'route:refinery:indigo_st
 assert.deepEqual(sensorChannelKeys({ ships: [traveler] }, 'refinery'), [], 'departed ships cannot hear origin');
 assert.deepEqual(sensorChannelKeys({ ships: [traveler] }, 'indigo_station'), []);
 traveler.sensorMode = 'instruments';
-assert.deepEqual(sensorChannelKeys({ ships: [traveler] }, 'indigo_station'), ['route:refinery:indigo_station'], 'boosted destination sensors use route feed');
+assert.deepEqual(sensorChannelKeys({ ships: [traveler] }, 'indigo_station'), [], 'in-flight sensors do not open chatter panels');
+assert.deepEqual(resolveMessageChannelKeys({ ships: [traveler] }, {shipId: 'traveler'}), [DISPATCH_CHANNEL], 'in-flight reports go to dispatch');
+assert.equal(occupiedChannelPositions({ships: [traveler]}).size, 1, 'travel never creates a terminal');
 traveler.travelPlan = { mode: 'contract', firstLegFrom: 'refinery', firstLegTo: 'yard', secondLegFrom: 'yard', secondLegTo: 'indigo_station' };
 assert.equal(shipChannelPosition(traveler).key, 'route:refinery:yard');
 traveler.travelPlan.firstLegDockRecorded = true;
@@ -188,12 +190,11 @@ try {
   liveState.ships[2].status = 'enroute';
   liveState.ships[2].destination = 'yard';
   terminals.sync();
-  const routeCard = ui.locationChannels.children.find((entry) => entry.dataset.channel.startsWith('route:'));
-  assert.equal(routeCard.hidden, false);
+  assert.equal(ui.locationChannels.children.some((entry) => entry.dataset.channel.startsWith('route:')), false, 'no transit panels appear');
   liveState.ships[2].at = 'yard';
   liveState.ships[2].status = 'idle';
   terminals.sync();
-  assert.equal(routeCard.hidden, true, 'unoccupied transit routes are hidden even inside signal log');
+  assert.equal(ui.locationChannels.children.some((entry) => entry.dataset.channel.startsWith('route:')), false, 'no transit panels remain after arrival');
 } finally {
   globalThis.document = originalDocument;
   globalThis.setTimeout = originalSetTimeout;
