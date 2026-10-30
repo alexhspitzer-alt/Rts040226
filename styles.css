@@ -663,3 +663,23 @@ button:focus-visible, a:focus-visible { outline: 2px solid #93cdff; outline-offs
 
 .inactive-channels-section > summary { cursor: pointer; color: #a7c4df; font-size: 0.75rem; padding: 0.65rem; border: 1px solid #30475d; border-radius: 6px; background: #111e2c; }
 .inactive-channels-section[open] > summary { margin-bottom: 0.65rem; }
+
+/* Compact mobile chrome leaves space for messages and neighboring channels. */
+.game-header { margin-bottom: 0.65rem; }
+.terminal-eyebrow { flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.sensor-bank-header { margin-bottom: 0.65rem; }
+@media (max-width: 650px) {
+  .layout { padding-top: 0; }
+  .game-header { padding-top: 0; margin-bottom: 0.25rem; }
+  .game-title { width: 180px; }
+  .dispatch-terminal { padding: 0.6rem; }
+  .dispatch-terminal .console-header { margin-bottom: 0.2rem; }
+  .dispatch-terminal .console-header h2 { font-size: 0.79rem; font-weight: 600; }
+  .terminal-eyebrow { margin-bottom: 0.25rem; }
+  .dispatch-ships { margin-bottom: 0.4rem; font-size: 0.63rem; }
+  .dispatch-terminal > .feed { height: clamp(210px, 42dvh, 380px); }
+  #console-follow-toggle { margin-bottom: 0; padding: 0.35rem 0.5rem; min-height: 36px; }
+  .communications { gap: 0.65rem; }
+}
+.terminal-eyebrow #clock,
+.terminal-eyebrow [aria-label="Cash balance"] { font-size: 0.78rem; color: #cde6ff; letter-spacing: 0.02em; }

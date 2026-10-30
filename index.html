@@ -6,7 +6,7 @@
   <title>bluFreight Indigo Ops Prototype</title>
   <link rel="preload" as="image" href="assets/indigo-title.webp" type="image/webp" />
   <link rel="preload" as="image" href="assets/indigo-planet.webp" type="image/webp" />
-  <link rel="stylesheet" href="styles.css?v=location-terminals-20261028d" />
+  <link rel="stylesheet" href="styles.css?v=mobile-terminals-20261029" />
 </head>
 <body>
   <main class="layout">
@@ -15,13 +15,8 @@
         <span class="sr-only">INDIGO</span>
         <img class="game-title-art" src="assets/indigo-title.webp" width="1200" height="419" alt="" aria-hidden="true" />
       </h1>
-      <p>bluFreight Logistics operations console</p>
     </header>
 
-    <section class="stats" aria-label="Game statistics">
-      <div><strong>Clock:</strong> <span id="clock">00:00</span></div>
-      <div><strong>Cash:</strong> $<span id="cash">0</span></div>
-    </section>
     <div class="sr-only" aria-hidden="true">
       <span id="rep">0</span>
       <span id="risk">0</span>
@@ -63,7 +58,7 @@
       <article class="panel terminal dispatch-terminal" aria-labelledby="dispatch-title" data-channel="anchor_station">
         <div class="console-header">
           <div>
-            <p class="terminal-eyebrow"><span class="signal-dot" aria-hidden="true"></span> DISPATCH · ALWAYS ONLINE</p>
+            <p class="terminal-eyebrow"><span class="signal-dot" aria-hidden="true"></span> DISPATCH · <span id="clock" role="timer" aria-label="Elapsed time">00:00</span> · <span aria-label="Cash balance">$<span id="cash">0</span></span></p>
             <h2 id="dispatch-title">Anchor Station</h2>
           </div>
           <button id="console-follow-toggle" type="button" class="copy-btn">★</button>
@@ -84,14 +79,12 @@
           </select>
           <button type="submit">Send</button>
         </form>
-        <p class="hint">All orders go through dispatch. <code>F</code> fleet · <code>C</code> contracts · <code>H</code> help</p>
       </article>
       <section class="sensor-bank" aria-labelledby="sensor-bank-title">
         <div class="sensor-bank-header">
           <div><h2 id="sensor-bank-title">Location channels</h2><span id="channel-count" class="channel-count">Connecting…</span></div>
           <button id="minimize-channels" type="button" class="quiet-button">Minimize live</button>
         </div>
-        <p class="sensor-bank-hint">Shared by ships at each location. Read only.</p>
         <div id="location-channels" class="location-channels"></div>
         <p id="channels-empty" class="channels-empty" hidden>All fleet ships are at Anchor. Remote channels open when ships leave.</p>
         <details id="inactive-channels-section" class="inactive-channels-section" aria-labelledby="inactive-channels-title" hidden>
@@ -133,6 +126,6 @@
       button.addEventListener("click", () => setTab(button.dataset.tab));
     });
   </script>
-  <script type="module" src="game.js?v=location-terminals-20261028d"></script>
+  <script type="module" src="game.js?v=mobile-terminals-20261029"></script>
 </body>
 </html>

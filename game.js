@@ -3,7 +3,7 @@ import {
   normalizeConsoleInput,
   normalizeContractIdToken,
   normalizeShipIdToken,
-} from "./console.js?v=location-terminals-20261028d";
+} from "./console.js?v=mobile-terminals-20261029";
 import {
   buildGraph,
   buildCanonicalTutorialMap as buildTutorialMapModel,
@@ -18,10 +18,10 @@ import {
 } from "./modules/game-map.js";
 import { createNavigationModel, createBuddeAdvisor } from "./modules/game-navigation.js";
 import { createContractTools } from "./modules/game-contracts.js";
-import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js?v=location-terminals-20261028d";
-import { createCommandRuntime } from "./modules/game-command-runtime.js?v=location-terminals-20261028d";
-import { createNpcController } from "./modules/game-npc-controller.js?v=location-terminals-20261028d";
-import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js?v=location-terminals-20261028d";
+import { createPlayerHailFlow, pickHailResponse } from "./modules/game-hail.js?v=mobile-terminals-20261029";
+import { createCommandRuntime } from "./modules/game-command-runtime.js?v=mobile-terminals-20261029";
+import { createNpcController } from "./modules/game-npc-controller.js?v=mobile-terminals-20261029";
+import { createGameBootstrap, createGameUi } from "./modules/game-bootstrap.js?v=mobile-terminals-20261029";
 import { createInitialGameState } from "./modules/game-state.js";
 import { loadGameReferenceData } from "./modules/game-data-loader.js";
 import { createEventBus } from "./modules/game-events.js";
@@ -35,9 +35,9 @@ import {
   filterHandbookEntries,
   rememberEncounteredCargoType,
 } from "./modules/handbook-discovery.js";
-import { renderDashboardView } from "./modules/views/game-dashboard-view.js?v=location-terminals-20261028d";
-import { createLocationTerminals } from "./modules/views/location-terminals-view.js?v=location-terminals-20261028d";
-import { DISPATCH_CHANNEL, resolveMessageChannelKeys } from "./modules/game-channels.js?v=location-terminals-20261028d";
+import { renderDashboardView } from "./modules/views/game-dashboard-view.js?v=mobile-terminals-20261029";
+import { createLocationTerminals } from "./modules/views/location-terminals-view.js?v=mobile-terminals-20261029";
+import { DISPATCH_CHANNEL, resolveMessageChannelKeys } from "./modules/game-channels.js?v=mobile-terminals-20261029";
 import { createRandomProvider } from "./modules/game-random.js";
 import { createPerformanceMonitor, isPerformanceSamplingEnabledByUrl } from "./modules/game-performance.js";
 import {

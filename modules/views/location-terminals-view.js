@@ -1,5 +1,11 @@
-import { createConsoleLogger } from "../../console.js?v=location-terminals-20261028d";
-import { DISPATCH_CHANNEL, occupiedChannelPositions } from "../game-channels.js?v=location-terminals-20261028d";
+import { createConsoleLogger } from "../../console.js?v=mobile-terminals-20261029";
+import { DISPATCH_CHANNEL, occupiedChannelPositions } from "../game-channels.js?v=mobile-terminals-20261029";
+
+export function shipSensorConfiguration(ship) {
+  const suite = ship?.sensorMode === "instruments" ? "Instrument array"
+    : ship?.sensorMode === "comms" ? "Comms array" : "Default suite";
+  return ship?.sensorsMuted ? `Mute · ${suite}` : suite;
+}
 
 export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTime, stylizeConsoleText, isTransitPosition = (position) => !position.nodeId, doc = document }) {
   const channels = new Map();
@@ -100,7 +106,7 @@ export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTi
     const occupied = occupiedChannelPositions(state);
     const anchorShips = occupied.get(DISPATCH_CHANNEL).ships;
     if (ui.dispatchShips) ui.dispatchShips.textContent = anchorShips.length
-      ? anchorShips.map(shipLabel).join(" · ")
+      ? anchorShips.map((ship) => `${shipLabel(ship)} · ${shipSensorConfiguration(ship)}`).join(" / ")
       : "No fleet ships on station";
     for (const [key, position] of occupied) {
       if (key === DISPATCH_CHANNEL) continue;
@@ -116,7 +122,7 @@ export function createLocationTerminals({ state, ui, nodeLabel, shipLabel, fmtTi
       channel.card.hidden = false;
       const label = position.nodeId ? nodeLabel(position.nodeId) : `${nodeLabel(position.from)} → ${nodeLabel(position.to)}`;
       channel.title.textContent = label;
-      channel.ships.textContent = `${position.ships.map(shipLabel).join(" · ")} · ${position.nodeId ? "Local sensors" : "In transit"} · Read only`;
+      channel.ships.textContent = `${position.ships.map((ship) => `${shipLabel(ship)} · ${shipSensorConfiguration(ship)}`).join(" / ")} · Read only`;
       channel.feed.setAttribute("aria-label", `${label} transmissions`);
       channel.lastActiveTick = state.tick;
       channel.card.classList.remove("is-inactive");

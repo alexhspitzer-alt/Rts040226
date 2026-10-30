@@ -6,7 +6,12 @@ import {
   sensorChannelKeys,
   shipChannelPosition,
 } from '../modules/game-channels.js';
-import { createLocationTerminals } from '../modules/views/location-terminals-view.js';
+import { createLocationTerminals, shipSensorConfiguration } from '../modules/views/location-terminals-view.js';
+
+assert.equal(shipSensorConfiguration({}), 'Default suite');
+assert.equal(shipSensorConfiguration({sensorMode:'instruments'}), 'Instrument array');
+assert.equal(shipSensorConfiguration({sensorMode:'comms'}), 'Comms array');
+assert.equal(shipSensorConfiguration({sensorsMuted:true, sensorMode:'instruments'}), 'Mute · Instrument array');
 
 const ship = (id, at, extra = {}) => ({ id, at, status: 'idle', ...extra });
 const state = { tick: 0, ships: [ship('one', 'anchor_station'), ship('two', 'refinery'), ship('three', 'refinery')] };
@@ -113,8 +118,12 @@ try {
   });
   terminals.sync();
   assert.equal(ui.locationChannels.children.length, 1);
-  assert.equal(ui.dispatchShips.textContent, 'a');
+  assert.equal(ui.dispatchShips.textContent, 'a · Default suite');
   const card = ui.locationChannels.children[0];
+  liveState.ships[1].sensorMode = 'comms';
+  liveState.ships[2].sensorsMuted = true;
+  terminals.sync();
+  assert.equal(card.children[0].children[0].children[0].children[1].textContent.includes('b · Comms array / c · Mute · Default suite'), true, 'co-located ships retain their individual sensor configurations');
   const toggle = card.children[0].children[0];
   const badge = toggle.children[1];
   const feed = card.children[2];
