@@ -23,7 +23,22 @@ Open in browser:
 
 - http://localhost:8080
 
+## Architecture and extension points
+
+The current module ownership map lives in [`docs/architecture.md`](docs/architecture.md). Use it when adding new gameplay rules, command flows, UI views, data assets, or instrumentation so `game.js` remains a composition layer rather than growing back into a monolith.
+
 ## Input options
+
+### Location terminals
+
+- **Anchor Station dispatch** is always open and is the only place to type orders. BASIL, BUDDE, command menus, deliberate hails, and urgent gameplay alerts stay here alongside Anchor's local chatter. Fleet ships at Anchor are listed below its title.
+- Each other occupied location has one **read-only terminal**, shared by every fleet ship there. Its header lists the ships, and its feed receives their reports and locally audible sensor chatter.
+- In-flight ships do not create terminals. Their reports and urgent alerts reach dispatch; Fleet lists status and destination. Routine approach chatter is heard only through ships already listening at the destination.
+- Click a location header to minimize or expand it. Minimized live feeds keep receiving transmissions and show a new-message count. **Minimize live** quiets the whole bank without affecting dispatch.
+- When the last ship leaves a location, its terminal freezes and collapses into the expandable **Signal log**. History remains readable, and returning ships reopen the same terminal. Delayed display callbacks cannot update an unoccupied terminal or leak into a later visit.
+- Every terminal has independent scrolling, follow controls, message pacing, and ambient throttling. Sensor muting affects local chatter while captain reports remain audible. **Copy all terminal logs** includes dispatch, live locations, and retained history.
+
+Run `node scripts/run-tests.mjs` to check runtime and terminal behavior. The Pages workflow runs these checks before deployment.
 
 You can use either **short interactive input** (recommended) or **long-form commands**.
 
@@ -54,16 +69,23 @@ You can use either **short interactive input** (recommended) or **long-form comm
 
 ## GitHub Pages deployment
 
-This repo includes a Pages workflow at `.github/workflows/pages.yml` that deploys on pushes to `main` or `work`.
+This repo includes a Pages workflow at `.github/workflows/pages.yml` that deploys on pushes to `main`, `work`, or the current live development branch, `codex/plan-refactor-and-optimize-game-structure-47kv4k`.
 
 ## Quick smoke test after merges
 
 1. Open the deployed page and confirm the footer `last updated` timestamp is recent.
-2. Open **Almanac** tab:
-   - verify Indigo System category expands,
-   - verify Orbit Bands contains Low/Ring/High/Outer entries.
-3. Run `fleet`, select a ship, and issue `send`:
+2. Open **Handbook** tab:
+   - verify entries for the starting fleet, contracts, and briefing are present,
+   - verify the unread counter starts at `0`,
+   - verify later-scenario ships and cargo remain hidden until encountered,
+   - verify a visible contract destination stays hidden until a ship's arrival there is confirmed.
+   - verify a visible cargo type stays hidden until its assigned ship actually loads it.
+   - advance a scenario, verify newly discovered entries are marked unread, and open one to decrement the counter.
+3. Open **Inbox** and verify each new message keeps its **NEW** marker until that message is opened.
+4. Run `fleet`, select a ship, and issue `send`:
    - captain should send two departure messages,
    - first message contains acknowledgement + destination + action,
    - second message contains route callout in future tense (`will ...`).
-4. Assign a contract and confirm first departure action line says pickup or delivery as appropriate.
+5. Assign a contract and confirm first departure action line says pickup or delivery as appropriate.
+
+Inactive transit routes and transfer lanes are hidden. Departure acknowledgements are copied to the departure location, including when the departure terminal has just become inactive. Other inactive-channel traffic remains frozen.

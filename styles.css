@@ -47,7 +47,16 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at top, var(--color-bg-page-start) 0%, var(--color-bg-page-end) 62%);
+  background-color: var(--color-bg-page-end);
+  background-image:
+    linear-gradient(to top, rgba(10, 14, 20, 1) 0%, rgba(10, 14, 20, 0) 4rem),
+    linear-gradient(90deg, rgba(7, 11, 18, 0.98) 0%, rgba(10, 14, 22, 0.9) 48%, rgba(6, 9, 17, 0.54) 100%),
+    url("assets/indigo-planet.webp"),
+    radial-gradient(circle at top, var(--color-bg-page-start) 0%, var(--color-bg-page-end) 68%);
+  background-position: center, center, right -4vw top 1.5rem, center;
+  background-repeat: no-repeat;
+  background-size: cover, cover, min(76vw, 1080px) auto, cover;
+  background-attachment: fixed;
   color: var(--color-text-page);
   min-height: 100vh;
 }
@@ -62,9 +71,32 @@ body {
   flex-direction: column;
 }
 
-h1 {
-  margin-bottom: 0.25rem;
-  color: var(--color-text-heading);
+.game-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: 0.15rem;
+}
+
+.game-title {
+  width: clamp(300px, 38vw, 520px);
+  margin: 0;
+  line-height: 0;
+}
+
+.game-title-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0.9;
+  mix-blend-mode: lighten;
+}
+
+.game-header p {
+  margin: -0.25rem 0 0 0.4rem;
+  color: var(--color-text-hint);
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 8px #000;
 }
 
 .stats {
@@ -77,9 +109,10 @@ h1 {
 .stats div,
 .panel {
   border: 1px solid var(--color-border-panel);
-  background: var(--color-bg-panel);
+  background: rgba(19, 27, 39, 0.96);
   border-radius: 9px;
   padding: 0.75rem;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
 }
 
 .hidden-ui-stat {
@@ -88,7 +121,7 @@ h1 {
 
 .grid {
   display: grid;
-  grid-template-columns: 1fr minmax(260px, 320px);
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
   grid-template-areas: "terminal metrics";
   gap: 1rem;
   align-items: start;
@@ -128,7 +161,7 @@ h1 {
 }
 
 .terminal {
-  grid-area: terminal;
+  min-width: 0;
   font-size: 1rem;
 }
 
@@ -179,6 +212,25 @@ h1 {
 .almanac-entry > summary {
   cursor: pointer;
   list-style: none;
+}
+
+.almanac-category.has-unread > summary,
+.almanac-group.has-unread > summary,
+.almanac-entry.is-unread > summary {
+  font-weight: 700;
+}
+
+.new-item-marker {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: var(--color-text-panel-heading);
+  font-size: 0.62rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+  vertical-align: 0.08rem;
 }
 
 .almanac-category > summary {
@@ -236,6 +288,10 @@ h1 {
   padding: 0;
   overflow: hidden;
   border-color: var(--inbox-message-color, var(--color-border-list));
+}
+
+.inbox-item.is-unread {
+  box-shadow: inset 3px 0 0 var(--color-text-panel-heading);
 }
 
 .inbox-message-basil {
@@ -447,6 +503,29 @@ button:hover {
 }
 
 @media (max-width: 800px) {
+  body {
+    background-image:
+      linear-gradient(90deg, rgba(7, 11, 18, 0.98) 0%, rgba(10, 14, 22, 0.9) 48%, rgba(6, 9, 17, 0.54) 100%),
+      url("assets/indigo-planet.webp"),
+      radial-gradient(circle at top, var(--color-bg-page-start) 0%, var(--color-bg-page-end) 68%);
+    background-position: center, center top 5rem, center;
+    background-size: cover, 140vw auto, cover;
+    background-attachment: scroll;
+  }
+
+  .game-header {
+    align-items: center;
+    text-align: center;
+  }
+
+  .game-title {
+    width: min(92vw, 500px);
+  }
+
+  .game-header p {
+    margin-left: 0;
+  }
+
   .grid {
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -458,3 +537,149 @@ button:hover {
     height: 50vh;
   }
 }
+
+/* Location-based comms: stable dispatch, quiet remote feeds and compact history. */
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+.game-title { width: clamp(200px, 23vw, 310px); }
+.game-header p { font-size: 0.73rem; }
+.stats { margin: 0.75rem 0; gap: 0.65rem; }
+.stats div { padding: 0.55rem 0.75rem; }
+.communications {
+  grid-area: terminal;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+  min-width: 0;
+}
+.dispatch-terminal {
+  position: sticky;
+  top: 0.75rem;
+  border-color: #466786;
+}
+.console-header h2 { font-size: 1.15rem; font-weight: 650; }
+.terminal-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.59rem;
+  letter-spacing: 0.12em;
+  color: #9ab5ca;
+  margin: 0 0 0.4rem;
+}
+.signal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #9cf3b1;
+}
+.dispatch-ships {
+  margin: 0.15rem 0 0.7rem;
+  color: #a4c6e4;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+.dispatch-terminal > .feed { height: clamp(260px, calc(100dvh - 350px), 730px); }
+.feed { overflow-wrap: anywhere; line-height: 1.5; scrollbar-width: thin; }
+.feed:focus-visible { outline: 2px solid #93cdff; outline-offset: 2px; }
+.cmd-form { grid-template-columns: minmax(0, 1fr) auto; }
+.cmd-form input, .cmd-form select { min-width: 0; width: 100%; font-size: 16px; }
+.cmd-form select { border: 1px solid #3f5f83; border-radius: 6px; background: #0c1623; color: #e5f5ff; }
+.cmd-form button { font-size: 0.78rem; background: #234564; }
+.terminal .hint { margin-bottom: 0.1rem; font-size: 0.66rem; line-height: 1.5; }
+.sensor-bank { min-width: 0; }
+.sensor-bank-header { display: flex; justify-content: space-between; gap: 0.5rem; align-items: center; }
+.sensor-bank-header > div { display: flex; gap: 0.55rem; align-items: center; flex-wrap: wrap; }
+.sensor-bank-header h2 { font-size: 0.9rem; margin: 0; font-weight: 600; }
+.channel-count { color: #98bda9; font-size: 0.65rem; white-space: nowrap; }
+.quiet-button {
+  border: 1px solid #30475d;
+  border-radius: 6px;
+  background: #111e2c;
+  color: #a7c4df;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.65rem;
+  white-space: nowrap;
+  min-height: 36px;
+}
+.sensor-bank-hint { margin: 0.4rem 0 0.75rem; color: #93a7ba; font-size: 0.68rem; }
+.location-channels { display: flex; flex-direction: column; gap: 0.65rem; }
+.location-terminal { min-width: 0; padding: 0.6rem; border-color: #2f475b; }
+.channel-header { display: flex; align-items: center; gap: 0.35rem; }
+.channel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  border-radius: 4px;
+  padding: 0.15rem;
+  text-align: left;
+  background: transparent;
+  color: #d9ecff;
+  font: inherit;
+}
+.channel-toggle:hover { background: #1a2a3b; }
+.channel-identity { min-width: 0; flex: 1; }
+.channel-title { display: block; font-weight: 600; font-size: 0.79rem; overflow-wrap: anywhere; }
+.channel-ships { display: block; margin-top: 0.3rem; color: #9db8d0; font-size: 0.63rem; line-height: 1.5; overflow-wrap: anywhere; }
+.channel-chevron { color: #91b2cd; font-size: 1.1rem; padding-inline: 0.2rem; }
+.channel-unread { border-radius: 4px; padding: 0.2rem 0.3rem; background: #263e51; color: #c3def3; font-size: 0.6rem; white-space: nowrap; }
+.channel-follow { flex: none; margin: 0; padding: 0.35rem 0.5rem; min-height: 36px; }
+.location-feed { height: clamp(155px, 24vh, 255px); margin-top: 0.5rem; font-size: 0.72rem; padding: 0.5rem; border-color: #2c4054; }
+.location-feed:empty::before { content: "Listening for local traffic…"; display: block; color: #8195a8; font-size: 0.7rem; }
+.is-inactive .location-feed:empty::before { content: "No transmissions recorded."; }
+.channel-preview { margin: 0.35rem 0.15rem 0.1rem; color: #8ca1b6; font-size: 0.65rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.inactive-channels-section { margin-top: 1rem; }
+.inactive-channels-section h3 { margin: 0 0 0.6rem; color: #8fa1b4; font-size: 0.7rem; font-weight: 500; }
+#inactive-channel-count { margin-left: 0.25rem; }
+.is-inactive { background: #101821; border-color: #283646; box-shadow: none; }
+.is-inactive .channel-title { color: #9dabbc; }
+.is-inactive .channel-ships { color: #8593a3; }
+.channels-empty { padding: 1rem; border: 1px dashed #34495e; border-radius: 8px; color: #9db1c5; font-size: 0.75rem; line-height: 1.6; }
+button:focus-visible, a:focus-visible { outline: 2px solid #93cdff; outline-offset: 2px; }
+
+@media (max-width: 1150px) {
+  .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "terminal" "metrics"; }
+  .metrics-panel { margin-top: 0.1rem; }
+  .tab-row { gap: 0.5rem; }
+  .tab-btn { min-height: 36px; }
+}
+@media (max-width: 650px) {
+  .layout { padding: 0.65rem; }
+  .game-title { width: 210px; }
+  .game-header p { font-size: 0.62rem; }
+  .communications { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+  .dispatch-terminal { position: static; }
+  .dispatch-terminal > .feed { height: clamp(210px, 36dvh, 380px); }
+  .location-feed { height: 210px; }
+  .sensor-bank-header h2 { font-size: 0.85rem; }
+  .build-meta-wrap { padding-inline: 0.65rem; gap: 0.5rem; }
+  .build-meta { text-align: right; }
+}
+
+.inactive-channels-section > summary { cursor: pointer; color: #a7c4df; font-size: 0.75rem; padding: 0.65rem; border: 1px solid #30475d; border-radius: 6px; background: #111e2c; }
+.inactive-channels-section[open] > summary { margin-bottom: 0.65rem; }
+
+/* Compact mobile chrome leaves space for messages and neighboring channels. */
+.game-header { margin-bottom: 0.65rem; }
+.terminal-eyebrow { flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.sensor-bank-header { margin-bottom: 0.65rem; }
+@media (max-width: 650px) {
+  .layout { padding-top: 0; }
+  .game-header { padding-top: 0; margin-bottom: 0.25rem; }
+  .game-title { width: 180px; }
+  .dispatch-terminal { padding: 0.6rem; }
+  .dispatch-terminal .console-header { margin-bottom: 0.2rem; }
+  .dispatch-terminal .console-header h2 { font-size: 0.79rem; font-weight: 600; }
+  .terminal-eyebrow { margin-bottom: 0.25rem; }
+  .dispatch-ships { margin-bottom: 0.4rem; font-size: 0.63rem; }
+  .dispatch-terminal > .feed { height: clamp(210px, 42dvh, 380px); }
+  #console-follow-toggle { margin-bottom: 0; padding: 0.35rem 0.5rem; min-height: 36px; }
+  .communications { gap: 0.65rem; }
+}
+.terminal-eyebrow #clock,
+.terminal-eyebrow [aria-label="Cash balance"] { font-size: 0.78rem; color: #cde6ff; letter-spacing: 0.02em; }

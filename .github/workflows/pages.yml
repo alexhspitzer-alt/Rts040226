@@ -2,7 +2,7 @@ name: Deploy static site to GitHub Pages
 
 on:
   push:
-    branches: ["main", "work"]
+    branches: ["main", "work", "codex/plan-refactor-and-optimize-game-structure-47kv4k"]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +23,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Test runtime and location channels
+        run: node scripts/run-tests.mjs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
